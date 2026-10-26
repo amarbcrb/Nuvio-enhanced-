@@ -1,0 +1,18 @@
+[
+  {
+    "id": "moviebox",
+    "name": "MovieBox",
+    "description": "MovieBox (H5 API): movies and series, multiple audio languages and subtitles.",
+    "version": "1.0.0",
+    "author": "amarbcrb",
+    "supportedTypes": ["movie", "tv"],
+    "filename": "providers/moviebox.js",
+    "enabled": true,
+    "logo": "",
+    "contentLanguage": ["en", "hi", "ta", "te", "ml"],
+    "formats": ["mp4", "m3u8", "mpd"],
+    "limited": false,
+    "disabledPlatforms": [],
+    "supportsExternalPlayer": true
+  }
+]
