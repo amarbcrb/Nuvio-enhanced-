@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [enhanced]
+  push:
+    branches: [ccr-be21af08-jw2j45]
   workflow_dispatch:
 
 permissions:
