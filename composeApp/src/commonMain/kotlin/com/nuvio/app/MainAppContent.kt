@@ -112,6 +112,7 @@ import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeRepository
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.home.components.HomeHeroTrailerPlaybackController
 import com.nuvio.app.features.home.components.shouldBlurContinueWatchingArtwork
 import com.nuvio.app.features.library.refreshLibraryReleaseScheduleIfStale
@@ -168,6 +169,7 @@ import com.nuvio.app.features.settings.HomescreenSettingsScreen
 import com.nuvio.app.features.settings.LicensesAttributionsSettingsScreen
 import com.nuvio.app.features.settings.MetaScreenSettingsScreen
 import com.nuvio.app.features.settings.PluginsSettingsScreen
+import com.nuvio.app.features.settings.CloudStreamSettingsScreen
 import com.nuvio.app.features.settings.SupportersContributorsSettingsScreen
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.whatsnew.WhatsNewSettingsScreen
@@ -390,6 +392,7 @@ internal fun MainAppContent(
     val downloadsTitle = stringResource(Res.string.compose_settings_root_downloads_title)
     val addonsSettingsTitle = stringResource(Res.string.compose_settings_page_addons)
     val pluginsSettingsTitle = stringResource(Res.string.compose_settings_page_plugins)
+    val cloudStreamSettingsTitle = stringResource(Res.string.compose_settings_page_cloudstream)
     val accountSettingsTitle = stringResource(Res.string.compose_settings_page_account)
     val editProfileTitle = stringResource(Res.string.profile_edit_edit_title)
     val pushEditProfile: () -> Unit = { navController.navigate(ProfileEditRoute(editProfileTitle)) }
@@ -414,8 +417,14 @@ internal fun MainAppContent(
     var networkToastBaselineReady by rememberSaveable { mutableStateOf(false) }
     var lastNetworkToastCondition by rememberSaveable { mutableStateOf(NetworkCondition.Unknown.name) }
     var watchSourceReconnectPending by remember { mutableStateOf(false) }
-    val homeCatalogRefreshKey = remember(addonsUiState.addons) {
-        buildAddonCatalogRefreshSignature(addonsUiState.addons)
+    val cloudStreamUiState by remember {
+        CloudStreamRepository.initialize()
+        CloudStreamRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val cloudStreamRunnableCount = cloudStreamUiState.plugins.count { it.isRunnable }
+    val homeCatalogRefreshKey = remember(addonsUiState.addons, cloudStreamUiState.registryRevision, cloudStreamRunnableCount) {
+        buildAddonCatalogRefreshSignature(addonsUiState.addons) +
+            "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount"
     }
 
     val serversUiState by remember {
@@ -1709,6 +1718,11 @@ internal fun MainAppContent(
                                         navController.navigate(PluginsSettingsRoute(pluginsSettingsTitle))
                                     }
                                 },
+                                onCloudStreamSettingsClick = {
+                                    if (AppFeaturePolicy.pluginsEnabled) {
+                                        navController.navigate(CloudStreamSettingsRoute(cloudStreamSettingsTitle))
+                                    }
+                                },
                                 onAccountSettingsClick = { navController.navigate(AccountSettingsRoute(accountSettingsTitle)) },
                                 onSupportersContributorsSettingsClick = {
                                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -1921,6 +1935,11 @@ internal fun MainAppContent(
                     entry<PluginsSettingsRoute> { route ->
                         SettingsDestination(route, navController) { onBack ->
                             PluginsSettingsScreen(onBack = onBack)
+                        }
+                    }
+                    entry<CloudStreamSettingsRoute> { route ->
+                        SettingsDestination(route, navController) { onBack ->
+                            CloudStreamSettingsScreen(onBack = onBack)
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import com.nuvio.app.isIos
 import com.nuvio.app.features.whatsnew.WhatsNewSettingsScreen
 import com.nuvio.app.navigation.LocalUseNativeNavigation
 import com.nuvio.app.core.build.AppFeaturePolicy
@@ -150,6 +151,7 @@ fun SettingsScreen(
     onContinueWatchingClick: () -> Unit = {},
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
+    onCloudStreamClick: () -> Unit = {},
     onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
@@ -352,6 +354,11 @@ fun SettingsScreen(
             { openPage(SettingsPage.Plugins) }
         } else {
             onPluginsClick
+        }
+        val openCloudStream = if (onNavigatePage != null) {
+            { openPage(SettingsPage.CloudStream) }
+        } else {
+            onCloudStreamClick
         }
         val openAccount = if (onNavigatePage != null) {
             { openPage(SettingsPage.Account) }
@@ -568,6 +575,7 @@ fun SettingsScreen(
                         onContinueWatchingClick = openContinueWatching,
                         onAddonsClick = openAddons,
                         onPluginsClick = openPlugins,
+                        onCloudStreamClick = openCloudStream,
                         onAccountClick = openAccount,
                         onSupportersContributorsClick = openSupportersContributors,
                         onLicensesAttributionsClick = openLicensesAttributions,
@@ -660,6 +668,7 @@ private fun MobileSettingsScreen(
     onContinueWatchingClick: () -> Unit = {},
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
+    onCloudStreamClick: () -> Unit = {},
     onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
@@ -712,6 +721,11 @@ private fun MobileSettingsScreen(
                     SettingsPage.Plugins -> {
                         if (AppFeaturePolicy.pluginsEnabled) {
                             onPluginsClick()
+                        }
+                    }
+                    SettingsPage.CloudStream -> {
+                        if (AppFeaturePolicy.pluginsEnabled) {
+                            onCloudStreamClick()
                         }
                     }
                     SettingsPage.Homescreen -> onHomescreenClick()
@@ -913,8 +927,10 @@ private fun MobileSettingsScreen(
                 SettingsPage.ContentDiscovery -> contentDiscoveryContent(
                     isTablet = false,
                     showPluginsEntry = AppFeaturePolicy.pluginsEnabled,
+                    showCloudStreamEntry = AppFeaturePolicy.pluginsEnabled && !isIos,
                     onAddonsClick = onAddonsClick,
                     onPluginsClick = onPluginsClick,
+                    onCloudStreamClick = onCloudStreamClick,
                     onMediaServersClick = { onPageChange(SettingsPage.MediaServers) },
                 )
                 SettingsPage.Addons -> addonsSettingsContent()
@@ -927,6 +943,11 @@ private fun MobileSettingsScreen(
                     onBack = onNavigateBack,
                 )
                 SettingsPage.Plugins -> if (AppFeaturePolicy.pluginsEnabled) pluginsSettingsContent() else addonsSettingsContent()
+                SettingsPage.CloudStream -> if (AppFeaturePolicy.pluginsEnabled && !isIos) {
+                    cloudStreamSettingsContent()
+                } else {
+                    addonsSettingsContent()
+                }
                 SettingsPage.Homescreen -> homescreenSettingsContent(
                     isTablet = false,
                     heroEnabled = homescreenHeroEnabled,
@@ -1412,8 +1433,10 @@ private fun TabletSettingsScreen(
                     SettingsPage.ContentDiscovery -> contentDiscoveryContent(
                         isTablet = true,
                         showPluginsEntry = AppFeaturePolicy.pluginsEnabled,
+                        showCloudStreamEntry = AppFeaturePolicy.pluginsEnabled && !isIos,
                         onAddonsClick = { openInlinePage(SettingsPage.Addons) },
                         onPluginsClick = { openInlinePage(SettingsPage.Plugins) },
+                        onCloudStreamClick = { openInlinePage(SettingsPage.CloudStream) },
                         onMediaServersClick = { openInlinePage(SettingsPage.MediaServers) },
                     )
                     SettingsPage.Addons -> addonsSettingsContent()
@@ -1426,6 +1449,11 @@ private fun TabletSettingsScreen(
                         onBack = onNavigateBack,
                     )
                     SettingsPage.Plugins -> if (AppFeaturePolicy.pluginsEnabled) pluginsSettingsContent() else addonsSettingsContent()
+                    SettingsPage.CloudStream -> if (AppFeaturePolicy.pluginsEnabled && !isIos) {
+                        cloudStreamSettingsContent()
+                    } else {
+                        addonsSettingsContent()
+                    }
                     SettingsPage.Homescreen -> homescreenSettingsContent(
                         isTablet = true,
                         heroEnabled = homescreenHeroEnabled,

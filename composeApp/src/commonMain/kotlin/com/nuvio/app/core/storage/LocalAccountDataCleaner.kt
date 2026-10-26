@@ -27,6 +27,7 @@ import com.nuvio.app.features.player.PlayerLaunchStore
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.plugins.PluginRepository
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.player.SubtitleRepository
 import com.nuvio.app.features.profiles.ProfileBiometricAuth
 import com.nuvio.app.features.profiles.ProfilePinCacheStorage
@@ -97,6 +98,7 @@ internal object LocalAccountDataCleaner {
         ServerRepository.clearLocalState()
         if (AppFeaturePolicy.pluginsEnabled) {
             PluginRepository.clearLocalState()
+            CloudStreamRepository.clearLocalState()
         }
         HomeRepository.clear()
         HomeCatalogSettingsRepository.clearLocalState()

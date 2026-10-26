@@ -3,6 +3,7 @@ package com.nuvio.app
 import android.content.Intent
 import android.content.res.Configuration
 import com.nuvio.app.features.autosync.AutoSyncPreferencesAndroid
+import com.nuvio.app.features.cloudstream.CloudStreamPlatformStorage
 import android.os.Bundle
 import androidx.activity.compose.setContent
 
@@ -120,6 +121,7 @@ open class MainActivity : AppCompatActivity() {
         SyncClientIdentityStorage.initialize(applicationContext)
         AddonHttpClientProvider.initialize(applicationContext)
         AddonStorage.initialize(applicationContext)
+        CloudStreamPlatformStorage.initialize(this)
         AuthStorage.initialize(applicationContext)
         ServerConfigurationStorage.initialize(applicationContext)
         LibraryStorage.initialize(applicationContext)

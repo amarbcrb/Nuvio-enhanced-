@@ -406,6 +406,8 @@ internal fun PlayerScreenRuntime.switchToSource(
                     PlayerStreamsRepository.loadSources(
                         type = contentType ?: parentMetaType,
                         videoId = vid,
+                        parentMetaId = parentMetaId,
+                        parentMetaType = parentMetaType,
                         season = activeSeasonNumber,
                         episode = activeEpisodeNumber,
                         forceRefresh = true,
@@ -488,6 +490,8 @@ internal fun PlayerScreenRuntime.switchToEpisodeStream(
                 PlayerStreamsRepository.loadEpisodeStreams(
                     type = contentType ?: parentMetaType,
                     videoId = episode.id,
+                    parentMetaId = parentMetaId,
+                    parentMetaType = parentMetaType,
                     season = episode.season,
                     episode = episode.episode,
                     forceRefresh = true,
@@ -650,6 +654,8 @@ internal fun PlayerScreenRuntime.openSourcesPanel() {
     PlayerStreamsRepository.loadSources(
         type = contentType ?: parentMetaType,
         videoId = vid,
+        parentMetaId = parentMetaId,
+        parentMetaType = parentMetaType,
         season = activeSeasonNumber,
         episode = activeEpisodeNumber,
     )

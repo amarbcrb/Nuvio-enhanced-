@@ -422,6 +422,7 @@
     <string name="compose_settings_page_notifications">Notifications</string>
     <string name="compose_settings_page_playback">Lecture</string>
     <string name="compose_settings_page_plugins">Plugins</string>
+    <string name="compose_settings_page_cloudstream">CloudStream / CS3</string>
     <string name="compose_settings_page_poster_customization">Personnalisation des affiches</string>
     <string name="compose_settings_page_root">Paramètres</string>
     <string name="compose_settings_page_streams">Streams</string>
@@ -654,6 +655,7 @@
     <string name="settings_content_discovery_addons_description">Installez, supprimez, mettez à jour et ordonnez vos sources de contenu.</string>
     <string name="settings_content_discovery_addons_description_appstore">Ajoutez et gérez les addons que vous utilisez avec Nuvio.</string>
     <string name="settings_content_discovery_plugins_description">Installez des dépôts de scrapers JavaScript et testez des fournisseurs en interne.</string>
+    <string name="settings_content_discovery_cloudstream_description">Installez des dépôts CloudStream CS3, recherchez des fournisseurs et gérez les sources CloudStream.</string>
     <string name="settings_content_discovery_homescreen_description">Contrôle quels catalogues apparaissent à l’accueil et dans quel ordre.</string>
     <string name="settings_content_discovery_meta_screen_description">Désactivez des sections de détails et réorganisez tout sous le Hero.</string>
     <string name="settings_content_discovery_collections_description">Créez des regroupements de catalogues personnalisés avec des dossiers affichés à l’accueil.</string>

@@ -10,6 +10,10 @@ import com.nuvio.app.features.addons.fetchAddonResponseText
 import com.nuvio.app.features.addons.httpRequestRaw
 import com.nuvio.app.core.poster.withCustomPosterUrls
 import com.nuvio.app.features.addons.supportsResource
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.CloudStreamRouteData
+import com.nuvio.app.features.cloudstream.parseCloudStreamRouteId
+import com.nuvio.app.features.cloudstream.toMetaDetails
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.filterReleasedItems
 import com.nuvio.app.features.mdblist.MdbListMetadataService
@@ -63,6 +67,10 @@ object MetaDetailsRepository {
         log.d { "load() called — type=$type id=$id" }
         InAppLogger.info("Metadata/MetaDetailsRepository", "Loading meta type=$type id=$id")
         val requestKey = "$type:$id"
+        parseCloudStreamRouteId(id)?.let { route ->
+            loadCloudStream(requestKey = requestKey, route = route)
+            return
+        }
         ServerItemRef.parse(id)?.let { ref ->
             loadServerMeta(requestKey, ref)
             return
@@ -235,6 +243,14 @@ object MetaDetailsRepository {
         if (useCache) {
             cachedMetaByRequestKey[requestKey]?.let { return it.baseMeta }
         }
+        parseCloudStreamRouteId(id)?.let { route ->
+            return withTimeoutOrNull(FETCH_TIMEOUT_MS) {
+                CloudStreamRepository.load(route.providerId, route.data)
+                    .getOrNull()
+                    ?.toMetaDetails()
+                    ?.also { if (cacheResult) cachedMetaByRequestKey[requestKey] = CachedMetaEntry(baseMeta = it) }
+            }
+        }
         ServerItemRef.parse(id)?.let { ref ->
             return runCatching { ServerCatalog.details(ref).meta }
                 .onFailure { if (it is CancellationException) throw it }
@@ -374,6 +390,39 @@ object MetaDetailsRepository {
                         errorMessage = if (cached == null) getString(error.serverFailure().message()) else null,
                     )
                     if (cached == null) activeRequestKey = null
+                },
+            )
+        }
+    }
+
+    private fun loadCloudStream(
+        requestKey: String,
+        route: CloudStreamRouteData,
+    ) {
+        cachedMetaByRequestKey[requestKey]?.let { cached ->
+            _uiState.value = MetaDetailsUiState(meta = cached.baseMeta)
+            activeRequestKey = requestKey
+            return
+        }
+        if (_uiState.value.isLoading && activeRequestKey == requestKey) return
+        activeRequestKey = requestKey
+        _uiState.value = MetaDetailsUiState(isLoading = true)
+        scope.launch {
+            val result = CloudStreamRepository.load(route.providerId, route.data)
+            if (activeRequestKey != requestKey) return@launch
+            result.fold(
+                onSuccess = { loaded ->
+                    val meta = loaded.toMetaDetails()
+                    cachedMetaByRequestKey[requestKey] = CachedMetaEntry(baseMeta = meta)
+                    _uiState.value = MetaDetailsUiState(meta = meta)
+                },
+                onFailure = { error ->
+                    if (error is CancellationException) throw error
+                    log.w(error) { "CloudStream detail load failed provider=${route.providerId}" }
+                    _uiState.value = MetaDetailsUiState(
+                        errorMessage = error.message ?: "CloudStream detail could not be loaded",
+                    )
+                    activeRequestKey = null
                 },
             )
         }

@@ -857,6 +857,8 @@ internal fun PlayerScreenRuntime.tryRefreshCredentialedSourceAfterError(message:
             PlayerStreamsRepository.loadSources(
                 type = type,
                 videoId = currentVideoId,
+                parentMetaId = parentMetaId,
+                parentMetaType = parentMetaType,
                 season = season,
                 episode = episode,
                 forceRefresh = true,

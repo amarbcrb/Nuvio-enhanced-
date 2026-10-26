@@ -3,6 +3,8 @@ package com.nuvio.app.features.catalog
 import com.nuvio.app.core.poster.CustomPosterUrlRepository
 import com.nuvio.app.core.poster.withCustomPosterUrls
 import com.nuvio.app.features.collection.CollectionRepository
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.details.MoreLikeThisSource
 import com.nuvio.app.features.simkl.SimklRelatedRepository
 import com.nuvio.app.features.details.MoreLikeThisPage
@@ -169,6 +171,28 @@ object CatalogRepository {
                     )
 
                     is CatalogTarget.Server -> ServerCatalog.page(target, skip = requestedSkip)
+
+                    is CatalogTarget.CloudStream -> {
+                        val pageNumber = requestedSkip.takeIf { it > 0 } ?: 1
+                        val items = if (!target.searchQuery.isNullOrBlank()) {
+                            CloudStreamRepository.search(target.searchQuery, target.providerId)
+                                .firstOrNull()
+                                ?.getOrThrow()
+                                .orEmpty()
+                                .map { it.toMetaPreview() }
+                        } else {
+                            CloudStreamRepository.getMainPage(target.providerId, pageNumber).getOrThrow()
+                                .firstOrNull { it.first == target.categoryName }
+                                ?.second
+                                .orEmpty()
+                                .map { it.toMetaPreview() }
+                        }
+                        CatalogPage(
+                            items = items,
+                            rawItemCount = items.size,
+                            nextSkip = null,
+                        )
+                    }
 
                     is CatalogTarget.Library -> error(getString(Res.string.catalog_load_failed))
                 }.withUnreleasedFilter(request.hideUnreleasedContent)

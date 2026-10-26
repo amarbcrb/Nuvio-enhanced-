@@ -433,6 +433,7 @@
     <string name="compose_settings_page_notifications">Bildirimler</string>
     <string name="compose_settings_page_playback">Oynatma</string>
     <string name="compose_settings_page_plugins">Pluginler</string>
+    <string name="compose_settings_page_cloudstream">CloudStream / CS3</string>
     <string name="compose_settings_page_poster_customization">Poster özelleştirme</string>
     <string name="compose_settings_page_privacy_policy">Gizlilik Politikası</string>
     <string name="compose_settings_page_root">Ayarlar</string>
@@ -726,6 +727,7 @@
     <string name="settings_content_discovery_addons_description">İçerik kaynaklarını kur, kaldır, yenile ve sırala.</string>
     <string name="settings_content_discovery_addons_description_appstore">Nuvio ile kullandığın eklentileri ekle ve yönet.</string>
     <string name="settings_content_discovery_plugins_description">JavaScript scraper depoları kur ve sağlayıcıları içeriden test et.</string>
+    <string name="settings_content_discovery_cloudstream_description">CloudStream CS3 repolarını kur, provider ara ve CloudStream kaynaklarını yönet.</string>
     <string name="settings_content_discovery_homescreen_description">Ana sayfada hangi katalogların hangi sırayla görüneceğini kontrol et.</string>
     <string name="settings_content_discovery_meta_screen_description">Detay bölümlerini kapat ve öne çıkanların altındaki her şeyi yeniden sırala.</string>
     <string name="settings_content_discovery_collections_description">Ana sayfada gösterilen klasörlerle özel katalog grupları oluştur.</string>

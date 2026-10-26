@@ -207,6 +207,8 @@ fun StreamsScreen(
             season = seasonNumber,
             episode = episodeNumber,
             manualSelection = manualSelection,
+            parentMetaType = parentMetaType,
+            searchTitle = title,
         )
     }
 
@@ -242,6 +244,8 @@ fun StreamsScreen(
             season = seasonNumber,
             episode = episodeNumber,
             manualSelection = manualSelection,
+            parentMetaType = parentMetaType,
+            searchTitle = title,
         )
     }
 
@@ -1036,6 +1040,12 @@ internal fun splitPinnedSources(
     val remaining = mutableListOf<AddonStreamGroup>()
 
     groups.forEach { group ->
+        // CloudStream providers are pinned as a whole from the CloudStream settings page.
+        val providerRank = pinnedRank[group.addonId]
+        if (providerRank != null && group.addonId.startsWith("cloudstream:")) {
+            pinned += providerRank to group
+            return@forEach
+        }
         val isDebridGroup = group.addonId.startsWith("debrid:")
         val pinnedStreams = if (isDebridGroup) {
             emptyMap()

@@ -14,6 +14,9 @@ import com.nuvio.app.features.collection.CollectionSource
 import com.nuvio.app.features.collection.TmdbCollectionSourceResolver
 import com.nuvio.app.features.collection.catalogRouteKey
 import com.nuvio.app.features.collection.findCollectionCatalog
+import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.servers.ServerCatalog
 import com.nuvio.app.features.trakt.TraktPublicListSourceResolver
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
@@ -38,6 +41,11 @@ import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.TimeSource
 
+private data class CloudHomeSectionsResult(
+    val sections: List<HomeCatalogSection>,
+    val errorMessage: String?,
+)
+
 object HomeRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -48,6 +56,7 @@ object HomeRepository {
     private var currentRequestKey: String? = null
     private var currentDefinitions: List<HomeCatalogDefinition> = emptyList()
     private var cachedSections: Map<String, HomeCatalogSection> = emptyMap()
+    private var cachedCloudSections: List<HomeCatalogSection> = emptyList()
     private var cachedCollectionHeroItems: List<MetaPreview> = emptyList()
     private var collectionHeroJob: Job? = null
     private var collectionHeroRequestKey: String? = null
@@ -66,24 +75,36 @@ object HomeRepository {
     }
 
     fun refresh(addons: List<ManagedAddon>, force: Boolean = false) {
+        CloudStreamRepository.initialize()
+        val cloudState = CloudStreamRepository.uiState.value
+        val cloudPlugins = cloudState.plugins.filter(CloudStreamPluginItem::isRunnable)
         val activeAddons = addons.enabledAddons()
         lastRefreshAddonSignature = buildAddonCatalogRefreshSignature(addons)
         val requests = buildHomeCatalogDefinitions(activeAddons)
         currentDefinitions = requests
         val requestCacheKeys = requests.mapTo(mutableSetOf(), HomeCatalogDefinition::cacheKey)
         cachedSections = cachedSections.filterKeys(requestCacheKeys::contains)
-        val requestKey = requests.joinToString(separator = "|", transform = HomeCatalogDefinition::cacheKey)
+        val requestKey = buildString {
+            append(requests.joinToString(separator = "|", transform = HomeCatalogDefinition::cacheKey))
+            if (cloudPlugins.isNotEmpty()) {
+                append("|cloudstream=")
+                append(cloudState.registryRevision)
+                append(':')
+                append(cloudPlugins.joinToString(separator = ",") { it.metadata.id.value })
+            }
+        }
         currentRequestKey = requestKey
 
         if (!force && activeRequestKey == requestKey && _uiState.value.isLoading) return
         activeRequestKey = requestKey
         snapshotGeneration++
 
-        if (requests.isEmpty()) {
+        if (requests.isEmpty() && cloudPlugins.isEmpty()) {
             activeJob?.cancel()
             activeJob = null
             activeRequestKey = null
             cachedSections = emptyMap()
+            cachedCloudSections = emptyList()
             lastErrorMessage = null
             publishCurrentState(
                 isLoading = false,
@@ -101,6 +122,7 @@ object HomeRepository {
         activeJob?.cancel()
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         activeJob = scope.launch {
+            val cloudSectionsJob = async { loadCloudSections(cloudPlugins) }
             val prioritizedRequests = prioritizeDefinitions(
                 definitions = requests,
                 snapshot = HomeCatalogSettingsRepository.snapshot(),
@@ -149,8 +171,11 @@ object HomeRepository {
 
             if (activeRequestKey != requestKey) return@launch
 
+            val cloudResult = cloudSectionsJob.await()
+            if (activeRequestKey != requestKey) return@launch
+            cachedCloudSections = cloudResult.sections
             cachedSections = loadedSections.toMap()
-            lastErrorMessage = firstErrorMessage
+            lastErrorMessage = firstErrorMessage ?: cloudResult.errorMessage
             activeRequestKey = null
             publishCurrentState(
                 isLoading = false,
@@ -187,6 +212,7 @@ object HomeRepository {
         currentRequestKey = null
         currentDefinitions = emptyList()
         cachedSections = emptyMap()
+        cachedCloudSections = emptyList()
         cachedCollectionHeroItems = emptyList()
         collectionHeroJob?.cancel()
         collectionHeroJob = null
@@ -250,7 +276,7 @@ object HomeRepository {
         requestKey: String?,
         keepVisibleHeroWhilePending: Boolean = true,
     ) {
-        if (currentDefinitions.isEmpty() && cachedSections.isNotEmpty()) return
+        if (currentDefinitions.isEmpty() && cachedSections.isNotEmpty() && cachedCloudSections.isEmpty()) return
         val snapshot = HomeCatalogSettingsRepository.snapshot()
         val preferences = snapshot.preferences
         val todayIsoDate = if (snapshot.hideUnreleasedContent) CurrentDateProvider.todayIsoDate() else null
@@ -280,7 +306,10 @@ object HomeRepository {
         if (entries.isNotEmpty() || currentDefinitions.isNotEmpty()) {
             lastPublishedEntries = entries
         }
-        val sections = entries.map { (_, section) -> section }
+        val cloudSections = cachedCloudSections
+            .map { section -> section.withReleaseFilter() }
+            .filter { section -> section.items.isNotEmpty() }
+        val sections = entries.map { (_, section) -> section } + cloudSections
 
         val catalogHeroItems = if (snapshot.heroEnabled) {
             val heroRandom = Random((requestKey?.hashCode() ?: 0).absoluteValue + 1)
@@ -289,6 +318,7 @@ object HomeRepository {
                 .mapNotNull { definition -> cachedSections[definition.cacheKey] }
                 .map { section -> section.withPosterOverlay().withReleaseFilter() }
                 .flatMap { section -> section.items }
+                .plus(cloudSections.flatMap { section -> section.items })
                 .distinctBy { item -> "${item.type}:${item.id}" }
                 .shuffled(heroRandom)
                 .take(HOME_HERO_ITEM_LIMIT)
@@ -391,6 +421,54 @@ object HomeRepository {
             availableItemCount = page.rawItemCount,
             hasMore = page.nextSkip != null,
         )
+    }
+
+    private suspend fun loadCloudSections(
+        plugins: List<CloudStreamPluginItem>,
+    ): CloudHomeSectionsResult {
+        if (plugins.isEmpty()) return CloudHomeSectionsResult(sections = emptyList(), errorMessage = null)
+        val sections = mutableListOf<HomeCatalogSection>()
+        var firstError: String? = null
+        withTimeoutOrNull(HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS) {
+            for (plugin in plugins.take(HOME_CLOUDSTREAM_PROVIDER_SCAN_LIMIT)) {
+                if (sections.size >= HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT) break
+                val result = withTimeoutOrNull(HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS) {
+                    CloudStreamRepository.getMainPage(plugin.metadata.id.value, page = 1)
+                }
+                if (result == null) {
+                    if (firstError == null) firstError = "${plugin.metadata.name} timed out"
+                    continue
+                }
+                result.fold(
+                    onSuccess = { categories ->
+                        categories.forEach { (categoryName, items) ->
+                            if (sections.size >= HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT) return@forEach
+                            if (items.isEmpty()) return@forEach
+                            val previews = items.take(HOME_CATALOG_PREVIEW_FETCH_LIMIT).map { it.toMetaPreview() }
+                            sections += HomeCatalogSection(
+                                key = "cloudstream:${plugin.metadata.id.storageKey}:${categoryName.hashCode()}",
+                                title = categoryName,
+                                subtitle = "${plugin.metadata.name} · CloudStream",
+                                addonName = plugin.metadata.name,
+                                target = CatalogTarget.CloudStream(
+                                    providerId = plugin.metadata.id.value,
+                                    categoryName = categoryName,
+                                    contentType = items.first().type.nuvioType,
+                                    supportsPagination = false,
+                                ),
+                                items = previews,
+                                availableItemCount = items.size,
+                                hasMore = items.size > previews.size,
+                            )
+                        }
+                    },
+                    onFailure = { error ->
+                        if (firstError == null) firstError = error.message
+                    },
+                )
+            }
+        }
+        return CloudHomeSectionsResult(sections = sections, errorMessage = firstError)
     }
 
     private fun ensureCollectionHeroFallback(
@@ -562,6 +640,10 @@ private const val HOME_COLLECTION_HERO_SOURCE_ITEM_LIMIT = 8
 private const val HOME_CATALOG_MAX_CONCURRENT_FETCHES = 6
 private const val HOME_CATALOG_FETCH_TIMEOUT_MS = 30_000L
 private const val HOME_CATALOG_PREVIEW_FETCH_LIMIT = 18
+private const val HOME_CLOUDSTREAM_PROVIDER_SCAN_LIMIT = 18
+private const val HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT = 8
+private const val HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS = 5_000L
+private const val HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS = 15_000L
 private const val HOME_CATALOG_PUBLISH_THROTTLE_MS = 200L
 private const val HOME_SNAPSHOT_SAVE_DELAY_MS = 1_500L
 

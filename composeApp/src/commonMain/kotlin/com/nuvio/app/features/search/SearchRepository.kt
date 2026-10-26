@@ -20,6 +20,10 @@ import com.nuvio.app.features.catalog.fetchCatalogPage
 import com.nuvio.app.features.catalog.mergeCatalogItems
 import com.nuvio.app.features.catalog.nextCatalogPaginationState
 import com.nuvio.app.features.catalog.supportsPagination
+import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.CloudStreamSearchRouteIndex
+import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
@@ -37,6 +41,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 
@@ -91,7 +98,13 @@ object SearchRepository {
         val addonManifestErrorMessage = enabledAddons.firstEnabledManifestError()
         val activeAddons = enabledAddons.filter { it.manifest != null }
         val serverSearches = ServerCatalog.searchTargets()
-        if (activeAddons.isEmpty() && serverSearches.isEmpty()) {
+        CloudStreamRepository.initialize()
+        val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
+            CloudStreamRepository.uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable)
+        } else {
+            emptyList()
+        }
+        if (activeAddons.isEmpty() && serverSearches.isEmpty() && cloudPlugins.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
             _uiState.value = SearchUiState(
@@ -110,7 +123,7 @@ object SearchRepository {
             addons = activeAddons,
             query = normalizedQuery,
         )
-        if (requests.isEmpty() && serverSearches.isEmpty()) {
+        if (requests.isEmpty() && serverSearches.isEmpty() && cloudPlugins.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
             _uiState.value = SearchUiState(
@@ -136,7 +149,14 @@ object SearchRepository {
                 append("|server:${ref.connection.id}:${ref.kind.contentType}:")
                 append(ref.connection.selectedLibraries(ref.kind).joinToString(",") { it.id })
             }
+            if (cloudPlugins.isNotEmpty()) {
+                append("|cloudstream:")
+                append(CloudStreamRepository.uiState.value.registryRevision)
+                append(':')
+                append(cloudPlugins.joinToString(separator = ",") { it.metadata.id.value })
+            }
         }
+        val cloudSearchPermits = Semaphore(CLOUDSTREAM_SEARCH_CONCURRENCY)
         val loaders: List<suspend () -> HomeCatalogSection> =
             requests.map { request -> suspend { request.toSection(forceRefresh = forceRefresh) } } +
                 serverSearches.map { ref ->
@@ -146,6 +166,15 @@ object SearchRepository {
                                 getString(Res.string.search_error_no_results_for_catalog, section.title)
                             }
                         }
+                    }
+                } +
+                cloudPlugins.map { plugin ->
+                    suspend {
+                        cloudSearchPermits.withPermit {
+                            withTimeoutOrNull(CLOUDSTREAM_SEARCH_PROVIDER_TIMEOUT_MS) {
+                                plugin.toCloudSearchSection(normalizedQuery)
+                            }
+                        } ?: error(getString(Res.string.search_error_no_results_for_catalog, plugin.cloudSearchTitle()))
                     }
                 }
         if (canReuseRequestState(forceRefresh, requestKey, lastRequestKey)) return
@@ -220,6 +249,40 @@ object SearchRepository {
             )
         }
     }
+
+    private suspend fun CloudStreamPluginItem.toCloudSearchSection(
+        query: String,
+    ): HomeCatalogSection? {
+        val result = CloudStreamRepository.search(query, metadata.id.value)
+            .firstOrNull()
+            ?.getOrNull()
+            .orEmpty()
+        if (result.isEmpty()) return null
+        CloudStreamSearchRouteIndex.remember(
+            providerId = metadata.id.value,
+            query = query,
+            items = result,
+        )
+        val previews = result.map { it.toMetaPreview() }
+        return HomeCatalogSection(
+            key = "cloudstream:${metadata.id.storageKey}:search:${query.lowercase()}",
+            title = cloudSearchTitle(),
+            subtitle = metadata.language?.uppercase() ?: "CloudStream",
+            addonName = metadata.name,
+            target = CatalogTarget.CloudStream(
+                providerId = metadata.id.value,
+                categoryName = "search",
+                searchQuery = query,
+                contentType = result.first().type.nuvioType,
+                supportsPagination = false,
+            ),
+            items = previews,
+            availableItemCount = previews.size,
+            hasMore = false,
+        )
+    }
+
+    private fun CloudStreamPluginItem.cloudSearchTitle(): String = "${metadata.name} · CloudStream"
 
     fun clear() {
         activeJob?.cancel()
@@ -692,6 +755,10 @@ private fun List<MetaPreview>.previewNames(limit: Int = 5): String {
         item.name
     }
 }
+
+private const val CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH = 3
+private const val CLOUDSTREAM_SEARCH_CONCURRENCY = 8
+private const val CLOUDSTREAM_SEARCH_PROVIDER_TIMEOUT_MS = 15_000L
 
 private fun String.displayLabel(): String =
     localizedMediaTypeLabel(this)

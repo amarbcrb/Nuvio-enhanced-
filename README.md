@@ -127,6 +127,18 @@ Upstream Nuvio has no Live TV. This fork adds the whole feature.
 | **Pinned sources** — pin an addon or a scraper source so its results always sort to the top of the stream list. Pins are kept per profile. | Stream list → long-press a stream or its source header → **Pin to top** | None pinned |
 | **Search bar** — a filter field above the stream list that narrows the results as you type, matching every term against the stream name, description, source, addon, filename and badges — so `1080 hevc multi` works. | Settings → Layout → Streams → **Search bar** | Off |
 
+### CloudStream *(Android full)*
+
+Ported from [yesnt10/NuvioMobile-Enhanced](https://github.com/yesnt10/NuvioMobile-Enhanced). See [CLOUDSTREAM_CROSS_PLATFORM_COMPATIBILITY.md](./CLOUDSTREAM_CROSS_PLATFORM_COMPATIBILITY.md) and [third_party/cloudstream-runtime/NOTICE.md](./third_party/cloudstream-runtime/NOTICE.md).
+
+| Feature | Where | Default |
+|---|---|---|
+| **CloudStream repositories** — add a standard CloudStream `repo.json` URL, browse its plugins, then install, update, enable or remove `.cs3` packages. Package hashes are verified when the repository provides them. | Settings → Content & Discovery → **CloudStream / CS3** | No repository |
+| **Home rows** — the main-page categories of enabled CloudStream providers appear as Home rows and in the hero. | Home | Shown when a provider is enabled |
+| **Search** — enabled providers are searched alongside addons (queries of 3+ characters). | Search | — |
+| **Streams** — enabled providers are matched by title, year and episode and their links are listed with the addon streams, in the stream picker and in the player's sources panel. | Stream list / Player → Sources | — |
+| **Pin a provider** — keep a CloudStream provider's links at the top of the stream list. | Settings → CloudStream / CS3 → pin icon | None pinned |
+
 ### Library
 
 | Feature | Where | Default |

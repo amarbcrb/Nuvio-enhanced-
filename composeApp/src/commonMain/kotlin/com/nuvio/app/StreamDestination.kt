@@ -458,6 +458,8 @@ internal fun StreamDestination(
                             season = launch.seasonNumber,
                             episode = launch.episodeNumber,
                             manualSelection = launch.manualSelection,
+                            parentMetaType = launch.parentMetaType,
+                            searchTitle = launch.title,
                         )
                     }
                     return@LaunchedEffect
@@ -634,6 +636,8 @@ internal fun StreamDestination(
                                 season = launch.seasonNumber,
                                 episode = launch.episodeNumber,
                                 manualSelection = launch.manualSelection,
+                                parentMetaType = launch.parentMetaType,
+                                searchTitle = launch.title,
                             )
                         }
                     }
