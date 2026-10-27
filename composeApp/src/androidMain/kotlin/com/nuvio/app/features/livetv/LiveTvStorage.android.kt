@@ -119,16 +119,4 @@ actual object LiveTvStorage {
             ?.putBoolean(ProfileScopedKey.of(epgAutoDetectEnabledKey), enabled)
             ?.apply()
     }
-
-    actual fun loadFavoriteFoldersBlob(): String? =
-        preferences?.getString(ProfileScopedKey.of(favoriteFoldersBlobKey), null)
-
-    actual fun saveFavoriteFoldersBlob(blob: String) {
-        preferences
-            ?.edit()
-            ?.putString(ProfileScopedKey.of(favoriteFoldersBlobKey), blob)
-            ?.apply()
-    }
-
-    private const val favoriteFoldersBlobKey = "live_tv_favorite_folders"
 }

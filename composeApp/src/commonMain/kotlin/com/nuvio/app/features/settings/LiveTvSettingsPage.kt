@@ -29,7 +29,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.features.livetv.LiveTvEpgSource
-import com.nuvio.app.features.livetv.LiveTvFreeSources
 import com.nuvio.app.features.livetv.LiveTvPlaylist
 import com.nuvio.app.features.livetv.LiveTvPlaylistType
 import com.nuvio.app.features.livetv.LiveTvRepository
@@ -39,10 +38,6 @@ import com.nuvio.app.features.livetv.LiveTvXtreamSettings
 import com.nuvio.app.features.livetv.rememberLiveTvPlaylistFilePicker
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_remove
-import nuvio.composeapp.generated.resources.live_tv_free_source_add
-import nuvio.composeapp.generated.resources.live_tv_free_source_added
-import nuvio.composeapp.generated.resources.live_tv_free_sources_description
-import nuvio.composeapp.generated.resources.live_tv_free_sources_section
 import nuvio.composeapp.generated.resources.live_tv_settings_add_local_playlist
 import nuvio.composeapp.generated.resources.live_tv_settings_add_url_playlist
 import nuvio.composeapp.generated.resources.live_tv_settings_cancel_edit
@@ -143,17 +138,6 @@ internal fun LazyListScope.liveTvSettingsContent(
         ) {
             SettingsGroup(isTablet = isTablet) {
                 LiveTvProviderSettingsRow(isTablet, uiState)
-            }
-        }
-    }
-
-    item {
-        SettingsSection(
-            title = stringResource(Res.string.live_tv_free_sources_section),
-            isTablet = isTablet,
-        ) {
-            SettingsGroup(isTablet = isTablet) {
-                LiveTvFreeSourcesRow(isTablet = isTablet, uiState = uiState)
             }
         }
     }
@@ -854,53 +838,3 @@ private fun liveTvOutlinedTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedContainerColor = MaterialTheme.colorScheme.surface,
     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
 )
-
-/** Ready-made free channel playlists, added in one tap. */
-@Composable
-private fun LiveTvFreeSourcesRow(
-    isTablet: Boolean,
-    uiState: LiveTvUiState,
-) {
-    val addedUrls = uiState.playlists
-        .filter { it.type == LiveTvPlaylistType.Url }
-        .map { it.source.lowercase() }
-        .toSet()
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = if (isTablet) 20.dp else 16.dp, vertical = if (isTablet) 16.dp else 14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = stringResource(Res.string.live_tv_free_sources_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LiveTvFreeSources.forEach { source ->
-            val name = source.theme?.let { stringResource(it.label) } ?: source.name
-            val isAdded = source.url.lowercase() in addedUrls
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = name,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                OutlinedButton(
-                    enabled = !isAdded,
-                    onClick = { LiveTvRepository.addPlaylistUrl(name, source.url) },
-                ) {
-                    Text(
-                        stringResource(
-                            if (isAdded) Res.string.live_tv_free_source_added else Res.string.live_tv_free_source_add,
-                        ),
-                    )
-                }
-            }
-        }
-    }
-}

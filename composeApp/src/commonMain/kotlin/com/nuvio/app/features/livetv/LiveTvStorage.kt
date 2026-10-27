@@ -20,6 +20,4 @@ internal expect object LiveTvStorage {
     fun saveEpgSourcesBlob(blob: String)
     fun loadEpgAutoDetectEnabled(): Boolean?
     fun saveEpgAutoDetectEnabled(enabled: Boolean)
-    fun loadFavoriteFoldersBlob(): String?
-    fun saveFavoriteFoldersBlob(blob: String)
 }
