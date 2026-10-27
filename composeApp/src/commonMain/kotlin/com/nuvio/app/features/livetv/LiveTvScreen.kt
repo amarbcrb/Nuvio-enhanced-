@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,13 +32,22 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Book
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.ChildCare
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LiveTv
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SportsSoccer
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Tv
@@ -62,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,6 +96,11 @@ import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_retry
 import nuvio.composeapp.generated.resources.live_tv_action_back_to_top
+import nuvio.composeapp.generated.resources.live_tv_alternate_stream_from
+import nuvio.composeapp.generated.resources.live_tv_alternate_streams
+import nuvio.composeapp.generated.resources.live_tv_hub_favorite_folders
+import nuvio.composeapp.generated.resources.live_tv_hub_folder_hint
+import nuvio.composeapp.generated.resources.live_tv_hub_folders
 import nuvio.composeapp.generated.resources.live_tv_button_continue
 import nuvio.composeapp.generated.resources.live_tv_empty_message
 import nuvio.composeapp.generated.resources.live_tv_empty_title
@@ -123,6 +139,7 @@ fun LiveTvScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var filterMode by rememberSaveable { mutableStateOf(LiveTvChannelFilterMode.All) }
     var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
+    var folderKey by rememberSaveable { mutableStateOf<String?>(null) }
     var guideChannelId by rememberSaveable { mutableStateOf<String?>(null) }
     val epgNowMillis = rememberLiveTvEpgNowMillis()
 
@@ -145,6 +162,13 @@ fun LiveTvScreen(
         )
     }
 
+    val folders = remember(uiState.channels) { buildLiveTvFolders(uiState.channels) }
+    val favoriteFolderKeys by remember {
+        LiveTvFavoriteFolders.ensureLoaded()
+        LiveTvFavoriteFolders.keys
+    }.collectAsStateWithLifecycle()
+    val selectedFolder = folders.firstOrNull { it.key == folderKey }
+
     val visibleChannels = remember(
         uiState.channels,
         uiState.favoriteChannelIds,
@@ -152,9 +176,10 @@ fun LiveTvScreen(
         selectedCategoryName,
         searchQuery,
         uncategorizedLabel,
+        selectedFolder,
     ) {
         filterLiveTvChannels(
-            channels = uiState.channels,
+            channels = selectedFolder?.let { folder -> uiState.channels.filter(folder::contains) } ?: uiState.channels,
             favoriteChannelIds = uiState.favoriteChannelIds,
             filterMode = filterMode,
             selectedCategoryName = selectedCategoryName,
@@ -162,6 +187,8 @@ fun LiveTvScreen(
             uncategorizedGroupName = uncategorizedLabel,
         )
     }
+    // A channel found in several playlists is listed once, with its other streams to pick from.
+    val visibleEntries = remember(visibleChannels) { visibleChannels.mergedByChannelName() }
 
     val lastWatchedChannel = remember(uiState.channels, uiState.lastWatchedChannelId) {
         uiState.lastWatchedChannelId?.let { channelId ->
@@ -180,7 +207,7 @@ fun LiveTvScreen(
         }
     }
 
-    LaunchedEffect(searchQuery, filterMode, selectedCategoryName) {
+    LaunchedEffect(searchQuery, filterMode, selectedCategoryName, folderKey) {
         listState.scrollToItem(0)
     }
 
@@ -301,6 +328,20 @@ fun LiveTvScreen(
                         }
                     }
 
+                    if (folders.isNotEmpty()) {
+                        item(key = "tv-hub-folders") {
+                            LiveTvFolderRows(
+                                folders = folders,
+                                favoriteKeys = favoriteFolderKeys,
+                                selectedKey = folderKey,
+                                onFolderClick = { folder ->
+                                    folderKey = folder.key.takeUnless { it == folderKey }
+                                },
+                                onFolderLongClick = { folder -> LiveTvFavoriteFolders.toggle(folder.key) },
+                            )
+                        }
+                    }
+
                     stickyHeader(key = ChannelControlsKey) {
                         LiveTvChannelControls(
                             topPadding = controlsTopPadding,
@@ -312,7 +353,7 @@ fun LiveTvScreen(
                             allLabel = allChannelsLabel,
                             favoritesLabel = favoritesLabel,
                             categoryLabel = chooseCategoryLabel,
-                            channelCount = visibleChannels.size,
+                            channelCount = visibleEntries.size,
                             background = screenBackground,
                             onAllSelected = {
                                 filterMode = LiveTvChannelFilterMode.All
@@ -329,7 +370,7 @@ fun LiveTvScreen(
                         )
                     }
 
-                    if (visibleChannels.isEmpty()) {
+                    if (visibleEntries.isEmpty()) {
                         item {
                             HomeEmptyStateCard(
                                 title = stringResource(Res.string.live_tv_no_matching_channels_title),
@@ -338,7 +379,7 @@ fun LiveTvScreen(
                         }
                     } else {
                         liveTvChannelList(
-                            channels = visibleChannels,
+                            entries = visibleEntries,
                             favoriteChannelIds = uiState.favoriteChannelIds,
                             uncategorizedGroupName = uncategorizedLabel,
                             onFavoriteClick = { channel -> LiveTvRepository.toggleFavoriteChannel(channel.id) },
@@ -733,7 +774,7 @@ private fun LiveTvRecentChannelCard(
 }
 
 private fun LazyListScope.liveTvChannelList(
-    channels: List<LiveTvChannel>,
+    entries: List<LiveTvChannelEntry>,
     favoriteChannelIds: Set<String>,
     uncategorizedGroupName: String,
     onFavoriteClick: (LiveTvChannel) -> Unit,
@@ -743,11 +784,14 @@ private fun LazyListScope.liveTvChannelList(
     onGuideClick: (LiveTvChannel) -> Unit = {},
 ) {
     items(
-        items = channels,
-        key = { channel -> "channel:${channel.id}" },
-    ) { channel ->
+        items = entries,
+        key = { entry -> "channel:${entry.channel.id}" },
+    ) { entry ->
+        val channel = entry.channel
         LiveTvChannelCard(
             channel = channel,
+            alternates = entry.alternates,
+            onAlternateClick = onPlayClick,
             categoryName = categoryNameForChannel(channel, uncategorizedGroupName),
             isFavorite = channel.id in favoriteChannelIds,
             onFavoriteClick = { onFavoriteClick(channel) },
@@ -763,6 +807,8 @@ private fun LazyListScope.liveTvChannelList(
 private fun LiveTvChannelCard(
     channel: LiveTvChannel,
     categoryName: String,
+    alternates: List<LiveTvChannel> = emptyList(),
+    onAlternateClick: (LiveTvChannel) -> Unit = {},
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onPlayClick: () -> Unit,
@@ -797,6 +843,13 @@ private fun LiveTvChannelCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 LiveTvCategoryLine(categoryName = categoryName)
+                if (alternates.isNotEmpty()) {
+                    LiveTvAlternateStreams(
+                        channel = channel,
+                        alternates = alternates,
+                        onStreamClick = onAlternateClick,
+                    )
+                }
                 if (programs.isNotEmpty()) {
                     LiveTvEpgNowNext(
                         programs = programs,
@@ -828,6 +881,178 @@ private fun LiveTvChannelCard(
             }
         }
     }
+}
+
+/** "N other streams" under a channel; opens the list of the same channel from other playlists. */
+@Composable
+private fun LiveTvAlternateStreams(
+    channel: LiveTvChannel,
+    alternates: List<LiveTvChannel>,
+    onStreamClick: (LiveTvChannel) -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Text(
+            text = stringResource(Res.string.live_tv_alternate_streams, alternates.size),
+            modifier = Modifier
+                .clip(tokens.shapes.chip)
+                .clickable { expanded = true }
+                .padding(vertical = 2.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = tokens.colors.accent,
+            fontWeight = FontWeight.SemiBold,
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.widthIn(min = 220.dp),
+        ) {
+            (listOf(channel) + alternates).forEachIndexed { index, stream ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(
+                                Res.string.live_tv_alternate_stream_from,
+                                index + 1,
+                                stream.playlistName ?: stream.name,
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onStreamClick(stream)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** The TV Hub folders: pinned folders first, then themes and playlists. Long press pins a folder. */
+@Composable
+private fun LiveTvFolderRows(
+    folders: List<LiveTvFolder>,
+    favoriteKeys: List<String>,
+    selectedKey: String?,
+    onFolderClick: (LiveTvFolder) -> Unit,
+    onFolderLongClick: (LiveTvFolder) -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    val favorites = favoriteKeys.mapNotNull { key -> folders.firstOrNull { it.key == key } }
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (favorites.isNotEmpty()) {
+            LiveTvFolderRowTitle(stringResource(Res.string.live_tv_hub_favorite_folders))
+            LiveTvFolderRow(favorites, favoriteKeys, selectedKey, onFolderClick, onFolderLongClick)
+        }
+        LiveTvFolderRowTitle(stringResource(Res.string.live_tv_hub_folders))
+        LiveTvFolderRow(folders, favoriteKeys, selectedKey, onFolderClick, onFolderLongClick)
+        if (favorites.isEmpty()) {
+            Text(
+                text = stringResource(Res.string.live_tv_hub_folder_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.colors.textMuted,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvFolderRowTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.nuvio.colors.textPrimary,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun LiveTvFolderRow(
+    folders: List<LiveTvFolder>,
+    favoriteKeys: List<String>,
+    selectedKey: String?,
+    onFolderClick: (LiveTvFolder) -> Unit,
+    onFolderLongClick: (LiveTvFolder) -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        folders.forEach { folder ->
+            val selected = folder.key == selectedKey
+            val label = folder.theme?.let { stringResource(it.label) } ?: folder.sourceName.orEmpty()
+            Column(
+                modifier = Modifier
+                    .width(104.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (selected) tokens.colors.overlaySelected else tokens.colors.surface)
+                    .border(
+                        width = NuvioTokens.Border.thin,
+                        color = if (selected) tokens.colors.accent else tokens.colors.borderSubtle,
+                        shape = RoundedCornerShape(16.dp),
+                    )
+                    .combinedClickable(
+                        onClick = { onFolderClick(folder) },
+                        onLongClick = { onFolderLongClick(folder) },
+                    )
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box {
+                    Icon(
+                        imageVector = folder.icon(),
+                        contentDescription = null,
+                        tint = if (selected) tokens.colors.accent else tokens.colors.textPrimary,
+                        modifier = Modifier.size(28.dp),
+                    )
+                    if (folder.key in favoriteKeys) {
+                        Icon(
+                            imageVector = Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = tokens.colors.warning,
+                            modifier = Modifier.size(12.dp).align(Alignment.TopEnd),
+                        )
+                    }
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = tokens.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = folder.channelCount.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = tokens.colors.textMuted,
+                )
+            }
+        }
+    }
+}
+
+private fun LiveTvFolder.icon(): ImageVector = when (theme) {
+    LiveTvTheme.News -> Icons.Rounded.Newspaper
+    LiveTvTheme.Sports -> Icons.Rounded.SportsSoccer
+    LiveTvTheme.Kids -> Icons.Rounded.ChildCare
+    LiveTvTheme.Movies -> Icons.Rounded.Movie
+    LiveTvTheme.Music -> Icons.Rounded.MusicNote
+    LiveTvTheme.Documentary -> Icons.Rounded.Explore
+    LiveTvTheme.Religious -> Icons.Rounded.Book
+    LiveTvTheme.General -> Icons.Rounded.Tv
+    LiveTvTheme.Other -> Icons.Rounded.Category
+    null -> Icons.Rounded.Folder
 }
 
 @Composable

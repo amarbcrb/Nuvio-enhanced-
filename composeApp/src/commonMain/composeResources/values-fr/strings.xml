@@ -2021,4 +2021,22 @@
     <string name="stream_info_subtitle_source_addon">Addon</string>
     <string name="stream_info_subtitle_source_embedded">Intégré</string>
     <string name="stream_info_player_engine">Moteur du lecteur</string>
+    <string name="live_tv_hub_folders">Dossiers</string>
+    <string name="live_tv_hub_favorite_folders">Dossiers favoris</string>
+    <string name="live_tv_hub_folder_hint">Appui long sur un dossier pour l\'épingler dans tes dossiers favoris.</string>
+    <string name="live_tv_theme_general">Généralistes</string>
+    <string name="live_tv_theme_news">Info</string>
+    <string name="live_tv_theme_sports">Sport</string>
+    <string name="live_tv_theme_movies">Films &amp; séries</string>
+    <string name="live_tv_theme_kids">Enfants</string>
+    <string name="live_tv_theme_music">Musique</string>
+    <string name="live_tv_theme_documentary">Documentaires</string>
+    <string name="live_tv_theme_religious">Religion</string>
+    <string name="live_tv_theme_other">Autres</string>
+    <string name="live_tv_alternate_streams">%1$d autres flux</string>
+    <string name="live_tv_alternate_stream_from">Flux %1$d · %2$s</string>
+    <string name="live_tv_free_sources_section">CHAÎNES GRATUITES</string>
+    <string name="live_tv_free_sources_description">Listes publiques du projet iptv-org : des chaînes diffusées gratuitement par leurs propriétaires. Certaines ne sont visibles que depuis leur pays.</string>
+    <string name="live_tv_free_source_add">Ajouter</string>
+    <string name="live_tv_free_source_added">Ajoutée</string>
 </resources>

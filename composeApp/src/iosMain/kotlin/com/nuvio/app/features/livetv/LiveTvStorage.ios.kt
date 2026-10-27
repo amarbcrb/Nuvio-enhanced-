@@ -105,4 +105,13 @@ actual object LiveTvStorage {
             forKey = ProfileScopedKey.of(epgAutoDetectEnabledKey),
         )
     }
+
+    actual fun loadFavoriteFoldersBlob(): String? =
+        NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(favoriteFoldersBlobKey))
+
+    actual fun saveFavoriteFoldersBlob(blob: String) {
+        NSUserDefaults.standardUserDefaults.setObject(blob, forKey = ProfileScopedKey.of(favoriteFoldersBlobKey))
+    }
+
+    private const val favoriteFoldersBlobKey = "live_tv_favorite_folders"
 }
