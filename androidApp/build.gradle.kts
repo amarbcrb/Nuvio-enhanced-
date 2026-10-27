@@ -56,6 +56,14 @@ android {
     compileSdkMinor = libs.versions.android.compileSdkMinor.get().toInt()
 
     signingConfigs {
+        // Fixed development key so that every CI debug APK has the same signature and can
+        // be installed over the previous one (the runner's default debug key changes each run).
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
             if (releaseKeystore != null && releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null) {
                 storeFile = releaseKeystore
