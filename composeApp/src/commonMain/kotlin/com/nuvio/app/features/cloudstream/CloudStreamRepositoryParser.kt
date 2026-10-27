@@ -150,12 +150,29 @@ fun normalizeCloudStreamRepositoryUrl(rawUrl: String): String {
         }
     }
 
+    // A trailing slash names a folder, so the manifest is its repo.json. Extension-less files such as
+    // ".../main/repo" are real manifests; the repo.json fallback for them is tried only if they fail to load.
     val withoutQuery = value.substringBefore('?')
-    val lastSegment = withoutQuery.substringAfterLast('/')
-    if (!lastSegment.contains('.')) {
-        value = value.trimEnd('/') + "/repo.json"
+    if (withoutQuery.endsWith('/')) {
+        value = withoutQuery + "repo.json" + value.substring(withoutQuery.length)
     }
     return normalizeHttpUrlPath(value)
+}
+
+/** URLs to try, in order, when loading the repository manifest at [normalizedUrl]. */
+fun cloudStreamRepositoryManifestCandidates(normalizedUrl: String): List<String> {
+    val alternateBranch = when {
+        "/master/repo.json" in normalizedUrl -> normalizedUrl.replace("/master/repo.json", "/main/repo.json")
+        "/main/repo.json" in normalizedUrl -> normalizedUrl.replace("/main/repo.json", "/master/repo.json")
+        else -> null
+    }
+    val withoutQuery = normalizedUrl.substringBefore('?')
+    val folderManifest = if (withoutQuery.substringAfterLast('/').contains('.')) {
+        null
+    } else {
+        withoutQuery + "/repo.json" + normalizedUrl.substring(withoutQuery.length)
+    }
+    return listOfNotNull(normalizedUrl, alternateBranch, folderManifest).distinct()
 }
 
 fun resolveCloudStreamUrl(baseUrl: String, candidate: String): String {

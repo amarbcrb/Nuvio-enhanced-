@@ -407,15 +407,8 @@ actual object CloudStreamRepository {
         return manifest to CloudStreamRepositoryParser.mergePluginLists(lists)
     }
 
-    private fun cloudStreamManifestCandidates(manifestUrl: String): List<String> {
-        val normalized = normalizeCloudStreamRepositoryUrl(manifestUrl)
-        val alternate = when {
-            "/master/repo.json" in normalized -> normalized.replace("/master/repo.json", "/main/repo.json")
-            "/main/repo.json" in normalized -> normalized.replace("/main/repo.json", "/master/repo.json")
-            else -> null
-        }
-        return listOfNotNull(normalized, alternate).distinct()
-    }
+    private fun cloudStreamManifestCandidates(manifestUrl: String): List<String> =
+        cloudStreamRepositoryManifestCandidates(normalizeCloudStreamRepositoryUrl(manifestUrl))
 
     private fun applyRepositoryRefresh(
         repository: CloudStreamRepositoryManifest,

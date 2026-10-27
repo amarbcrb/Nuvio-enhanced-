@@ -46,6 +46,22 @@ class CloudStreamRepositoryParserTest {
     }
 
     @Test
+    fun keepsExtensionlessManifestUrlAndFallsBackToFolderRepoJson() {
+        val url = normalizeCloudStreamRepositoryUrl(
+            "https://raw.githubusercontent.com/Abodabodd/re-3arabi/refs/heads/main/repo",
+        )
+        assertEquals("https://raw.githubusercontent.com/Abodabodd/re-3arabi/main/repo", url)
+        assertEquals(
+            listOf(url, "$url/repo.json"),
+            cloudStreamRepositoryManifestCandidates(url),
+        )
+        assertEquals(
+            "https://example.com/cs/repo.json",
+            normalizeCloudStreamRepositoryUrl("https://example.com/cs/"),
+        )
+    }
+
+    @Test
     fun resolvesAbsoluteRootAndRelativeUrls() {
         val base = "https://example.com/a/b/repo.json"
         assertEquals("https://cdn.example/plugin.cs3", resolveCloudStreamUrl(base, "https://cdn.example/plugin.cs3"))
