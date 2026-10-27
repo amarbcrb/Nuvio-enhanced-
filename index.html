@@ -1,0 +1,1111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D0D0D">
+<title>Nuvio Enhanced</title>
+<meta name="description" content="Extra providers for the Nuvio app: movies and series, every audio language, subtitles included.">
+<style>
+  /* Tokens taken from Nuvio (composeApp core/ui Tokens.kt, ThemeColors.kt) */
+  :root {
+    --bg: #0D0D0D;
+    --bg-elevated: #1A1A1A;
+    --bg-card: #222222;
+    --acc-rgb: 245 245 245;
+    --acc: rgb(var(--acc-rgb));
+    --on-acc: #111111;
+    --text: #FFFFFF;
+    --text-muted: #969CA3;
+    --line: rgb(255 255 255 / 0.08);
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --radius-card: 16px;
+    --gutter: clamp(16px, 4vw, 40px);
+    --lf: 1;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: auto; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    transition: background-color 420ms var(--ease);
+  }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  ::selection { background: rgb(var(--acc-rgb) / 0.3); }
+
+  /* ---------- Ambient background ---------- */
+  .ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .ambient span {
+    position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%;
+    filter: blur(90px); opacity: 0.22; mix-blend-mode: screen;
+    animation: drift 28s var(--ease) infinite alternate;
+  }
+  .ambient span:nth-child(1) { background: rgb(var(--acc-rgb)); top: -30vmax; left: -20vmax; opacity: 0.10; }
+  .ambient span:nth-child(2) { background: #3a1c71; bottom: -35vmax; right: -25vmax; animation-delay: -9s; }
+  .ambient span:nth-child(3) { background: #0f4c75; top: 30%; left: 40%; width: 40vmax; height: 40vmax; animation-delay: -17s; opacity: 0.14; }
+  @keyframes drift {
+    0% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(6vw, 4vh, 0) scale(1.1); }
+    100% { transform: translate3d(-4vw, 8vh, 0) scale(0.95); }
+  }
+
+  main { position: relative; z-index: 1; }
+  section { padding: 96px var(--gutter); max-width: 1200px; margin: 0 auto; scroll-margin-top: 24px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin: 0 0 12px; }
+  h2 { font-size: clamp(30px, 5vw, 48px); line-height: 1.05; letter-spacing: -0.02em; margin: 0 0 16px; font-weight: 800; }
+  .lede { color: var(--text-muted); font-size: 17px; line-height: 1.55; max-width: 560px; margin: 0; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: max(16px, env(safe-area-inset-top)) var(--gutter) 0;
+  }
+  .wordmark { font-weight: 900; letter-spacing: 0.32em; font-size: 18px; text-decoration: none; }
+  .wordmark small { font-weight: 600; letter-spacing: 0.04em; font-size: 12px; color: var(--text-muted); margin-left: 6px; }
+  .glass-chip {
+    display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px;
+    border-radius: 999px; text-decoration: none; font-size: 14px; font-weight: 600;
+    background: rgb(28 28 30 / 0.55); border: 0.75px solid rgb(255 255 255 / 0.14);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4);
+    transition: transform 150ms var(--ease), background-color 150ms var(--ease);
+  }
+  .glass-chip:hover { background: rgb(44 44 48 / 0.6); }
+  .glass-chip:active { transform: scale(0.97); }
+
+  /* ---------- Hero ---------- */
+  #home { min-height: 100svh; max-width: none; padding: 0; position: relative; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+  .hero-art { position: absolute; inset: 0; z-index: 0; }
+  .hero-art .poster { position: absolute; inset: -4%; border-radius: 0; animation: kenburns 24s ease-in-out infinite alternate; }
+  .hero-art .poster .p-title { display: none; }
+  .hero-art::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(to top, var(--bg) 4%, rgb(13 13 13 / 0.6) 40%, rgb(13 13 13 / 0.15) 70%, rgb(13 13 13 / 0.55) 100%),
+      linear-gradient(to right, rgb(13 13 13 / 0.75), transparent 60%);
+  }
+  @keyframes kenburns { from { transform: scale(1.02) translate3d(0, 0, 0); } to { transform: scale(1.12) translate3d(-2%, -1%, 0); } }
+  .hero-body { position: relative; z-index: 1; padding: 0 var(--gutter) 40px; max-width: 1200px; width: 100%; margin: 0 auto; }
+  .hero-logo { font-size: clamp(48px, 11vw, 120px); font-weight: 900; line-height: 0.9; letter-spacing: -0.04em; margin: 0 0 16px; }
+  .hero-logo span { display: block; font-size: 0.32em; letter-spacing: 0.02em; font-weight: 700; color: var(--acc); margin-top: 10px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; color: var(--text-muted); font-size: 14px; }
+  .hero-meta b { color: var(--text); font-weight: 600; }
+  .dot::before { content: "\00B7"; margin-right: 8px; }
+  .hero-desc { max-width: 520px; color: rgb(255 255 255 / 0.82); font-size: 17px; line-height: 1.55; margin: 0 0 24px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    height: 52px; padding: 0 26px; border-radius: 999px; border: 0; cursor: pointer;
+    font-weight: 700; font-size: 16px; text-decoration: none;
+    transition: transform 220ms var(--ease), filter 150ms var(--ease), background-color 150ms var(--ease);
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: var(--acc); color: var(--on-acc); }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-glass {
+    background: rgb(28 28 30 / 0.55); color: var(--text); border: 0.75px solid rgb(255 255 255 / 0.16);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4);
+  }
+  .btn-glass:hover { background: rgb(48 48 52 / 0.6); }
+  .btn svg { width: 20px; height: 20px; flex: none; }
+
+  .row-title { font-size: 20px; font-weight: 700; margin: 36px 0 14px; display: flex; align-items: baseline; justify-content: space-between; }
+  .row-title small { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+  @media (max-width: 600px) { .row-title small { display: none; } }
+  .rail {
+    display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory;
+    padding: 4px var(--gutter) 24px; margin: 0 calc(var(--gutter) * -1);
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail .poster { flex: 0 0 clamp(120px, 28vw, 168px); scroll-snap-align: start; }
+
+  /* ---------- Posters (generated art, no external images) ---------- */
+  .poster {
+    position: relative; aspect-ratio: 2 / 3; border-radius: 12px; overflow: hidden;
+    background: var(--bg-card); isolation: isolate;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+    transition: transform 300ms var(--ease), box-shadow 300ms var(--ease);
+  }
+  .poster .art { position: absolute; inset: 0; }
+  .poster .shape { position: absolute; border-radius: 50%; mix-blend-mode: screen; opacity: 0.85; }
+  .poster .grain { position: absolute; inset: 0; opacity: 0.18; mix-blend-mode: overlay;
+    background-image: repeating-linear-gradient(115deg, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 3px); }
+  .poster .p-title {
+    position: absolute; left: 10px; right: 10px; bottom: 12px; z-index: 1;
+    font-weight: 900; font-size: clamp(15px, 2.2vw, 20px); line-height: 0.95; letter-spacing: -0.01em;
+    text-transform: uppercase; text-shadow: 0 2px 12px rgb(0 0 0 / 0.5);
+  }
+  .poster .p-badge {
+    position: absolute; top: 8px; left: 8px; z-index: 1; font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 3px 7px; border-radius: 999px; background: rgb(0 0 0 / 0.45); text-transform: uppercase;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .poster .progress { position: absolute; left: 10px; right: 10px; bottom: 6px; height: 3px; border-radius: 3px; background: rgb(255 255 255 / 0.2); overflow: hidden; z-index: 1; }
+  .poster .progress i { display: block; height: 100%; background: var(--acc); border-radius: inherit; }
+  @media (hover: hover) {
+    .poster:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 18px 40px rgb(0 0 0 / 0.45); }
+  }
+
+  /* ---------- Search ---------- */
+  .search-field {
+    position: relative; margin: 28px 0 14px; max-width: 640px;
+  }
+  .search-field svg { position: absolute; left: 18px; top: 50%; width: 20px; height: 20px; transform: translateY(-50%); fill: var(--text-muted); pointer-events: none; z-index: 1; }
+  .search-field input {
+    width: 100%; height: 56px; border-radius: 999px; padding: 0 20px 0 50px;
+    font: inherit; font-size: 17px; color: var(--text);
+    background: rgb(28 28 30 / 0.6); border: 0.75px solid rgb(255 255 255 / 0.14); outline: none;
+    -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4);
+    transition: border-color 150ms var(--ease), box-shadow 220ms var(--ease);
+  }
+  .search-field input::placeholder { color: var(--text-muted); }
+  .search-field input:focus { border-color: rgb(var(--acc-rgb) / 0.6); box-shadow: 0 0 0 4px rgb(var(--acc-rgb) / 0.15); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .chip {
+    height: 36px; padding: 0 16px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600;
+    background: rgb(255 255 255 / 0.06); border: 0.75px solid rgb(255 255 255 / 0.1); color: var(--text-muted);
+    transition: background-color 150ms var(--ease), color 150ms var(--ease), transform 150ms var(--ease);
+  }
+  .chip:active { transform: scale(0.96); }
+  .chip[aria-pressed="true"] { background: rgb(var(--acc-rgb) / 0.15); color: var(--acc); border-color: rgb(var(--acc-rgb) / 0.35); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px; }
+  .grid .poster { animation: pop 420ms var(--ease) both; }
+  @keyframes pop { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+  .card-meta { margin-top: 8px; font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; gap: 6px; }
+  .card-meta b { color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empty { padding: 48px 0; color: var(--text-muted); font-size: 16px; }
+
+  /* ---------- Library ---------- */
+  .provider {
+    margin-top: 32px; border-radius: 24px; padding: clamp(20px, 4vw, 32px);
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.02));
+    border: 0.75px solid var(--line);
+    display: grid; grid-template-columns: 1fr; gap: 28px;
+  }
+  @media (min-width: 860px) { .provider { grid-template-columns: 1.1fr 1fr; } }
+  .provider-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .provider-icon { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font-weight: 900; font-size: 22px;
+    background: linear-gradient(135deg, #ff5f6d, #ffc371); color: #1a0a00; flex: none; }
+  .provider h3 { margin: 0; font-size: 24px; }
+  .provider h3 + p { margin: 2px 0 0; color: var(--text-muted); font-size: 14px; }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+  .facts div { background: rgb(0 0 0 / 0.25); border: 0.75px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .facts dt { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .facts dd { margin: 0; font-weight: 600; font-size: 15px; }
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: s; display: grid; gap: 12px; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; color: rgb(255 255 255 / 0.85); line-height: 1.5; font-size: 15px; }
+  .steps li::before {
+    content: counter(s); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+    background: rgb(var(--acc-rgb) / 0.15); color: var(--acc); font-weight: 800; font-size: 14px;
+  }
+  .steps code, .install code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; background: rgb(255 255 255 / 0.08); padding: 1px 6px; border-radius: 6px; }
+
+  /* ---------- Profile ---------- */
+  .profiles { display: flex; flex-wrap: wrap; gap: 22px; margin: 36px 0 8px; }
+  .profile { background: none; border: 0; padding: 0; cursor: pointer; display: grid; justify-items: center; gap: 10px; width: 92px; }
+  .profile .ava {
+    width: 84px; height: 84px; border-radius: 22px; display: grid; place-items: center; font-weight: 900; font-size: 30px;
+    color: #111; position: relative;
+    transition: transform 300ms var(--ease), box-shadow 300ms var(--ease);
+  }
+  .profile .ava::after { content: ""; position: absolute; inset: -5px; border-radius: 26px; border: 2px solid transparent; transition: border-color 220ms var(--ease); }
+  .profile[aria-pressed="true"] .ava::after { border-color: var(--acc); }
+  .profile:hover .ava { transform: translateY(-3px); }
+  .profile:active .ava { transform: scale(0.95); }
+  .profile span { font-size: 14px; color: var(--text-muted); }
+  .profile[aria-pressed="true"] span { color: var(--text); font-weight: 600; }
+  .install {
+    margin-top: 40px; border-radius: 24px; padding: clamp(20px, 4vw, 32px);
+    background: rgb(28 28 30 / 0.55); border: 0.75px solid rgb(255 255 255 / 0.12);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4);
+  }
+  .install h3 { margin: 0 0 6px; font-size: 22px; }
+  .install p { margin: 0 0 18px; color: var(--text-muted); line-height: 1.5; }
+  .copy-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+  .copy-row output {
+    flex: 1 1 260px; min-width: 0; display: flex; align-items: center; padding: 12px 16px; border-radius: 14px;
+    background: rgb(0 0 0 / 0.35); border: 0.75px solid var(--line);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; line-height: 1.4;
+  }
+  .copy-row .btn { height: auto; min-height: 48px; }
+
+  footer { position: relative; z-index: 1; text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px var(--gutter) calc(140px + env(safe-area-inset-bottom)); line-height: 1.6; }
+
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease), transform 700ms var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  .toast {
+    position: fixed; left: 50%; top: max(16px, env(safe-area-inset-top)); z-index: 60; transform: translate(-50%, -140%);
+    padding: 10px 18px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    background: rgb(28 28 30 / 0.7); border: 0.75px solid rgb(255 255 255 / 0.16);
+    -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+    transition: transform 300ms var(--ease);
+  }
+  .toast.show { transform: translate(-50%, 0); }
+
+  /* ---------- Floating navigation bar (FloatingNavigationBar.android.kt) ---------- */
+  .nv-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    display: flex; justify-content: center; pointer-events: none;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+    padding-left: calc(58px - 30px * var(--lf)); padding-right: calc(58px - 30px * var(--lf));
+  }
+  .nv-track {
+    position: relative; pointer-events: auto; width: 100%; max-width: 400px;
+    height: calc(48px + 16px * var(--lf));
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .nv-layer { position: absolute; inset: 0; }
+  .nv-press, .nv-distort, .nv-panel { will-change: transform; }
+  .nv-glass { border-radius: 999px; overflow: hidden; isolation: isolate; box-shadow: 0 12px 40px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.3); }
+  .nv-surface {
+    position: absolute; inset: 0; border-radius: inherit;
+    background: rgb(28 28 30 / 0.55);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3);
+  }
+  /* Chromium: refraction filter replaces the plain fill (GlassBarShader port) */
+  .nv-refract .nv-surface { background: none; -webkit-backdrop-filter: url(#nv-liquid); backdrop-filter: url(#nv-liquid); }
+  .nv-glow { position: absolute; inset: 0; border-radius: inherit; }
+  .nv-rim {
+    position: absolute; inset: 0; border-radius: inherit; padding: 0.75px; pointer-events: none;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0.27), rgb(255 255 255 / 0.02));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .nv-row { display: flex; align-items: center; padding: 4px; }
+  .nv-row.active { --cs: 1; }
+  .nv-pillfill { position: absolute; inset: 0; background: rgb(var(--acc-rgb) / 0.15); }
+  .nv-item { position: relative; flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .nv-row.active .nv-item { transform: scale(var(--cs)); }
+  .nv-col { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .nv-ic { width: 28px; height: 28px; transform: translateY(calc(2px * var(--lf))); }
+  .nv-ic svg { width: 100%; height: 100%; display: block; }
+  .nv-row.inactive .nv-ic svg { fill: var(--text-muted); transition: fill 150ms var(--ease); }
+  .nv-lb {
+    height: calc(16px * var(--lf)); opacity: var(--lf); overflow: hidden; width: 100%;
+    font-size: 13px; line-height: 16px; text-align: center; white-space: nowrap; text-overflow: ellipsis; padding: 0 4px;
+    color: var(--text-muted);
+  }
+  .nv-row.active .nv-lb { color: var(--acc); font-weight: 700; }
+  .nv-targets { display: flex; padding: 0 4px; }
+  .nv-target {
+    flex: 1 1 0; min-width: 0; height: 100%; background: none; border: 0; padding: 0; margin: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; border-radius: 999px; outline: none;
+  }
+  .nv-target:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--acc-rgb) / 0.9); }
+  .nv-avatar-wrap { display: flex; flex-direction: column; align-items: center; }
+  .nv-avatar-wrap .nv-sp { height: calc(16px * var(--lf)); }
+  .nv-avatar {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 13px; font-weight: 800; color: #111; transform: translateY(calc(2px * var(--lf)));
+    box-shadow: 0 0 0 0 rgb(var(--acc-rgb) / 0); transition: box-shadow 220ms var(--ease);
+  }
+  .nv-avatar.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--acc); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ambient span, .hero-art .poster { animation: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .grid .poster { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Shared SVG defs: accent gradients for active nav icons and the liquid glass filter -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="nv-acc-24" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24"></linearGradient>
+    <linearGradient id="nv-acc-20" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="20" y2="20"></linearGradient>
+    <!--
+      Port of GlassBarShader: surface = mix(blurred backdrop, #1C1C1E, 0.55)
+      plus a chromatic edge sheen sampled inward along the capsule normal.
+      The map image encodes the normal in R/G and rim * upperLight in B.
+    -->
+    <filter id="nv-liquid" color-interpolation-filters="sRGB">
+      <feImage id="nv-map" x="0" y="0" width="400" height="64" preserveAspectRatio="none" result="map"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" edgeMode="duplicate" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" result="surface"
+        values="0.45 0 0 0 0.0604  0 0.45 0 0 0.0604  0 0 0.45 0 0.0647  0 0 0 0 1"/>
+      <feDisplacementMap in="blur" in2="map" scale="32" xChannelSelector="R" yChannelSelector="G" result="dR"/>
+      <feDisplacementMap in="blur" in2="map" scale="124" xChannelSelector="R" yChannelSelector="G" result="dG"/>
+      <feDisplacementMap in="blur" in2="map" scale="114" xChannelSelector="R" yChannelSelector="G" result="dB"/>
+      <feColorMatrix in="dR" type="matrix" result="r" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
+      <feColorMatrix in="dG" type="matrix" result="g" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
+      <feColorMatrix in="dB" type="matrix" result="b" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+      <feComposite in="r" in2="g" operator="arithmetic" k2="1" k3="1" result="rg"/>
+      <feComposite in="rg" in2="b" operator="arithmetic" k2="1" k3="1" result="refracted"/>
+      <feColorMatrix in="refracted" type="saturate" values="1.25" result="vivid"/>
+      <feColorMatrix in="vivid" type="matrix" result="sheen"
+        values="0.0953 0 0 0 0.1735  0 0.3152 0 0 0.0529  0 0 0.3822 0 0.0184  0 0 0 0 1"/>
+      <feColorMatrix in="map" type="matrix" result="rim" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0"/>
+      <feComposite in="sheen" in2="rim" operator="in" result="edge"/>
+      <feComposite in="surface" in2="edge" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="topbar">
+  <a class="wordmark" href="#home" data-nav="0">NUVIO<small>Enhanced</small></a>
+  <a class="glass-chip" href="https://github.com/amarbcrb/nuvio-enhanced-" target="_blank" rel="noopener">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.57 2.34 1.12 2.91.85.09-.66.35-1.12.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.37 9.37 0 0 1 12 6.95c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.2 10.2 0 0 0 22 12.23C22 6.58 17.52 2 12 2z"/></svg>
+    GitHub
+  </a>
+</header>
+
+<main>
+  <!-- HOME -->
+  <section id="home" data-section>
+    <div class="hero-art" id="heroArt" aria-hidden="true"></div>
+    <div class="hero-body">
+      <h1 class="hero-logo">Nuvio<span>Enhanced providers</span></h1>
+      <p class="hero-meta"><b>MovieBox</b><span class="dot">Movies &amp; series</span><span class="dot">5 audio languages</span><span class="dot">Subtitles</span></p>
+      <p class="hero-desc">Plug extra sources into the Nuvio app in one step. Every dub shows up as its own stream, in MP4, HLS or DASH, ready for the built-in or an external player.</p>
+      <div class="cta">
+        <button class="btn btn-primary" type="button" data-nav="3">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l11.1-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14z"/></svg>
+          Install in Nuvio
+        </button>
+        <button class="btn btn-glass" type="button" data-nav="2">How it works</button>
+      </div>
+      <div class="row-title">Continue watching <small>Drag the nav bar pill to switch tabs</small></div>
+      <div class="rail" id="railContinue"></div>
+    </div>
+  </section>
+
+  <!-- SEARCH -->
+  <section id="search" data-section>
+    <div class="reveal">
+      <p class="eyebrow">Search</p>
+      <h2>Find it, then pick the dub.</h2>
+      <p class="lede">Nuvio matches titles from TMDB. The provider then returns one stream per audio language it finds, so you choose Hindi, Tamil or English straight from the stream list.</p>
+    </div>
+    <div class="search-field reveal">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M4,9a5,5 0,1 1,10 0A5,5 0,0 1,4 9zm5,-7a7,7 0,1 0,4.2 12.6 0.999,0.999 0,0 0,0.093 0.107l3,3a1,1 0,0 0,1.414 -1.414l-3,-3a0.999,0.999 0,0 0,-0.107 -0.093A7,7 0,0 0,9 2z"/></svg>
+      <label class="sr-only" for="q">Search the demo catalog</label>
+      <input id="q" type="search" placeholder="Search movies and series" autocomplete="off" enterkeyhint="search">
+    </div>
+    <div class="chips reveal" role="group" aria-label="Filter">
+      <button class="chip" type="button" data-filter="all" aria-pressed="true">All</button>
+      <button class="chip" type="button" data-filter="Movie" aria-pressed="false">Movies</button>
+      <button class="chip" type="button" data-filter="Series" aria-pressed="false">Series</button>
+    </div>
+    <div class="grid" id="grid" aria-live="polite"></div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section id="library" data-section>
+    <div class="reveal">
+      <p class="eyebrow">Library</p>
+      <h2>Providers in this pack.</h2>
+      <p class="lede">Each provider is a single script listed in <code style="font-family:ui-monospace,monospace;font-size:.9em">manifest.json</code>. Nuvio downloads it and runs it on device.</p>
+    </div>
+    <article class="provider reveal">
+      <div>
+        <div class="provider-head">
+          <div class="provider-icon" aria-hidden="true">M</div>
+          <div><h3>MovieBox</h3><p>v1.0.0 &middot; H5 web API</p></div>
+        </div>
+        <dl class="facts">
+          <div><dt>Types</dt><dd>Movies, series</dd></div>
+          <div><dt>Formats</dt><dd>MP4, HLS, DASH</dd></div>
+          <div><dt>Audio</dt><dd>EN, HI, TA, TE, ML</dd></div>
+          <div><dt>External player</dt><dd>Supported</dd></div>
+        </dl>
+      </div>
+      <ol class="steps">
+        <li><span>Looks up the English title, original title and year from the TMDB ID.</span></li>
+        <li><span>Gets a guest token from MovieBox (<code>x-user</code> header).</span></li>
+        <li><span>Searches by title and keeps exact matches with a close year. Each dub, like <code>Title [Hindi]</code>, is its own entry.</span></li>
+        <li><span>Collects MP4 and subtitles from <code>subject/download</code> and HLS or DASH from <code>subject/play</code>. VIP-only sources are skipped.</span></li>
+      </ol>
+    </article>
+  </section>
+
+  <!-- PROFILE -->
+  <section id="profile" data-section>
+    <div class="reveal">
+      <p class="eyebrow">Profile</p>
+      <h2>Who's watching?</h2>
+      <p class="lede">Pick a profile to preview the page in that Nuvio theme. The nav bar, glow and accents follow it.</p>
+    </div>
+    <div class="profiles reveal" id="profiles" role="group" aria-label="Theme"></div>
+    <div class="install reveal">
+      <h3>Install in Nuvio</h3>
+      <p>Open Nuvio, go to <b>Settings &gt; Plugins</b>, and add this manifest URL.</p>
+      <div class="copy-row">
+        <output id="manifestUrl"></output>
+        <button class="btn btn-primary" type="button" id="copyBtn">Copy URL</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Nuvio Enhanced is a community provider pack and is not affiliated with Nuvio.<br>
+  Titles shown on this page are fictional placeholders.
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<nav class="nv-bar" id="nvBar" aria-label="Main">
+  <div class="nv-track" id="nvTrack">
+    <div class="nv-layer nv-press" id="nvPress">
+      <div class="nv-layer nv-distort" id="nvDistort">
+        <div class="nv-layer nv-panel" id="nvPanel">
+          <div class="nv-layer nv-glass">
+            <div class="nv-surface"></div>
+            <div class="nv-glow" id="nvGlow"></div>
+            <div class="nv-rim"></div>
+          </div>
+          <div class="nv-layer nv-row inactive" id="nvRowIdle" aria-hidden="true"></div>
+          <div class="nv-layer nv-row active" id="nvRowActive" aria-hidden="true"><div class="nv-pillfill" id="nvPillFill"></div></div>
+          <div class="nv-layer nv-targets" id="nvTargets" role="tablist"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------------- Config ---------------- */
+  const REPO = 'amarbcrb/nuvio-enhanced-';
+  const BRANCH = 'ccr-608f7a26-sdovqs';
+  const MANIFEST_URL = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/manifest.json`;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Palettes from ThemeColors.kt */
+  const THEMES = [
+    { name: 'White', acc: '#F5F5F5', grad: ['#F5F5F5'], on: '#111111', bg: '#0D0D0D' },
+    { name: 'Gold', acc: '#E8A91C', grad: ['#8A5700', '#E8A91C', '#FFF1A8', '#FFD45C', '#9A6200'], on: '#111111', bg: '#0F0E0B' },
+    { name: 'Jade', acc: '#22D37C', grad: ['#7BF08D', '#22D37C', '#0BBF9A'], on: '#111111', bg: '#0B0F0D' },
+    { name: 'Rose Gold', acc: '#EC70A9', grad: ['#B75AFF', '#EC70A9', '#FFB37A'], on: '#111111', bg: '#0D0D0D' },
+    { name: 'Arctic', acc: '#3185F5', grad: ['#4DE3FF', '#3185F5', '#4D55E8'], on: '#FFFFFF', bg: '#0B0E14' },
+    { name: 'Crimson', acc: '#E53935', grad: ['#E53935'], on: '#FFFFFF', bg: '#0D0D0D' },
+  ];
+
+  const TITLES = [
+    { t: 'Neon Tide', y: 2025, k: 'Movie', g: ['#ff5f6d', '#2b1055'], l: ['EN', 'HI'], p: 0.62 },
+    { t: 'The Last Orbit', y: 2024, k: 'Series', g: ['#4facfe', '#0b1d3a'], l: ['EN'], p: 0.35 },
+    { t: 'Saffron Nights', y: 2023, k: 'Movie', g: ['#f7971e', '#5a1a00'], l: ['HI', 'TA', 'TE'], p: 0.8 },
+    { t: 'Cold Harbor', y: 2025, k: 'Series', g: ['#8e9eab', '#16222a'], l: ['EN'], p: 0.15 },
+    { t: 'Paper Kings', y: 2022, k: 'Movie', g: ['#c471f5', '#2a0845'], l: ['EN', 'ML'], p: 0.5 },
+    { t: 'Monsoon Letters', y: 2024, k: 'Movie', g: ['#43e97b', '#0a3d2a'], l: ['ML', 'TA'], p: 0.27 },
+    { t: 'Velvet Static', y: 2025, k: 'Series', g: ['#fa709a', '#3b0a1e'], l: ['EN', 'HI'] },
+    { t: 'Northbound', y: 2023, k: 'Movie', g: ['#30cfd0', '#1a1446'], l: ['EN'] },
+    { t: 'Glass Arcade', y: 2024, k: 'Series', g: ['#f6d365', '#3d2c00'], l: ['EN', 'TE'] },
+    { t: 'Red Meridian', y: 2022, k: 'Movie', g: ['#e53935', '#1a0000'], l: ['HI'] },
+    { t: 'Hollow Stars', y: 2025, k: 'Series', g: ['#667eea', '#120c2c'], l: ['EN', 'TA'] },
+    { t: 'Tamarind Road', y: 2024, k: 'Movie', g: ['#ff9a44', '#3a1200'], l: ['TA', 'TE', 'ML'] },
+  ];
+
+  /* ---------------- Utilities ---------------- */
+  const $ = (s, r = document) => r.querySelector(s);
+  const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  // CSS cubic-bezier solver, used for NuvioTokens.Motion.standard (0.2, 0, 0, 1)
+  function bezier(x1, y1, x2, y2) {
+    const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+    const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+    const sx = (t) => ((ax * t + bx) * t + cx) * t;
+    const sy = (t) => ((ay * t + by) * t + cy) * t;
+    const dx = (t) => (3 * ax * t + 2 * bx) * t + cx;
+    return (x) => {
+      let t = x;
+      for (let i = 0; i < 8; i++) { const e = sx(t) - x; const d = dx(t); if (Math.abs(e) < 1e-5 || Math.abs(d) < 1e-6) break; t -= e / d; }
+      return sy(clamp(t, 0, 1));
+    };
+  }
+  const standard = bezier(0.2, 0, 0, 1);
+
+  /* ---------------- Posters ---------------- */
+  function posterEl(item, i, opts = {}) {
+    const el = document.createElement('div');
+    el.className = 'poster';
+    const [a, b] = item.g;
+    const v = i % 4;
+    const shapes = [
+      `<div class="shape" style="width:120%;aspect-ratio:1;left:-10%;top:-30%;background:radial-gradient(circle at 50% 60%, ${a}, transparent 62%)"></div>`,
+      `<div class="shape" style="width:70%;aspect-ratio:1;right:-12%;top:12%;background:radial-gradient(circle, ${a}, transparent 68%)"></div><div class="shape" style="width:50%;aspect-ratio:1;left:-8%;bottom:18%;background:radial-gradient(circle, ${a}99, transparent 70%)"></div>`,
+      `<div class="shape" style="width:90%;aspect-ratio:1;left:5%;top:8%;border:2px solid ${a}aa;background:radial-gradient(circle, ${a}55, transparent 70%)"></div>`,
+      `<div class="shape" style="inset:auto -20% 20% -20%;height:55%;border-radius:0;transform:skewY(-14deg);background:linear-gradient(90deg, ${a}, transparent)"></div>`,
+    ];
+    el.innerHTML =
+      `<div class="art" style="background:linear-gradient(170deg, ${a} -30%, ${b} 70%)">${shapes[v]}<div class="grain"></div></div>` +
+      (opts.badge ? `<span class="p-badge">${item.k}</span>` : '') +
+      `<div class="p-title"${opts.progress ? ' style="bottom:18px"' : ''}>${item.t}</div>` +
+      (opts.progress && item.p ? `<div class="progress"><i style="width:${Math.round(item.p * 100)}%"></i></div>` : '');
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', `${item.t}, ${item.k}, ${item.y}`);
+    return el;
+  }
+
+  const heroArt = $('#heroArt');
+  const heroPoster = posterEl(TITLES[0], 0);
+  heroPoster.removeAttribute('role'); heroPoster.removeAttribute('aria-label');
+  heroArt.appendChild(heroPoster);
+
+  const rail = $('#railContinue');
+  TITLES.filter((t) => t.p).forEach((t, i) => rail.appendChild(posterEl(t, i, { progress: true })));
+
+  /* Search demo */
+  const grid = $('#grid');
+  const q = $('#q');
+  let filter = 'all';
+  function renderGrid() {
+    const term = q.value.trim().toLowerCase();
+    const list = TITLES.filter((t) =>
+      (filter === 'all' || t.k === filter) &&
+      (!term || t.t.toLowerCase().includes(term) || t.l.some((l) => l.toLowerCase() === term) || String(t.y).includes(term)));
+    grid.replaceChildren();
+    if (!list.length) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = `No titles match "${q.value.trim()}". Try another word, a year, or a language code like HI.`;
+      grid.appendChild(p);
+      return;
+    }
+    list.forEach((t) => {
+      const wrap = document.createElement('div');
+      const idx = TITLES.indexOf(t);
+      const card = posterEl(t, idx, { badge: true });
+      card.style.animationDelay = `${Math.min(list.indexOf(t), 8) * 35}ms`;
+      wrap.appendChild(card);
+      const meta = document.createElement('div');
+      meta.className = 'card-meta';
+      meta.innerHTML = `<b>${t.y}</b><span>${t.l.join(' / ')}</span>`;
+      wrap.appendChild(meta);
+      grid.appendChild(wrap);
+    });
+  }
+  q.addEventListener('input', renderGrid);
+  document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+    filter = c.dataset.filter;
+    document.querySelectorAll('.chip').forEach((o) => o.setAttribute('aria-pressed', String(o === c)));
+    renderGrid();
+  }));
+  renderGrid();
+
+  /* Install */
+  $('#manifestUrl').textContent = MANIFEST_URL;
+  const toast = $('#toast');
+  let toastTimer = 0;
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+  $('#copyBtn').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(MANIFEST_URL); showToast('Manifest URL copied'); }
+    catch {
+      const r = document.createRange(); r.selectNodeContents($('#manifestUrl'));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      showToast('Press Ctrl+C or Cmd+C to copy');
+    }
+  });
+
+  /* Reveal on scroll */
+  if ('IntersectionObserver' in window && !reduceMotion) {
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { rootMargin: '0px 0px -10% 0px' });
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  } else {
+    document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
+  }
+
+  /* =====================================================================
+     Jelly navigation bar: port of core/ui/jelly/JellySpring.kt + JellyMotion.kt
+     ===================================================================== */
+  class JellySpring {
+    constructor(value, stiffness, dampingRatio) { this.value = value; this.stiffness = stiffness; this.dampingRatio = dampingRatio; this.velocity = 0; }
+    isAtRest(target) { return Math.abs(this.value - target) < 1e-4 && Math.abs(this.velocity) < 1e-4; }
+    snapTo(target) { this.value = target; this.velocity = 0; }
+    advance(target, seconds) {
+      if (this.isAtRest(target)) { this.snapTo(target); return; }
+      const displacement = this.value - target;
+      const frequency = Math.sqrt(this.stiffness);
+      if (this.dampingRatio === 1) {
+        const decay = Math.exp(-frequency * seconds);
+        const coefficient = this.velocity + frequency * displacement;
+        this.value = target + (displacement + coefficient * seconds) * decay;
+        this.velocity = (this.velocity - frequency * coefficient * seconds) * decay;
+      } else {
+        const damping = this.dampingRatio * frequency;
+        const damped = frequency * Math.sqrt(1 - this.dampingRatio * this.dampingRatio);
+        const decay = Math.exp(-damping * seconds);
+        const cosine = Math.cos(damped * seconds);
+        const sine = Math.sin(damped * seconds);
+        const positionCoefficient = (this.velocity + damping * displacement) / damped;
+        const velocityCoefficient = (damping * this.velocity + this.stiffness * displacement) / damped;
+        this.value = target + decay * (displacement * cosine + positionCoefficient * sine);
+        this.velocity = decay * (this.velocity * cosine - velocityCoefficient * sine);
+      }
+    }
+  }
+
+  function jellyRubberBand(distance, dimension) {
+    if (distance === 0 || dimension <= 0) return 0;
+    const damped = (1 - 1 / (Math.abs(distance) * 0.14 / dimension + 1)) * dimension;
+    return distance < 0 ? -damped : damped;
+  }
+
+  function jellyPanelOffset(rawOffset, width) {
+    if (width <= 0 || rawOffset === 0) return 0;
+    const fraction = clamp(rawOffset / width, -1, 1);
+    const x = Math.abs(fraction);
+    let low = 0, high = 1, p = x;
+    for (let i = 0; i < 10; i++) {
+      const bx = p * p * (3 * (1 - p) * 0.58 + p);
+      if (bx < x) low = p; else high = p;
+      p = (low + high) / 2;
+    }
+    const eased = p * p * (3 * (1 - p) + p);
+    return (fraction < 0 ? -4 : 4) * eased;
+  }
+
+  class JellyMotion {
+    constructor(initialIndex, count) {
+      const distortionDamping = 18 / (2 * Math.sqrt(240 * 0.9));
+      this.position = new JellySpring(Math.max(0, initialIndex), 1000, 1);
+      this.velocity = new JellySpring(0, 300, 0.5);
+      this.press = new JellySpring(0, 1000, 1);
+      this.scaleX = new JellySpring(1, 250, 0.6);
+      this.scaleY = new JellySpring(1, 250, 0.7);
+      this.panel = new JellySpring(0, 300, 1);
+      this.trackY = new JellySpring(0, 240 / 0.9, distortionDamping);
+      this.trackX = new JellySpring(1, 240 / 0.9, distortionDamping);
+      this.trackPress = new JellySpring(1, 240 / 0.9, distortionDamping);
+      this.glow = new JellySpring(0, 240 / 0.9, distortionDamping);
+      this.target = this.position.value;
+      this.pressTarget = 0; this.shapeTarget = 1; this.releasePending = false;
+      this.downX = 0; this.downY = 0; this.dragStartTarget = this.target; this.dragStartPanel = 0; this.dragStartY = 0;
+      this.movedDistance = 0; this.originX = 0; this.width = 0; this.height = 64; this.tabCount = count;
+      this.dragging = false; this.running = false;
+      this.publish();
+    }
+    get maxIndex() { return Math.max(0, this.tabCount - 1); }
+    get tabWidth() { return Math.max(0, (this.width - 8) / Math.max(1, this.tabCount)); }
+    resize(width, height, count) {
+      this.width = width; this.height = height; this.tabCount = count;
+      this.target = clamp(this.target, 0, this.maxIndex);
+      if (!this.dragging) this.originX = this.width / 2;
+      this.publish();
+    }
+    select(index) {
+      this.dragging = false;
+      if (index >= 0) this.target = Math.min(index, this.maxIndex);
+      this.releasePending = true; this.pressTarget = 0; this.shapeTarget = 1; this.running = true;
+    }
+    begin(x, y) {
+      this.downX = x; this.downY = clamp(y, 0, this.height);
+      this.originX = clamp(this.downX, 0, this.width);
+      this.dragStartY = this.trackY.value; this.movedDistance = 0;
+      if (this.tabWidth > 0) this.target = this.indexAt(this.downX);
+      this.dragStartTarget = this.target; this.dragStartPanel = this.panel.value;
+      this.dragging = true; this.releasePending = false; this.pressTarget = 1; this.shapeTarget = 1.3;
+      this.panel.velocity = 0; this.running = true;
+    }
+    drag(dx, dy) {
+      if (!this.dragging || this.tabWidth <= 0) return;
+      this.target = clamp(this.dragStartTarget + dx / this.tabWidth, 0, this.maxIndex);
+      this.panel.snapTo(this.dragStartPanel + dx);
+      this.trackY.snapTo(this.dragStartY + jellyRubberBand(dy, this.height) * 0.25);
+      this.trackX.snapTo(1 - Math.min(Math.abs(dy) / 700, 1) * 0.08);
+      this.originX = clamp(this.downX + dx, 0, this.width);
+      this.movedDistance = Math.max(this.movedDistance, Math.max(Math.abs(dx), Math.abs(dy)));
+      this.publish();
+    }
+    finish() {
+      const index = (this.movedDistance < 4 && this.tabWidth > 0) ? this.indexAt(this.downX)
+        : clamp(Math.floor(this.target + 0.5), 0, this.maxIndex);
+      this.dragging = false; this.panel.velocity = 0; this.target = index;
+      this.releasePending = true; this.running = true;
+      return index;
+    }
+    cancel(selectedIndex) { this.dragging = false; this.panel.velocity = 0; this.select(selectedIndex); }
+    advance(seconds) {
+      const delta = clamp(seconds, 0, 0.064);
+      this.target = clamp(this.target, 0, this.maxIndex);
+      this.position.advance(this.target, delta);
+      this.velocity.advance(this.dragging && this.maxIndex > 0 ? this.position.velocity / this.maxIndex : 0, delta);
+      if (!this.dragging) this.panel.advance(0, delta);
+      if (this.releasePending && Math.abs(this.position.value - this.target) < Math.max(1, this.maxIndex) * 0.025) {
+        this.releasePending = false; this.pressTarget = 0; this.shapeTarget = 1;
+      }
+      this.press.advance(this.pressTarget, delta);
+      this.scaleX.advance(this.shapeTarget, delta);
+      this.scaleY.advance(this.shapeTarget, delta);
+      this.trackPress.advance(this.dragging ? 1.025 : 1, delta);
+      this.glow.advance(this.dragging ? 1 : 0, delta);
+      if (!this.dragging) {
+        this.trackY.advance(0, delta);
+        this.trackX.advance(1, delta);
+        if (this.trackX.isAtRest(1)) this.originX = this.width / 2;
+      }
+      this.publish();
+      this.running = this.dragging || this.releasePending || !this.position.isAtRest(this.target) || !this.velocity.isAtRest(0) ||
+        !this.press.isAtRest(0) || !this.scaleX.isAtRest(1) || !this.scaleY.isAtRest(1) ||
+        !this.panel.isAtRest(0) || !this.trackY.isAtRest(0) || !this.trackX.isAtRest(1) ||
+        !this.trackPress.isAtRest(1) || !this.glow.isAtRest(0);
+    }
+    indexAt(x) { return clamp(Math.floor((x - 4) / this.tabWidth), 0, this.maxIndex); }
+    publish() {
+      const speed = this.velocity.value / 10;
+      this.frame = {
+        position: this.position.value,
+        pillScaleX: this.scaleX.value / (1 - clamp(speed * 0.75, -0.2, 0.2)),
+        pillScaleY: this.scaleY.value * (1 - clamp(speed * 0.25, -0.2, 0.2)),
+        contentScale: 1 + 0.2 * this.press.value,
+        panelOffset: jellyPanelOffset(this.panel.value, this.width),
+        trackScale: this.trackPress.value,
+        trackScaleX: this.trackX.value,
+        trackOffsetY: this.trackY.value,
+        originX: this.originX,
+        glowY: this.downY,
+        glowOpacity: clamp(this.glow.value, 0, 1),
+      };
+    }
+  }
+
+  /* ---------------- Nav bar DOM ---------------- */
+  const ICONS = {
+    // Material Icons.Filled.Home
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="FILL24" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+    // composeResources/drawable/sidebar_search.xml
+    search: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="FILL20" fill-rule="evenodd" d="M4,9a5,5 0,1 1,10 0A5,5 0,0 1,4 9zm5,-7a7,7 0,1 0,4.2 12.6 0.999,0.999 0,0 0,0.093 0.107l3,3a1,1 0,0 0,1.414 -1.414l-3,-3a0.999,0.999 0,0 0,-0.107 -0.093A7,7 0,0 0,9 2z"/></svg>',
+    // composeResources/drawable/sidebar_library.xml
+    library: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="FILL24"><path d="M8.50989,2.00001H15.49C15.7225,1.99995 15.9007,1.99991 16.0565,2.01515C17.1643,2.12352 18.0711,2.78958 18.4556,3.68678H5.54428C5.92879,2.78958 6.83555,2.12352 7.94337,2.01515C8.09917,1.99991 8.27741,1.99995 8.50989,2.00001Z"/><path d="M6.31052,4.72312C4.91989,4.72312 3.77963,5.56287 3.3991,6.67691C3.39117,6.70013 3.38356,6.72348 3.37629,6.74693C3.77444,6.62636 4.18881,6.54759 4.60827,6.49382C5.68865,6.35531 7.05399,6.35538 8.64002,6.35547L8.75846,6.35547L15.5321,6.35547C17.1181,6.35538 18.4835,6.35531 19.5639,6.49382C19.9833,6.54759 20.3977,6.62636 20.7958,6.74693C20.7886,6.72348 20.781,6.70013 20.773,6.67691C20.3925,5.56287 19.2522,4.72312 17.8616,4.72312H6.31052Z"/><path fill-rule="evenodd" d="M8.67239,7.54204H15.3276C18.7024,7.54204 20.3898,7.54204 21.3377,8.52887C22.2855,9.5157 22.0625,11.0403 21.6165,14.0896L21.1935,16.9811C20.8437,19.3724 20.6689,20.568 19.7717,21.284C18.8745,22 17.5512,22 14.9046,22H9.09536C6.44881,22 5.12553,22 4.22834,21.284C3.33115,20.568 3.15626,19.3724 2.80648,16.9811L2.38351,14.0896C1.93748,11.0403 1.71447,9.5157 2.66232,8.52887C3.61017,7.54204 5.29758,7.54204 8.67239,7.54204ZM8,18.0001C8,17.5859 8.3731,17.2501 8.83333,17.2501H15.1667C15.6269,17.2501 16,17.5859 16,18.0001C16,18.4144 15.6269,18.7502 15.1667,18.7502H8.83333C8.3731,18.7502 8,18.4144 8,18.0001Z"/></g></svg>',
+  };
+  const TABS = [
+    { id: 'home', label: 'Home', icon: 'home' },
+    { id: 'search', label: 'Search', icon: 'search' },
+    { id: 'library', label: 'Library', icon: 'library' },
+    { id: 'profile', label: 'Profile', avatar: true },
+  ];
+  const sections = TABS.map((t) => document.getElementById(t.id));
+
+  const bar = $('#nvBar'), track = $('#nvTrack'), pressEl = $('#nvPress'), distortEl = $('#nvDistort'), panelEl = $('#nvPanel');
+  const rowIdle = $('#nvRowIdle'), rowActive = $('#nvRowActive'), pillFill = $('#nvPillFill'), glowEl = $('#nvGlow'), targetsEl = $('#nvTargets');
+
+  function rowItem(tab, active) {
+    const item = document.createElement('div');
+    item.className = 'nv-item';
+    const icon = tab.icon ? ICONS[tab.icon]
+      .replace('FILL24', active ? 'url(#nv-acc-24)' : 'currentColor')
+      .replace('FILL20', active ? 'url(#nv-acc-20)' : 'currentColor') : '';
+    item.innerHTML = `<div class="nv-col"><div class="nv-ic">${icon}</div><div class="nv-lb">${tab.label}</div></div>`;
+    if (!active) item.querySelectorAll('[fill="currentColor"]').forEach((p) => p.removeAttribute('fill'));
+    return item;
+  }
+  TABS.forEach((tab) => { rowIdle.appendChild(rowItem(tab, false)); rowActive.appendChild(rowItem(tab, true)); });
+
+  const avatars = [];
+  const targets = TABS.map((tab, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'nv-target';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-label', tab.label);
+    b.setAttribute('aria-controls', tab.id);
+    if (tab.avatar) {
+      b.innerHTML = '<div class="nv-avatar-wrap"><div class="nv-avatar">N</div><div class="nv-sp"></div></div>';
+      avatars[i] = b.querySelector('.nv-avatar-wrap');
+    }
+    targetsEl.appendChild(b);
+    return b;
+  });
+  const avatarDot = targetsEl.querySelector('.nv-avatar');
+
+  /* ---------------- State ---------------- */
+  let selectedIndex = 0;
+  const motion = new JellyMotion(selectedIndex, TABS.length);
+  let lf = 1, lfFrom = 1, lfTo = 1, lfStart = 0; // label fraction tween (NuvioNavBarScrollState.labelVisibility)
+  const LF_MS = 300; // NuvioTokens.Motion.sheetEnterMillis
+  let accentRgb = hexRgb(THEMES[0].acc);
+
+  function applySelection(index) {
+    selectedIndex = index;
+    targets.forEach((t, i) => { t.setAttribute('aria-selected', String(i === index)); t.tabIndex = i === index ? 0 : -1; });
+    avatarDot.classList.toggle('sel', index === TABS.length - 1);
+  }
+  applySelection(0);
+
+  /* ---------------- Render ---------------- */
+  function roundRectPath(l, t, r, b, rx, ry) {
+    rx = Math.max(0, Math.min(rx, (r - l) / 2)); ry = Math.max(0, Math.min(ry, (b - t) / 2));
+    const f = (n) => n.toFixed(2);
+    return `M${f(l + rx)} ${f(t)}H${f(r - rx)}A${f(rx)} ${f(ry)} 0 0 1 ${f(r)} ${f(t + ry)}V${f(b - ry)}A${f(rx)} ${f(ry)} 0 0 1 ${f(r - rx)} ${f(b)}H${f(l + rx)}A${f(rx)} ${f(ry)} 0 0 1 ${f(l)} ${f(b - ry)}V${f(t + ry)}A${f(rx)} ${f(ry)} 0 0 1 ${f(l + rx)} ${f(t)}Z`;
+  }
+  function glowGradient(frame, extraAlpha) {
+    if (frame.glowOpacity <= 0) return '';
+    const a = 0.15 * frame.glowOpacity * extraAlpha;
+    const [r, g, b] = accentRgb;
+    return `radial-gradient(circle 300px at ${frame.originX.toFixed(1)}px ${frame.glowY.toFixed(1)}px, rgb(${r} ${g} ${b} / ${a}), rgb(${r} ${g} ${b} / ${a * 0.43}) 45%, rgb(${r} ${g} ${b} / 0) 100%)`;
+  }
+
+  function measure() {
+    motion.resize(track.offsetWidth, track.offsetHeight, TABS.length);
+    updateGlassMapSize();
+  }
+
+  function render() {
+    const f = motion.frame;
+    const W = motion.width, H = motion.height, n = TABS.length;
+    pressEl.style.transform = `scale(${f.trackScale})`;
+    distortEl.style.transformOrigin = `${f.originX}px 50%`;
+    distortEl.style.transform = `translateY(${f.trackOffsetY}px) scaleX(${f.trackScaleX})`;
+    panelEl.style.transform = `translateX(${f.panelOffset}px)`;
+
+    // jellyPillPath
+    const inset = 4, tabW = (W - 2 * inset) / n, itemH = H - 2 * inset;
+    const cx = inset + (f.position + 0.5) * tabW;
+    const hw = tabW * f.pillScaleX / 2, hh = itemH * f.pillScaleY / 2;
+    const radius = Math.min(tabW, itemH) / 2;
+    const pill = roundRectPath(cx - hw, H / 2 - hh, cx + hw, H / 2 + hh, radius * f.pillScaleX, radius * f.pillScaleY);
+    rowActive.style.clipPath = `path("${pill}")`;
+    rowIdle.style.clipPath = `path(evenodd, "M-80 -40H${W + 80}V${H + 40}H-80Z ${pill}")`;
+    rowActive.style.setProperty('--cs', f.contentScale.toFixed(4));
+
+    const glow = glowGradient(f, 1);
+    glowEl.style.background = glow || 'none';
+    pillFill.style.background = glow ? `${glow}, rgb(var(--acc-rgb) / 0.15)` : '';
+
+    // Profile avatar scales by pill coverage (JellyTabTargets)
+    avatars.forEach((el, i) => {
+      if (!el) return;
+      const coverage = clamp(1 - Math.abs(f.position - i), 0, 1);
+      el.style.transform = `scale(${1 + (f.contentScale - 1) * coverage})`;
+    });
+  }
+
+  /* ---------------- Frame loop ---------------- */
+  let raf = 0, lastTs = 0;
+  function kick() { if (!raf) raf = requestAnimationFrame(tick); }
+  function tick(now) {
+    raf = 0;
+    const dt = lastTs ? (now - lastTs) / 1000 : 0;
+    lastTs = now;
+    let busy = false;
+    if (lf !== lfTo) {
+      const t = reduceMotion ? 1 : clamp((now - lfStart) / LF_MS, 0, 1);
+      lf = t >= 1 ? lfTo : lfFrom + (lfTo - lfFrom) * standard(t);
+      bar.style.setProperty('--lf', lf.toFixed(4));
+      document.documentElement.style.setProperty('--lf', lf.toFixed(4));
+      measure();
+      busy = lf !== lfTo;
+    }
+    if (motion.running) { motion.advance(dt); busy = busy || motion.running; }
+    render();
+    if (busy) raf = requestAnimationFrame(tick); else lastTs = 0;
+  }
+  function setLabels(visible) {
+    const to = visible ? 1 : 0;
+    if (to === lfTo) return;
+    lfFrom = lf; lfTo = to; lfStart = performance.now();
+    kick();
+  }
+
+  /* ---------------- Selection ---------------- */
+  let spyLockUntil = 0;
+  function selectTab(index, { scroll = true } = {}) {
+    applySelection(index);
+    motion.select(index);
+    kick();
+    if (scroll) {
+      spyLockUntil = performance.now() + 1200;
+      const top = index === 0 ? 0 : sections[index].getBoundingClientRect().top + scrollY - 16;
+      scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
+  }
+  document.querySelectorAll('[data-nav]').forEach((el) => el.addEventListener('click', (e) => {
+    e.preventDefault();
+    selectTab(Number(el.dataset.nav));
+  }));
+
+  /* ---------------- Gestures (detectJellyTabGestures) ---------------- */
+  let activePointer = null, downX = 0, downY = 0;
+  track.addEventListener('pointerdown', (e) => {
+    if (activePointer !== null) { // second finger: cancel like the Compose gesture loop
+      motion.cancel(selectedIndex); activePointer = null; kick(); return;
+    }
+    if (e.button !== 0) return;
+    activePointer = e.pointerId;
+    const r = track.getBoundingClientRect();
+    downX = e.clientX; downY = e.clientY;
+    motion.begin(e.clientX - r.left, e.clientY - r.top);
+    track.setPointerCapture(e.pointerId);
+    kick();
+  });
+  track.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== activePointer || !motion.dragging) return;
+    motion.drag(e.clientX - downX, e.clientY - downY);
+    kick();
+  });
+  track.addEventListener('pointerup', (e) => {
+    if (e.pointerId !== activePointer) return;
+    activePointer = null;
+    motion.drag(e.clientX - downX, e.clientY - downY);
+    const index = motion.finish();
+    kick();
+    if (index !== selectedIndex) selectTab(index);
+    else { applySelection(index); spyLockUntil = performance.now() + 1200; scrollTo({ top: index === 0 ? 0 : sections[index].getBoundingClientRect().top + scrollY - 16, behavior: reduceMotion ? 'auto' : 'smooth' }); }
+    targets[index].focus({ preventScroll: true });
+  });
+  const cancelPointer = (e) => {
+    if (e.pointerId !== activePointer) return;
+    activePointer = null;
+    motion.cancel(selectedIndex);
+    kick();
+  };
+  track.addEventListener('pointercancel', cancelPointer);
+  track.addEventListener('lostpointercapture', cancelPointer);
+
+  // Keyboard: clicks with detail === 0 come from Enter/Space, pointer taps are handled above
+  targets.forEach((t, i) => t.addEventListener('click', (e) => { if (e.detail === 0) selectTab(i); }));
+  targetsEl.addEventListener('keydown', (e) => {
+    const cur = targets.indexOf(document.activeElement);
+    if (cur < 0) return;
+    let next = -1;
+    if (e.key === 'ArrowRight') next = (cur + 1) % TABS.length;
+    else if (e.key === 'ArrowLeft') next = (cur - 1 + TABS.length) % TABS.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = TABS.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    targets[next].focus();
+    selectTab(next);
+  });
+
+  /* ---------------- Scroll: label collapse + section spy ---------------- */
+  const SCROLL_THRESHOLD = 60;
+  let lastY = scrollY, acc = 0, scrollQueued = false;
+  function onScroll() {
+    scrollQueued = false;
+    const y = scrollY;
+    const delta = lastY - y; // > 0 scrolling up, like NestedScroll available.y
+    lastY = y;
+    if (y <= 4) { acc = 0; setLabels(true); }
+    else if (delta !== 0) {
+      if ((delta < 0 && acc > 0) || (delta > 0 && acc < 0)) acc = 0;
+      acc += delta;
+      if (acc < -SCROLL_THRESHOLD) { setLabels(false); acc = 0; }
+      else if (acc > SCROLL_THRESHOLD) { setLabels(true); acc = 0; }
+    }
+    if (performance.now() < spyLockUntil || motion.dragging) return;
+    const probe = innerHeight * 0.4;
+    let idx = 0;
+    sections.forEach((s, i) => { if (s.getBoundingClientRect().top <= probe) idx = i; });
+    if (innerHeight + y >= document.documentElement.scrollHeight - 4) idx = TABS.length - 1;
+    if (idx !== selectedIndex) { applySelection(idx); motion.select(idx); kick(); }
+  }
+  addEventListener('scroll', () => { if (!scrollQueued) { scrollQueued = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  addEventListener('scrollend', () => { spyLockUntil = 0; });
+
+  /* ---------------- Liquid glass map (Chromium only) ---------------- */
+  const isChromium = !!(navigator.userAgentData && navigator.userAgentData.brands &&
+    navigator.userAgentData.brands.some((b) => /Chromium/.test(b.brand)));
+  const feMap = document.getElementById('nv-map');
+  let mapW = 0, mapH = 0, mapTimer = 0;
+  function buildGlassMap(W, H) {
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(W, H);
+    const d = img.data;
+    const hx = W / 2, hy = H / 2, radius = hy;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const lx = x + 0.5 - hx, ly = y + 0.5 - hy;
+        const capX = Math.max(Math.abs(lx) - hx + radius, 0), capY = ly;
+        const dist = Math.hypot(capX, capY);
+        const edge = dist - radius;
+        const depth = Math.max(-edge, 0);
+        const nx = (capX * Math.sign(lx)) / Math.max(dist, 0.001), ny = capY / Math.max(dist, 0.001);
+        let rimV = 0, bend = 0;
+        if (depth < 16) {
+          const rim = Math.exp(-0.0565 * depth - 0.0322 * depth * depth);
+          const upperLight = 0.18 + 0.82 * Math.pow(Math.max(-ny, 0), 0.65);
+          bend = Math.pow(rim, 0.18);
+          rimV = rim * upperLight;
+        }
+        const o = (y * W + x) * 4;
+        // feDisplacementMap offset = scale * (C - 0.5): sample inward, against the normal
+        d[o] = Math.round(clamp(0.5 - 0.5 * nx * bend, 0, 1) * 255);
+        d[o + 1] = Math.round(clamp(0.5 - 0.5 * ny * bend, 0, 1) * 255);
+        d[o + 2] = Math.round(clamp(rimV, 0, 1) * 255);
+        d[o + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    feMap.setAttribute('href', c.toDataURL());
+    mapW = W; mapH = H;
+  }
+  function updateGlassMapSize() {
+    if (!isChromium) return;
+    const W = Math.round(motion.width), H = Math.round(motion.height);
+    if (!W || !H) return;
+    feMap.setAttribute('width', W);
+    feMap.setAttribute('height', H);
+    if (W !== mapW || H !== mapH) {
+      clearTimeout(mapTimer);
+      mapTimer = setTimeout(() => buildGlassMap(Math.round(motion.width), Math.round(motion.height)), mapW ? 160 : 0);
+    }
+  }
+  if (isChromium) track.classList.add('nv-refract');
+
+  /* ---------------- Themes ---------------- */
+  const profilesEl = $('#profiles');
+  const stopsFor = (grad) => (grad.length > 1 ? grad : [grad[0], grad[0]])
+    .map((c, i, a) => `<stop offset="${i / (a.length - 1)}" stop-color="${c}"/>`).join('');
+  function applyTheme(i) {
+    const th = THEMES[i];
+    accentRgb = hexRgb(th.acc);
+    const root = document.documentElement.style;
+    root.setProperty('--acc-rgb', accentRgb.join(' '));
+    root.setProperty('--on-acc', th.on);
+    root.setProperty('--bg', th.bg);
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', th.bg);
+    document.getElementById('nv-acc-24').innerHTML = stopsFor(th.grad);
+    document.getElementById('nv-acc-20').innerHTML = stopsFor(th.grad);
+    avatarDot.style.background = th.grad.length > 1 ? `linear-gradient(135deg, ${th.grad.join(', ')})` : th.acc;
+    avatarDot.style.color = th.on;
+    profilesEl.querySelectorAll('.profile').forEach((p, j) => p.setAttribute('aria-pressed', String(j === i)));
+    try { localStorage.setItem('nv-theme', String(i)); } catch {}
+    render();
+  }
+  THEMES.forEach((th, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'profile';
+    b.innerHTML = `<div class="ava" style="background:${th.grad.length > 1 ? `linear-gradient(135deg, ${th.grad.join(', ')})` : th.acc};color:${th.on}">${th.name[0]}</div><span>${th.name}</span>`;
+    b.addEventListener('click', () => { applyTheme(i); showToast(`${th.name} theme`); });
+    profilesEl.appendChild(b);
+  });
+  let savedTheme = 0;
+  try { savedTheme = clamp(parseInt(localStorage.getItem('nv-theme') || '0', 10) || 0, 0, THEMES.length - 1); } catch {}
+  applyTheme(savedTheme);
+
+  /* ---------------- Init ---------------- */
+  new ResizeObserver(() => { measure(); render(); }).observe(track);
+  measure();
+  onScroll();
+  render();
+})();
+</script>
+</body>
+</html>
