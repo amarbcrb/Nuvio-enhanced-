@@ -84,6 +84,7 @@ internal fun CloudStreamSettingsSection() {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedLanguage by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedType by rememberSaveable { mutableStateOf<String?>(null) }
+    var installFilter by rememberSaveable { mutableStateOf(CloudStreamInstallFilter.All) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     var bulkInstallMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var isBulkInstalling by remember { mutableStateOf(false) }
@@ -94,7 +95,7 @@ internal fun CloudStreamSettingsSection() {
     val types = remember(state.plugins) {
         state.plugins.flatMap { it.metadata.rawTvTypes }.distinct().sorted()
     }
-    val visiblePlugins = remember(state.plugins, query, selectedLanguage, selectedType) {
+    val visiblePlugins = remember(state.plugins, query, selectedLanguage, selectedType, installFilter) {
         val normalizedQuery = query.trim().lowercase()
         state.plugins.filter { item ->
             (normalizedQuery.isBlank() || listOf(
@@ -104,7 +105,12 @@ internal fun CloudStreamSettingsSection() {
                 item.metadata.authors.joinToString(" "),
             ).any { it.lowercase().contains(normalizedQuery) }) &&
                 (selectedLanguage == null || item.metadata.language == selectedLanguage) &&
-                (selectedType == null || selectedType in item.metadata.rawTvTypes)
+                (selectedType == null || selectedType in item.metadata.rawTvTypes) &&
+                when (installFilter) {
+                    CloudStreamInstallFilter.All -> true
+                    CloudStreamInstallFilter.Installed -> item.isInstalled
+                    CloudStreamInstallFilter.NotInstalled -> !item.isInstalled
+                }
         }
     }
     val bulkActionPlugins = remember(visiblePlugins) {
@@ -265,6 +271,17 @@ internal fun CloudStreamSettingsSection() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                CloudStreamInstallFilter.entries.forEach { filter ->
+                    CloudStreamFilterChip(copy.installFilterLabel(filter), installFilter == filter) {
+                        installFilter = filter
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 CloudStreamFilterChip(copy.allLanguages, selectedLanguage == null) { selectedLanguage = null }
                 languages.forEach { language ->
                     CloudStreamFilterChip(language.uppercase(), selectedLanguage == language) {
@@ -387,6 +404,17 @@ private fun CloudStreamPluginCard(
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (plugin.isInstalled) {
+                    NuvioIconActionButton(
+                        icon = Icons.Rounded.Delete,
+                        contentDescription = copy.remove,
+                        tint = MaterialTheme.colorScheme.error,
+                        onClick = {
+                            CloudStreamRepository.removePlugin(plugin.metadata.id.value)
+                            onMessage(copy.pluginRemoved(plugin.metadata.name))
+                        },
+                    )
+                }
                 NuvioIconActionButton(
                     icon = Icons.Rounded.PushPin,
                     contentDescription = if (isPinnedSource) copy.unpinSource else copy.pinSource,
@@ -537,6 +565,15 @@ private class CloudStreamSettingsCopy private constructor(
         if (turkish) "Tüm diller" else "All languages"
     val allTypes: String =
         if (turkish) "Tüm türler" else "All types"
+
+    fun installFilterLabel(filter: CloudStreamInstallFilter): String = when (filter) {
+        CloudStreamInstallFilter.All -> if (turkish) "Tümü" else "All"
+        CloudStreamInstallFilter.Installed -> if (turkish) "Kurulu" else "Installed"
+        CloudStreamInstallFilter.NotInstalled -> if (turkish) "Kurulu değil" else "Not installed"
+    }
+
+    fun pluginRemoved(name: String): String =
+        if (turkish) "$name kaldırıldı" else "$name removed"
     val bulkInstallFailed: String =
         if (turkish) "Toplu kurulum tamamlanamadı." else "Bulk install could not be completed."
     val bulkInstalling: String =
@@ -707,4 +744,10 @@ private fun CloudStreamFilterChip(
             fontWeight = FontWeight.SemiBold,
         )
     }
+}
+
+private enum class CloudStreamInstallFilter {
+    All,
+    Installed,
+    NotInstalled,
 }

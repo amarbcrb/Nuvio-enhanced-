@@ -612,6 +612,7 @@ internal fun PlayerScreenRuntime.playNextEpisode(automatic: Boolean = false) {
         contentType = contentType,
         settings = playerSettingsUiState,
         currentStreamBingeGroup = currentStreamBingeGroup,
+        currentSourceAddonId = activeProviderAddonId?.takeIf { it.isNotBlank() },
         onDownloadedEpisodeSelected = { item, episode ->
             if (isCurrentRequest()) switchToDownloadedEpisode(item, episode)
         },

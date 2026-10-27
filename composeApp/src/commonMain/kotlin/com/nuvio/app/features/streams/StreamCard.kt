@@ -79,7 +79,8 @@ internal fun StreamCard(
     val languageLabel = remember(stream) {
         StreamLanguageDetector.detect(stream, cloudStreamProviderLanguages()[stream.addonId]).label
     }
-    val hasBadges = badgeImages.isNotEmpty() || languageLabel != null ||
+    val qualityLabel = remember(stream) { StreamQualityDetector.detect(stream).label }
+    val hasBadges = badgeImages.isNotEmpty() || languageLabel != null || qualityLabel != null ||
         (showFileSizeBadges && stream.behaviorHints.videoSize != null)
     Row(
         modifier = modifier
@@ -132,6 +133,7 @@ internal fun StreamCard(
                     stream = stream,
                     showFileSizeBadges = showFileSizeBadges,
                     languageLabel = languageLabel,
+                    qualityLabel = qualityLabel,
                 )
                 Spacer(modifier = Modifier.height(6.dp))
             }
@@ -178,6 +180,7 @@ internal fun StreamCard(
                     stream = stream,
                     showFileSizeBadges = showFileSizeBadges,
                     languageLabel = languageLabel,
+                    qualityLabel = qualityLabel,
                 )
             }
         }
@@ -232,6 +235,7 @@ private fun StreamCardBadgeRow(
     stream: StreamItem,
     showFileSizeBadges: Boolean,
     languageLabel: String?,
+    qualityLabel: String?,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -239,6 +243,9 @@ private fun StreamCardBadgeRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        if (qualityLabel != null) {
+            StreamTextBadge(text = qualityLabel)
+        }
         if (languageLabel != null) {
             StreamTextBadge(text = languageLabel)
         }

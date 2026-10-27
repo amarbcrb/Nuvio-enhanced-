@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -76,6 +77,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
     contentType: String?,
     settings: PlayerSettingsUiState,
     currentStreamBingeGroup: String?,
+    currentSourceAddonId: String? = null,
     onDownloadedEpisodeSelected: (DownloadItem, MetaVideo) -> Unit,
     onEpisodeStreamSelected: (StreamItem, MetaVideo) -> Unit,
     onManualSelectionRequired: (MetaVideo) -> Unit,
@@ -154,6 +156,57 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
     }
 
     return launch {
+        suspend fun playSelectedOrAskManually(candidate: StreamItem?) {
+            val selected = candidate?.let { stream ->
+                when (val result = DirectDebridPlaybackResolver.resolveToPlayableStream(stream, nextVideo.season, nextVideo.episode)) {
+                    is DirectDebridPlayableResult.Success -> result.stream
+                    else -> {
+                        result.toastMessage()?.let { NuvioToastController.show(it) }
+                        PlayerStreamsRepository.loadEpisodeStreams(
+                            type = type,
+                            videoId = nextVideo.id,
+                            parentMetaId = parentMetaId,
+                            parentMetaType = parentMetaType,
+                            season = nextVideo.season,
+                            episode = nextVideo.episode,
+                            forceRefresh = true,
+                        )
+                        null
+                    }
+                }
+            }
+            onSearchingChanged(false)
+            if (selected != null) {
+                onSourceNameChanged((selected.name?.takeIf { it.isNotBlank() } ?: selected.addonName).trim())
+                for (i in 3 downTo 1) {
+                    onCountdownChanged(i)
+                    delay(1000)
+                }
+                onEpisodeStreamSelected(selected, nextVideo)
+                onNextEpisodeCardVisibleChanged(false)
+                onCountdownChanged(null)
+                onSourceNameChanged(null)
+            } else {
+                onManualSelectionRequired(nextVideo)
+                onNextEpisodeCardVisibleChanged(false)
+            }
+        }
+
+        if (currentSourceAddonId != null) {
+            val sameSourceStream = findNextEpisodeStreamOnSameSource(
+                type = type,
+                nextVideo = nextVideo,
+                parentMetaId = parentMetaId,
+                parentMetaType = parentMetaType,
+                sourceAddonId = currentSourceAddonId,
+                preferredBingeGroup = currentStreamBingeGroup,
+            )
+            if (sameSourceStream != null) {
+                playSelectedOrAskManually(sameSourceStream)
+                return@launch
+            }
+        }
+
         PlayerStreamsRepository.loadEpisodeStreams(
             type = type,
             videoId = nextVideo.id,
@@ -314,39 +367,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
             }
         }
 
-        val selected = selectedStream?.let { stream ->
-            when (val result = DirectDebridPlaybackResolver.resolveToPlayableStream(stream, nextVideo.season, nextVideo.episode)) {
-                is DirectDebridPlayableResult.Success -> result.stream
-                else -> {
-                    result.toastMessage()?.let { NuvioToastController.show(it) }
-                    PlayerStreamsRepository.loadEpisodeStreams(
-                        type = type,
-                        videoId = nextVideo.id,
-                        parentMetaId = parentMetaId,
-                        parentMetaType = parentMetaType,
-                        season = nextVideo.season,
-                        episode = nextVideo.episode,
-                        forceRefresh = true,
-                    )
-                    null
-                }
-            }
-        }
-        onSearchingChanged(false)
-        if (selected != null) {
-            onSourceNameChanged((selected.name?.takeIf { it.isNotBlank() } ?: selected.addonName).trim())
-            for (i in 3 downTo 1) {
-                onCountdownChanged(i)
-                delay(1000)
-            }
-            onEpisodeStreamSelected(selected, nextVideo)
-            onNextEpisodeCardVisibleChanged(false)
-            onCountdownChanged(null)
-            onSourceNameChanged(null)
-        } else {
-            onManualSelectionRequired(nextVideo)
-            onNextEpisodeCardVisibleChanged(false)
-        }
+        playSelectedOrAskManually(selectedStream)
     }
 }
 
@@ -375,3 +396,50 @@ internal fun PlayerScreenRuntime.cancelNextEpisodePreload() {
     nextEpisodePreloadJob = null
     nextEpisodePreloadTriggered = false
 }
+
+/**
+ * Looks for the next episode on the source the current episode plays from, so binge-watching keeps the
+ * same source without searching every addon and extension. Returns null when that source has nothing.
+ */
+private suspend fun findNextEpisodeStreamOnSameSource(
+    type: String,
+    nextVideo: MetaVideo,
+    parentMetaId: String,
+    parentMetaType: String,
+    sourceAddonId: String,
+    preferredBingeGroup: String?,
+): StreamItem? {
+    PlayerStreamsRepository.loadEpisodeStreams(
+        type = type,
+        videoId = nextVideo.id,
+        parentMetaId = parentMetaId,
+        parentMetaType = parentMetaType,
+        season = nextVideo.season,
+        episode = nextVideo.episode,
+        onlySourceId = sourceAddonId,
+    )
+    val state = withTimeoutOrNull(NEXT_EPISODE_SAME_SOURCE_TIMEOUT_MS) {
+        PlayerStreamsRepository.episodeStreamsState.first { current ->
+            !current.isAnyLoading && (current.groups.isNotEmpty() || current.emptyStateReason != null)
+        }
+    } ?: return null
+    if (state.searchScopeId != sourceAddonId) return null
+    val streams = state.groups.filter { it.addonId == sourceAddonId }.flatMap { it.streams }
+    if (streams.isEmpty()) return null
+    val debridSettings = DebridSettingsRepository.snapshot()
+    return StreamAutoPlaySelector.selectAutoPlayStream(
+        streams = streams,
+        mode = StreamAutoPlayMode.FIRST_STREAM,
+        regexPattern = "",
+        source = StreamAutoPlaySource.ALL_SOURCES,
+        installedAddonNames = AddonRepository.uiState.value.addons.enabledAddons().map { it.displayTitle }.toSet(),
+        selectedAddons = emptySet(),
+        selectedPlugins = emptySet(),
+        preferredBingeGroup = preferredBingeGroup,
+        preferBingeGroupInSelection = preferredBingeGroup != null,
+        debridEnabled = debridSettings.canResolvePlayableLinks,
+        activeResolverProviderId = debridSettings.activeResolverProviderId,
+    )
+}
+
+private const val NEXT_EPISODE_SAME_SOURCE_TIMEOUT_MS = 45_000L

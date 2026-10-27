@@ -312,7 +312,7 @@ object HomeRepository {
         val cloudSections = cachedCloudSections
             .map { section -> section.withReleaseFilter() }
             .filter { section -> section.items.isNotEmpty() }
-        val sections = entries.map { (_, section) -> section } + cloudSections
+        val sections = (entries.map { (_, section) -> section } + cloudSections).withoutDuplicateTitles()
 
         val catalogHeroItems = if (snapshot.heroEnabled) {
             val heroRandom = Random((requestKey?.hashCode() ?: 0).absoluteValue + 1)
@@ -323,6 +323,7 @@ object HomeRepository {
                 .flatMap { section -> section.items }
                 .plus(cloudSections.flatMap { section -> section.items })
                 .distinctBy { item -> "${item.type}:${item.id}" }
+                .withoutDuplicateItemTitles()
                 .shuffled(heroRandom)
                 .take(HOME_HERO_ITEM_LIMIT)
         } else {

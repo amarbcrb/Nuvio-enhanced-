@@ -112,12 +112,15 @@ object PlayerStreamsRepository {
         forceRefresh: Boolean = false,
         parentMetaId: String? = null,
         parentMetaType: String? = null,
+        /** Search only this source when it can serve the episode, regardless of the search scope setting. */
+        onlySourceId: String? = null,
     ) {
         fetchStreams(
             type = type,
             videoId = videoId,
             parentMetaId = parentMetaId,
             parentMetaType = parentMetaType,
+            onlySourceId = onlySourceId,
             season = season,
             episode = episode,
             forceRefresh = forceRefresh,
@@ -268,6 +271,7 @@ object PlayerStreamsRepository {
         videoId: String,
         parentMetaId: String?,
         parentMetaType: String?,
+        onlySourceId: String? = null,
         season: Int?,
         episode: Int?,
         forceRefresh: Boolean,
@@ -306,7 +310,8 @@ object PlayerStreamsRepository {
         val requestKey = "$type::$videoId::$season::$episode::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
             "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}" +
             "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}" +
-            "::lang=${StreamLanguagePreferencesRepository.requestSignature()}"
+            "::lang=${StreamLanguagePreferencesRepository.requestSignature()}" +
+            "::only=${onlySourceId.orEmpty()}"
         PluginRepository.setLocalPluginSearchPaused(false)
         val current = stateFlow.value
         val cachedKey = requestKeyHolder()
@@ -426,7 +431,8 @@ object PlayerStreamsRepository {
             cloudStreamProviderGroups = allCloudStreamProviderGroups,
             serverGroups = allServerSources.map { it.loadingGroup() },
         )
-        val searchScopeId = StreamSearchScopeRepository.resolveScopeId(sourceOptions)
+        val searchScopeId = onlySourceId?.takeIf { id -> sourceOptions.any { it.id == id } }
+            ?: StreamSearchScopeRepository.resolveScopeId(sourceOptions)
         fun isInSearchScope(addonId: String): Boolean = searchScopeId == null || addonId == searchScopeId
         val streamAddons = allStreamAddons.filter { isInSearchScope(it.addonId) }
         val pluginProviderGroups = allPluginProviderGroups.filter { isInSearchScope(it.addonId) }
