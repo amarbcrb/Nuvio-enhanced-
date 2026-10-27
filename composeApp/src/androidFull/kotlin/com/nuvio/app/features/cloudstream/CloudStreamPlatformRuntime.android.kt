@@ -461,7 +461,11 @@ private class AndroidDexCloudStreamProvider(
             is TvSeriesLoadResponse -> episodes.map { episode -> episode.toNuvioEpisode(api) }
             is AnimeLoadResponse -> episodes.flatMap { (dubStatus, values) ->
                 values.map { episode ->
-                    episode.toNuvioEpisode(api, dubStatus.name.takeUnless { episodes.size == 1 })
+                    episode.toNuvioEpisode(
+                        api = api,
+                        variant = dubStatus.name.takeUnless { episodes.size == 1 },
+                        audioVariant = dubStatus.name,
+                    )
                 }
             }
             else -> emptyList()
@@ -484,6 +488,7 @@ private class AndroidDexCloudStreamProvider(
     private fun com.lagradost.cloudstream3.Episode.toNuvioEpisode(
         api: MainAPI,
         variant: String? = null,
+        audioVariant: String? = null,
     ): CloudStreamEpisode = CloudStreamEpisode(
         data = encodeAndroidDexRoute(api.javaClass.name, data),
         name = listOfNotNull(name?.takeIf(String::isNotBlank), variant).joinToString(" · ")
@@ -492,6 +497,7 @@ private class AndroidDexCloudStreamProvider(
         episode = episode,
         posterUrl = posterUrl,
         description = description,
+        audioVariant = audioVariant,
     )
 
     private companion object {

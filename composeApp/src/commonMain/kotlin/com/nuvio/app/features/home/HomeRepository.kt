@@ -17,6 +17,7 @@ import com.nuvio.app.features.collection.findCollectionCatalog
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.toMetaPreview
+import com.nuvio.app.features.streams.cloudStreamAddonId
 import com.nuvio.app.features.streams.isAllowedByLanguagePreferences
 import com.nuvio.app.features.servers.ServerCatalog
 import com.nuvio.app.features.trakt.TraktPublicListSourceResolver
@@ -78,12 +79,23 @@ object HomeRepository {
     fun refresh(addons: List<ManagedAddon>, force: Boolean = false) {
         CloudStreamRepository.initialize()
         val cloudState = CloudStreamRepository.uiState.value
-        val cloudPlugins = cloudState.plugins
+        val allCloudPlugins = cloudState.plugins
             .filter(CloudStreamPluginItem::isRunnable)
             .filter { it.isAllowedByLanguagePreferences() }
         val activeAddons = addons.enabledAddons()
         lastRefreshAddonSignature = buildAddonCatalogRefreshSignature(addons)
-        val requests = buildHomeCatalogDefinitions(activeAddons)
+        // Only the catalog source chosen in the settings is shown (and loaded), when there is one.
+        val catalogSourceOptions = buildCatalogSourceOptions(activeAddons, allCloudPlugins)
+        CatalogSourceRepository.updateAvailable(catalogSourceOptions)
+        val catalogSourceId = CatalogSourceRepository.resolveSelectedId(catalogSourceOptions)
+        val cloudPlugins = allCloudPlugins.filter { plugin ->
+            catalogSourceId == null || cloudStreamAddonId(plugin.metadata.id.value) == catalogSourceId
+        }
+        val requests = buildHomeCatalogDefinitions(activeAddons).filter { definition ->
+            catalogSourceId == null ||
+                definition.serverConnectionId != null ||
+                addonCatalogSourceId(definition.manifestUrl) == catalogSourceId
+        }
         currentDefinitions = requests
         val requestCacheKeys = requests.mapTo(mutableSetOf(), HomeCatalogDefinition::cacheKey)
         cachedSections = cachedSections.filterKeys(requestCacheKeys::contains)

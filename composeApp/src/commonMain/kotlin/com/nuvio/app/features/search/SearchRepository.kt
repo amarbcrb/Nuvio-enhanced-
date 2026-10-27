@@ -24,8 +24,12 @@ import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.CloudStreamSearchRouteIndex
 import com.nuvio.app.features.cloudstream.toMetaPreview
+import com.nuvio.app.features.streams.cloudStreamAddonId
 import com.nuvio.app.features.streams.isAllowedByLanguagePreferences
+import com.nuvio.app.features.home.CatalogSourceRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
+import com.nuvio.app.features.home.addonCatalogSourceId
+import com.nuvio.app.features.home.buildCatalogSourceOptions
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.filterReleasedItems
@@ -98,13 +102,23 @@ object SearchRepository {
         val enabledAddons = addons.enabledAddons()
         val hasPendingAddonManifests = enabledAddons.hasPendingEnabledManifests()
         val addonManifestErrorMessage = enabledAddons.firstEnabledManifestError()
-        val activeAddons = enabledAddons.filter { it.manifest != null }
         val serverSearches = ServerCatalog.searchTargets()
         CloudStreamRepository.initialize()
+        val runnableCloudPlugins = CloudStreamRepository.uiState.value.plugins
+            .filter(CloudStreamPluginItem::isRunnable)
+            .filter { it.isAllowedByLanguagePreferences() }
+        // Like the Home, only the catalog source chosen in the settings is searched, when there is one.
+        val catalogSourceId = CatalogSourceRepository.resolveSelectedId(
+            buildCatalogSourceOptions(enabledAddons, runnableCloudPlugins),
+        )
+        val activeAddons = enabledAddons.filter { addon ->
+            addon.manifest != null &&
+                (catalogSourceId == null || addonCatalogSourceId(addon.manifestUrl) == catalogSourceId)
+        }
         val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
-            CloudStreamRepository.uiState.value.plugins
-                .filter(CloudStreamPluginItem::isRunnable)
-                .filter { it.isAllowedByLanguagePreferences() }
+            runnableCloudPlugins.filter { plugin ->
+                catalogSourceId == null || cloudStreamAddonId(plugin.metadata.id.value) == catalogSourceId
+            }
         } else {
             emptyList()
         }

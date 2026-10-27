@@ -35,6 +35,32 @@ data class StreamLanguageInfo(
             if (parts.isNotEmpty()) return parts.joinToString(" · ")
             return providerLanguage?.takeIf { !hasStreamInfo }?.uppercase()
         }
+
+    /** Original audio with subtitles only (VOSTFR, SUB...), no dubbed or multi-language audio. */
+    val isSubtitledOnly: Boolean
+        get() = (subtitles.isNotEmpty() || subbed) && audio.isEmpty() && !multi && !dubbed
+
+    /** 0 for dubbed or multi-language audio, 1 when nothing is known, 2 for subtitled-only links. */
+    internal fun dubRank(): Int = when {
+        dubbed || multi || audio.isNotEmpty() -> 0
+        isSubtitledOnly -> 2
+        else -> 1
+    }
+}
+
+/** How dubbed versions are favoured over subtitled ones in link lists. */
+enum class StreamDubMode(internal val wireValue: String) {
+    /** Links keep the order of their source. */
+    Any("0"),
+    /** Dubbed and multi-language links come first, subtitled-only links last. */
+    PreferDubbed("1"),
+    /** Subtitled-only links are hidden. */
+    DubbedOnly("2"),
+    ;
+
+    companion object {
+        fun fromWire(value: String?): StreamDubMode = entries.firstOrNull { it.wireValue == value } ?: Any
+    }
 }
 
 object StreamLanguageDetector {
@@ -165,12 +191,14 @@ data class StreamLanguagePreferences(
     val hideUnknown: Boolean = false,
     /** CloudStream extension languages to use; empty uses every extension. */
     val extensionLanguages: Set<String> = emptySet(),
+    val dubMode: StreamDubMode = StreamDubMode.Any,
 ) {
     fun encode(): String = listOf(
         "links=${linkLanguages.sorted().joinToString(",")}",
         "sub=${if (includeSubtitled) 1 else 0}",
         "unknown=${if (hideUnknown) 1 else 0}",
         "ext=${extensionLanguages.sorted().joinToString(",")}",
+        "dub=${dubMode.wireValue}",
     ).joinToString(";")
 
     companion object {
@@ -186,6 +214,7 @@ data class StreamLanguagePreferences(
                 includeSubtitled = values["sub"] != "0",
                 hideUnknown = values["unknown"] == "1",
                 extensionLanguages = codes("ext"),
+                dubMode = StreamDubMode.fromWire(values["dub"]),
             )
         }
     }
@@ -281,16 +310,26 @@ internal fun StreamLanguageInfo.matches(preferences: StreamLanguagePreferences):
     return false
 }
 
-/** Removes links outside the preferred languages, unless the filter is paused. */
+/**
+ * Removes links outside the preferred languages and applies the dubbed-version preference,
+ * unless the filter is paused.
+ */
 internal fun AddonStreamGroup.filteredByLinkLanguage(
     providerLanguages: Map<String, String>,
 ): AddonStreamGroup {
     val preferences = StreamLanguagePreferencesRepository.snapshot()
-    if (preferences.linkLanguages.isEmpty() || StreamLanguagePreferencesRepository.linkFilterPaused.value) return this
-    if (streams.isEmpty()) return this
+    if (StreamLanguagePreferencesRepository.linkFilterPaused.value || streams.isEmpty()) return this
+    val filterLanguages = preferences.linkLanguages.isNotEmpty()
+    if (!filterLanguages && preferences.dubMode == StreamDubMode.Any) return this
     val providerLanguage = providerLanguages[addonId]
-    val kept = streams.filter { stream ->
-        StreamLanguageDetector.detect(stream, providerLanguage).matches(preferences)
+    var kept = streams
+        .map { stream -> stream to StreamLanguageDetector.detect(stream, providerLanguage) }
+        .filter { (_, info) -> !filterLanguages || info.matches(preferences) }
+    kept = when (preferences.dubMode) {
+        StreamDubMode.Any -> kept
+        StreamDubMode.PreferDubbed -> kept.sortedBy { (_, info) -> info.dubRank() }
+        StreamDubMode.DubbedOnly -> kept.filterNot { (_, info) -> info.isSubtitledOnly }
     }
-    return if (kept.size == streams.size) this else copy(streams = kept)
+    val result = kept.map { (stream, _) -> stream }
+    return if (result == streams) this else copy(streams = result)
 }

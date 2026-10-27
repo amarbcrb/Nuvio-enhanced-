@@ -1349,6 +1349,15 @@
     <string name="settings_stream_language_unknown_title">Masquer les liens sans langue détectée</string>
     <string name="settings_stream_language_unknown_description">La langue est lue dans le nom du lien et du fichier (VF, VOSTFR, MULTI, DUB, SUB, drapeaux).</string>
     <string name="settings_language_any">Toutes</string>
+    <string name="settings_catalog_source_section">CATALOGUE DE L\'ACCUEIL ET DE LA RECHERCHE</string>
+    <string name="settings_catalog_source_title">Source du catalogue</string>
+    <string name="settings_catalog_source_description">L\'Accueil et la Recherche n\'affichent que les films et séries de cette source. La recherche de liens utilise toujours toutes les sources.</string>
+    <string name="settings_catalog_source_all">Toutes les sources</string>
+    <string name="settings_stream_dub_title">Versions doublées</string>
+    <string name="settings_stream_dub_description">Les liens doublés et MULTI passent en premier. \"Doublé uniquement\" masque les liens seulement sous-titrés (VOSTFR, SUB) et charge l\'épisode doublé quand une extension CloudStream propose les deux.</string>
+    <string name="settings_stream_dub_any">Indifférent</string>
+    <string name="settings_stream_dub_prefer">Doublé d\'abord</string>
+    <string name="settings_stream_dub_only">Doublé uniquement</string>
     <string name="settings_cloudstream_language_section">LANGUE DES EXTENSIONS</string>
     <string name="settings_cloudstream_language_title">Langues des extensions</string>
     <string name="settings_cloudstream_language_description">N’utiliser que les extensions CloudStream de ces langues pour l’accueil, la recherche et les liens. Sans sélection, toutes les extensions sont utilisées.</string>

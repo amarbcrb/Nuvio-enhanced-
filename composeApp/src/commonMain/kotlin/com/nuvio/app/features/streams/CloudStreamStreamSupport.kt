@@ -113,22 +113,29 @@ internal suspend fun resolveCloudStreamProviderStreams(
                     )
                 ) return null
 
-                val linkData = loaded.linkDataForCloudStreamRequest(searchRequest)
-                if (linkData == null) {
+                val targets = loaded.linkTargetsForCloudStreamRequest(
+                    request = searchRequest,
+                    dubMode = StreamLanguagePreferencesRepository.snapshot().dubMode,
+                )
+                if (targets.isEmpty()) {
                     lastError = IllegalStateException("CloudStream episode not found")
                     return null
                 }
 
-                val sources = runCatchingUnlessCancelled {
-                    CloudStreamRepository.loadLinks(providerGroup.providerId, linkData).getOrThrow()
-                }.onFailure { error -> lastError = error }
-                    .getOrNull()
-                    ?: return null
-                return cloudStreamSourcesToStreamItems(
-                    providerId = providerGroup.providerId,
-                    providerName = providerGroup.addonName,
-                    sources = sources,
-                ).takeIf { streams -> streams.isNotEmpty() }
+                // Anime extensions can offer the same episode dubbed and subtitled; both are loaded.
+                val streams = targets.flatMap { target ->
+                    val sources = runCatchingUnlessCancelled {
+                        CloudStreamRepository.loadLinks(providerGroup.providerId, target.data).getOrThrow()
+                    }.onFailure { error -> lastError = error }
+                        .getOrNull()
+                        .orEmpty()
+                    cloudStreamSourcesToStreamItems(
+                        providerId = providerGroup.providerId,
+                        providerName = providerGroup.addonName,
+                        sources = sources,
+                    ).map { stream -> stream.withCloudStreamAudioVariant(target.audioVariant) }
+                }
+                return streams.takeIf { it.isNotEmpty() }
                     ?: run {
                         lastError = IllegalStateException("No links found")
                         null
@@ -496,6 +503,51 @@ private fun CloudStreamSearchItem.matchScore(requestedTitle: String, requestedYe
         candidateCanonical == requestedCanonical -> 90 + yearBonus
         else -> null
     }
+}
+
+/** Link data of an episode, with its CloudStream dub status when the extension gives one. */
+internal data class CloudStreamLinkTarget(
+    val data: String,
+    val audioVariant: String? = null,
+)
+
+/**
+ * The link data to load for [request]: the matched episode, plus its dubbed or subtitled twin when
+ * the extension offers both. Dubbed comes first; [StreamDubMode.DubbedOnly] drops the subtitled twin.
+ */
+internal fun CloudStreamLoadItem.linkTargetsForCloudStreamRequest(
+    request: CloudStreamSearchRequest,
+    dubMode: StreamDubMode,
+): List<CloudStreamLinkTarget> {
+    val primary = linkDataForCloudStreamRequest(request) ?: return emptyList()
+    val chosen = episodes.firstOrNull { it.data == primary }
+        ?: return listOf(CloudStreamLinkTarget(primary))
+    val twins = episodes
+        .filter { item ->
+            item.audioVariant != null && item.season == chosen.season && item.episode == chosen.episode
+        }
+        .distinctBy { it.audioVariant }
+    if (twins.size <= 1) return listOf(CloudStreamLinkTarget(primary, chosen.audioVariant))
+    val ordered = twins.sortedBy { item -> if (item.audioVariant == DUBBED_VARIANT) 0 else 1 }
+    val kept = if (dubMode == StreamDubMode.DubbedOnly && ordered.any { it.audioVariant == DUBBED_VARIANT }) {
+        ordered.filter { it.audioVariant == DUBBED_VARIANT }
+    } else {
+        ordered
+    }
+    return kept.map { CloudStreamLinkTarget(it.data, it.audioVariant) }
+}
+
+private const val DUBBED_VARIANT = "Dubbed"
+private const val SUBBED_VARIANT = "Subbed"
+
+/** Names the dub status in the description so the language badge and the dub preference see it. */
+private fun StreamItem.withCloudStreamAudioVariant(audioVariant: String?): StreamItem {
+    val marker = when (audioVariant) {
+        DUBBED_VARIANT -> "DUB"
+        SUBBED_VARIANT -> "SUB"
+        else -> return this
+    }
+    return copy(description = listOfNotNull(marker, description?.takeIf(String::isNotBlank)).joinToString(" · "))
 }
 
 internal fun CloudStreamLoadItem.linkDataForCloudStreamRequest(

@@ -252,4 +252,33 @@ class CloudStreamMatchTest {
 
         assertEquals("e1", loaded.linkDataForCloudStreamRequest(request))
     }
+
+    @Test
+    fun loadsDubbedAndSubtitledTwinsDubbedFirst() {
+        val loaded = CloudStreamLoadItem(
+            providerId = "provider",
+            data = "anime",
+            name = "Anime",
+            type = CloudStreamTvType.Anime,
+            episodes = listOf(
+                CloudStreamEpisode(data = "sub1", name = "Episode 1 · Subbed", season = 1, episode = 1, audioVariant = "Subbed"),
+                CloudStreamEpisode(data = "dub1", name = "Episode 1 · Dubbed", season = 1, episode = 1, audioVariant = "Dubbed"),
+                CloudStreamEpisode(data = "sub2", name = "Episode 2 · Subbed", season = 1, episode = 2, audioVariant = "Subbed"),
+            ),
+        )
+        val request = CloudStreamSearchRequest(title = "Anime", type = "series", year = null, season = 1, episode = 1)
+
+        assertEquals(
+            listOf("dub1", "sub1"),
+            loaded.linkTargetsForCloudStreamRequest(request, StreamDubMode.Any).map { it.data },
+        )
+        assertEquals(
+            listOf("dub1"),
+            loaded.linkTargetsForCloudStreamRequest(request, StreamDubMode.DubbedOnly).map { it.data },
+        )
+        assertEquals(
+            listOf("sub2"),
+            loaded.linkTargetsForCloudStreamRequest(request.copy(episode = 2), StreamDubMode.DubbedOnly).map { it.data },
+        )
+    }
 }

@@ -23,6 +23,8 @@ internal expect object StreamBadgeSettingsStorage {
     fun savePinnedStreamSources(sources: String)
     fun loadStreamSearchScope(): String?
     fun saveStreamSearchScope(sourceId: String)
+    fun loadCatalogSource(): String?
+    fun saveCatalogSource(source: String)
     fun loadStreamLanguagePreferences(): String?
     fun saveStreamLanguagePreferences(preferences: String)
     fun loadLegacyDebridStreamBadgeRules(): String?

@@ -293,6 +293,8 @@ data class CloudStreamEpisode(
     val episode: Int? = null,
     val posterUrl: String? = null,
     val description: String? = null,
+    /** CloudStream dub status of this episode ("Dubbed", "Subbed" or "None"), when the extension gives one. */
+    val audioVariant: String? = null,
 )
 
 data class CloudStreamLoadItem(

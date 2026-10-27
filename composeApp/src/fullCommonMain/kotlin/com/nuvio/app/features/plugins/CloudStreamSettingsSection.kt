@@ -68,7 +68,12 @@ import com.nuvio.app.features.streams.cloudStreamAddonId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Filters and plugin list of the CloudStream page, kept outside composition so the page header
@@ -107,6 +112,77 @@ internal object CloudStreamSettingsListState {
         }
     }
 
+    /** Result of the last extension check, by plugin id. */
+    var health by mutableStateOf<Map<String, CloudStreamHealth>>(emptyMap())
+        private set
+    var isCheckingHealth by mutableStateOf(false)
+        private set
+
+    /** Plugins the last check found not responding that are still installed. */
+    val failingPlugins: List<CloudStreamPluginItem> by derivedStateOf {
+        plugins.filter { it.isInstalled && health[it.metadata.id.value] is CloudStreamHealth.Failing }
+    }
+
+    // Extensions can block their thread and ignore cancellation, so each check runs detached and is
+    // abandoned after its timeout instead of holding the whole check back.
+    private val checkScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Asks every enabled extension for its home page, or a search when it has none. */
+    fun checkExtensions() {
+        if (isCheckingHealth) return
+        val targets = plugins.filter(CloudStreamPluginItem::isRunnable)
+        if (targets.isEmpty()) return
+        isCheckingHealth = true
+        health = targets.associate { it.metadata.id.value to CloudStreamHealth.Checking }
+        scope.launch {
+            val permits = Semaphore(HEALTH_CHECK_CONCURRENCY)
+            targets.map { plugin ->
+                launch {
+                    val id = plugin.metadata.id.value
+                    val result = permits.withPermit { checkExtension(id) }
+                    health = health + (id to result)
+                }
+            }.joinAll()
+            isCheckingHealth = false
+        }
+    }
+
+    private suspend fun checkExtension(pluginId: String): CloudStreamHealth {
+        val mainPage = detachedWithTimeout { CloudStreamRepository.getMainPage(pluginId, 1) }
+        if (mainPage?.getOrNull()?.any { (_, items) -> items.isNotEmpty() } == true) return CloudStreamHealth.Working
+        val search = detachedWithTimeout {
+            CloudStreamRepository.search(HEALTH_CHECK_QUERY, pluginId).firstOrNull()
+        }
+        if (search?.getOrNull()?.isNotEmpty() == true) return CloudStreamHealth.Working
+        val reason = search?.exceptionOrNull()?.message
+            ?: mainPage?.exceptionOrNull()?.message
+            ?: if (mainPage == null && search == null) "Timeout" else null
+        return CloudStreamHealth.Failing(reason)
+    }
+
+    private suspend fun <T> detachedWithTimeout(block: suspend () -> T): T? {
+        val task = checkScope.async { block() }
+        return withTimeoutOrNull(HEALTH_CHECK_TIMEOUT_MS) { task.await() }
+            .also { if (it == null) task.cancel() }
+    }
+
+    fun disableFailing(): Int {
+        val failing = failingPlugins.filter { it.enabled }
+        failing.forEach { CloudStreamRepository.setPluginEnabled(it.metadata.id.value, false) }
+        return failing.size
+    }
+
+    fun removeFailing(): Int {
+        val failing = failingPlugins
+        failing.forEach { CloudStreamRepository.removePlugin(it.metadata.id.value) }
+        health = health - failing.map { it.metadata.id.value }.toSet()
+        return failing.size
+    }
+
+    private const val HEALTH_CHECK_CONCURRENCY = 4
+    private const val HEALTH_CHECK_TIMEOUT_MS = 25_000L
+    private const val HEALTH_CHECK_QUERY = "the"
+
     fun ensureCollecting() {
         if (collecting) return
         collecting = true
@@ -118,6 +194,12 @@ internal object CloudStreamSettingsListState {
             }
         }
     }
+}
+
+internal sealed interface CloudStreamHealth {
+    data object Checking : CloudStreamHealth
+    data object Working : CloudStreamHealth
+    data class Failing(val reason: String?) : CloudStreamHealth
 }
 
 /** One plugin card of the CloudStream page, composed only while it is on screen. */
@@ -397,6 +479,75 @@ internal fun CloudStreamSettingsSection() {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        CloudStreamHealthCard(
+            enabledCount = state.plugins.count { it.isRunnable },
+            copy = copy,
+            onMessage = { message = it },
+        )
+    }
+}
+
+/** Checks which enabled extensions still answer and offers to switch off or remove the others. */
+@Composable
+private fun CloudStreamHealthCard(
+    enabledCount: Int,
+    copy: CloudStreamSettingsCopy,
+    onMessage: (String) -> Unit,
+) {
+    val listState = CloudStreamSettingsListState
+    val results = listState.health.values
+    val checked = results.count { it !is CloudStreamHealth.Checking }
+    val working = results.count { it is CloudStreamHealth.Working }
+    val failing = listState.failingPlugins
+    NuvioSurfaceCard {
+        Text(copy.healthTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            copy.healthDescription,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        NuvioPrimaryButton(
+            text = when {
+                listState.isCheckingHealth -> copy.healthChecking(checked, results.size)
+                else -> copy.healthCheck(enabledCount)
+            },
+            enabled = !listState.isCheckingHealth && enabledCount > 0,
+            onClick = listState::checkExtensions,
+        )
+        if (results.isNotEmpty() && !listState.isCheckingHealth) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                copy.healthSummary(working = working, failing = results.size - working),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        if (failing.isNotEmpty() && !listState.isCheckingHealth) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                failing.joinToString { it.metadata.name },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { onMessage(copy.healthDisabled(listState.disableFailing())) },
+                ) {
+                    Text(copy.healthDisableFailing, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { onMessage(copy.healthRemoved(listState.removeFailing())) },
+                ) {
+                    Text(copy.healthRemoveFailing, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
     }
 }
 
@@ -499,6 +650,14 @@ private fun CloudStreamPluginCard(
         )
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (val health = CloudStreamSettingsListState.health[plugin.metadata.id.value]) {
+                CloudStreamHealth.Checking -> NuvioInfoBadge(text = copy.healthBadgeChecking)
+                CloudStreamHealth.Working -> NuvioInfoBadge(text = copy.healthBadgeWorking)
+                is CloudStreamHealth.Failing -> NuvioInfoBadge(
+                    text = listOfNotNull(copy.healthBadgeFailing, health.reason?.take(40)).joinToString(" · "),
+                )
+                null -> Unit
+            }
             NuvioInfoBadge(text = copy.currentVersion(plugin.metadata.version))
             plugin.installedVersion?.let { NuvioInfoBadge(text = copy.installedVersion(it)) }
             plugin.metadata.language?.let { NuvioInfoBadge(text = it.uppercase()) }
@@ -685,6 +844,52 @@ private class CloudStreamSettingsCopy private constructor(
         this.french -> french
         else -> english
     }
+
+    val healthTitle: String = text(
+        english = "Check extensions",
+        french = "Vérifier les extensions",
+        turkish = "Eklentileri kontrol et",
+    )
+    val healthDescription: String = text(
+        english = "Asks every enabled extension for its home page (or a search) to find the ones that no longer answer.",
+        french = "Interroge chaque extension activée (page d'accueil ou recherche) pour trouver celles qui ne répondent plus.",
+        turkish = "Artık yanıt vermeyenleri bulmak için etkin her eklentiden ana sayfasını (veya bir aramayı) ister.",
+    )
+    val healthDisableFailing: String = text(english = "Disable them", french = "Les désactiver", turkish = "Devre dışı bırak")
+    val healthRemoveFailing: String = text(english = "Remove them", french = "Les supprimer", turkish = "Kaldır")
+    val healthBadgeChecking: String = text(english = "Checking...", french = "Test en cours...", turkish = "Kontrol ediliyor...")
+    val healthBadgeWorking: String = text(english = "Works", french = "Fonctionne", turkish = "Çalışıyor")
+    val healthBadgeFailing: String = text(english = "Not responding", french = "Ne répond pas", turkish = "Yanıt vermiyor")
+
+    fun healthCheck(count: Int): String = text(
+        english = "Check the $count enabled extensions",
+        french = "Tester les $count extensions activées",
+        turkish = "Etkin $count eklentiyi kontrol et",
+    )
+
+    fun healthChecking(done: Int, total: Int): String = text(
+        english = "Checking... $done/$total",
+        french = "Test en cours... $done/$total",
+        turkish = "Kontrol ediliyor... $done/$total",
+    )
+
+    fun healthSummary(working: Int, failing: Int): String = text(
+        english = "$working work, $failing do not respond.",
+        french = "$working fonctionnent, $failing ne répondent pas.",
+        turkish = "$working çalışıyor, $failing yanıt vermiyor.",
+    )
+
+    fun healthDisabled(count: Int): String = text(
+        english = "$count extensions disabled.",
+        french = "$count extensions désactivées.",
+        turkish = "$count eklenti devre dışı bırakıldı.",
+    )
+
+    fun healthRemoved(count: Int): String = text(
+        english = "$count extensions removed.",
+        french = "$count extensions supprimées.",
+        turkish = "$count eklenti kaldırıldı.",
+    )
 
     val siteAddressTitle: String = text(
         english = "Site address",

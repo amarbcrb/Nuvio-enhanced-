@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.Chip
+import com.nuvio.app.features.streams.StreamDubMode
 import com.nuvio.app.features.streams.StreamLanguageChoices
 import com.nuvio.app.features.streams.StreamLanguagePreferencesRepository
 import com.nuvio.app.features.streams.streamLanguageDisplayName
@@ -13,6 +14,11 @@ import nuvio.composeapp.generated.resources.settings_cloudstream_language_descri
 import nuvio.composeapp.generated.resources.settings_cloudstream_language_section
 import nuvio.composeapp.generated.resources.settings_cloudstream_language_title
 import nuvio.composeapp.generated.resources.settings_language_any
+import nuvio.composeapp.generated.resources.settings_stream_dub_any
+import nuvio.composeapp.generated.resources.settings_stream_dub_description
+import nuvio.composeapp.generated.resources.settings_stream_dub_only
+import nuvio.composeapp.generated.resources.settings_stream_dub_prefer
+import nuvio.composeapp.generated.resources.settings_stream_dub_title
 import nuvio.composeapp.generated.resources.settings_stream_language_description
 import nuvio.composeapp.generated.resources.settings_stream_language_section
 import nuvio.composeapp.generated.resources.settings_stream_language_subtitled_description
@@ -45,6 +51,26 @@ internal fun StreamLinkLanguageSettings(isTablet: Boolean) {
                 },
                 onToggle = StreamLanguagePreferencesRepository::toggleLinkLanguage,
             )
+            SettingsGroupDivider(isTablet = isTablet)
+            SettingsChipRow(
+                title = stringResource(Res.string.settings_stream_dub_title),
+                description = stringResource(Res.string.settings_stream_dub_description),
+                isTablet = isTablet,
+            ) {
+                StreamDubMode.entries.forEach { mode ->
+                    Chip(
+                        label = stringResource(
+                            when (mode) {
+                                StreamDubMode.Any -> Res.string.settings_stream_dub_any
+                                StreamDubMode.PreferDubbed -> Res.string.settings_stream_dub_prefer
+                                StreamDubMode.DubbedOnly -> Res.string.settings_stream_dub_only
+                            },
+                        ),
+                        selected = preferences.dubMode == mode,
+                        onClick = { StreamLanguagePreferencesRepository.update { it.copy(dubMode = mode) } },
+                    )
+                }
+            }
             if (preferences.linkLanguages.isNotEmpty()) {
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(

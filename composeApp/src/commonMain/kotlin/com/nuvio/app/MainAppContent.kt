@@ -108,6 +108,7 @@ import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadSubtitles
 import com.nuvio.app.features.downloads.DownloadsRepository
+import com.nuvio.app.features.home.CatalogSourceRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeRepository
@@ -428,9 +429,20 @@ internal fun MainAppContent(
         StreamLanguagePreferencesRepository.preferences
     }.collectAsStateWithLifecycle()
     val cloudStreamLanguages = streamLanguagePreferences.extensionLanguages
-    val homeCatalogRefreshKey = remember(addonsUiState.addons, cloudStreamUiState.registryRevision, cloudStreamRunnableCount, cloudStreamLanguages) {
+    val catalogSource by remember {
+        CatalogSourceRepository.ensureLoaded()
+        CatalogSourceRepository.selected
+    }.collectAsStateWithLifecycle()
+    val homeCatalogRefreshKey = remember(
+        addonsUiState.addons,
+        cloudStreamUiState.registryRevision,
+        cloudStreamRunnableCount,
+        cloudStreamLanguages,
+        catalogSource,
+    ) {
         buildAddonCatalogRefreshSignature(addonsUiState.addons) +
-            "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount:${cloudStreamLanguages.sorted()}"
+            "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount:${cloudStreamLanguages.sorted()}" +
+            "catalog:${catalogSource?.id.orEmpty()}"
     }
 
     val serversUiState by remember {

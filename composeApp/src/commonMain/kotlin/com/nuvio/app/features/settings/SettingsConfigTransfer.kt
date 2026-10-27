@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import com.nuvio.app.features.home.CatalogSourceRepository
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.AppVersionConfig
 import com.nuvio.app.core.network.DnsProvider
@@ -244,6 +245,7 @@ internal object SettingsConfigTransfer {
             PinnedStreamSourcesRepository.onProfileChanged()
             StreamSearchScopeRepository.onProfileChanged()
             StreamLanguagePreferencesRepository.onProfileChanged()
+            CatalogSourceRepository.onProfileChanged()
         }
         section("debrid") { value ->
             importDebridSettings(value.jsonObject)

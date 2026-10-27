@@ -57,7 +57,18 @@ class StreamLanguageDetectorTest {
             includeSubtitled = false,
             hideUnknown = true,
             extensionLanguages = setOf("ar"),
+            dubMode = StreamDubMode.DubbedOnly,
         )
         assertEquals(preferences, StreamLanguagePreferences.decode(preferences.encode()))
+    }
+
+    @Test
+    fun ranksDubbedBeforeSubtitled() {
+        assertEquals(0, detect("Anime 12 VF").dubRank())
+        assertEquals(0, detect("Anime 12 DUB").dubRank())
+        assertEquals(1, detect("Anime 12 1080p").dubRank())
+        assertEquals(2, detect("Anime 12 VOSTFR").dubRank())
+        assertTrue(detect("SUB · Server 1").isSubtitledOnly)
+        assertFalse(detect("VF + VOSTFR").isSubtitledOnly)
     }
 }

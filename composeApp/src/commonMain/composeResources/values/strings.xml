@@ -1958,6 +1958,15 @@
     <string name="settings_stream_language_unknown_title">Hide links with unknown language</string>
     <string name="settings_stream_language_unknown_description">The language is read from the link and file names (VF, VOSTFR, MULTI, DUB, SUB, flags).</string>
     <string name="settings_language_any">All</string>
+    <string name="settings_catalog_source_section">HOME AND SEARCH CATALOG</string>
+    <string name="settings_catalog_source_title">Catalog source</string>
+    <string name="settings_catalog_source_description">Home and Search show the films and series of this source only. Link searches still use every source.</string>
+    <string name="settings_catalog_source_all">All sources</string>
+    <string name="settings_stream_dub_title">Dubbed versions</string>
+    <string name="settings_stream_dub_description">Dubbed and multi-language links come first. \"Dubbed only\" hides links that are only subtitled (VOSTFR, SUB) and loads the dubbed episode when a CloudStream extension offers both.</string>
+    <string name="settings_stream_dub_any">Any</string>
+    <string name="settings_stream_dub_prefer">Dubbed first</string>
+    <string name="settings_stream_dub_only">Dubbed only</string>
     <string name="settings_cloudstream_language_section">EXTENSION LANGUAGE</string>
     <string name="settings_cloudstream_language_title">Extension languages</string>
     <string name="settings_cloudstream_language_description">Only use CloudStream extensions in these languages for Home, Search and links. With nothing selected, every extension is used.</string>

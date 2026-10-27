@@ -1,5 +1,6 @@
 package com.nuvio.app.core.sync
 
+import com.nuvio.app.features.home.CatalogSourceRepository
 import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
@@ -312,6 +313,7 @@ object ProfileSettingsSync {
         PinnedStreamSourcesRepository.onProfileChanged()
         StreamSearchScopeRepository.onProfileChanged()
         StreamLanguagePreferencesRepository.onProfileChanged()
+        CatalogSourceRepository.onProfileChanged()
 
         DebridSettingsStorage.replaceFromSyncPayload(
             preservingLocalProfileCredentials(
