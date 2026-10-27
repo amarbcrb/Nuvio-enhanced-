@@ -84,10 +84,10 @@ internal fun ProviderFilterRow(
     refreshChip: @Composable (Boolean, () -> Unit) -> Unit = { isLoading, onClick ->
         RefreshChip(isLoading = isLoading, onClick = onClick)
     },
-    filterChip: (@Composable (AddonStreamGroup?, Boolean, () -> Unit) -> Unit)? = null,
     sourceOptions: List<StreamSourceOption> = emptyList(),
     searchScopeId: String? = null,
     onSearchScopeSelected: ((StreamSourceOption?) -> Unit)? = null,
+    filterChip: (@Composable (AddonStreamGroup?, Boolean, () -> Unit) -> Unit)? = null,
 ) {
     val addonGroups = groups.filter { it.streams.isNotEmpty() || it.isLoading }
     val storedScope by remember {
