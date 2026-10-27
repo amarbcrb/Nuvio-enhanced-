@@ -108,6 +108,9 @@ import org.jetbrains.compose.resources.stringResource
 
 internal fun LazyListScope.streamsSettingsContent(isTablet: Boolean) {
     item {
+        StreamLinkLanguageSettings(isTablet = isTablet)
+    }
+    item {
         val currentSettings by remember {
             StreamBadgeSettingsRepository.ensureLoaded()
             StreamBadgeSettingsRepository.uiState

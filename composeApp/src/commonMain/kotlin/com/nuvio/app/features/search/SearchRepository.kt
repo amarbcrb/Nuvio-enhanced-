@@ -24,6 +24,7 @@ import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.CloudStreamSearchRouteIndex
 import com.nuvio.app.features.cloudstream.toMetaPreview
+import com.nuvio.app.features.streams.isAllowedByLanguagePreferences
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
@@ -100,7 +101,9 @@ object SearchRepository {
         val serverSearches = ServerCatalog.searchTargets()
         CloudStreamRepository.initialize()
         val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
-            CloudStreamRepository.uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable)
+            CloudStreamRepository.uiState.value.plugins
+                .filter(CloudStreamPluginItem::isRunnable)
+                .filter { it.isAllowedByLanguagePreferences() }
         } else {
             emptyList()
         }

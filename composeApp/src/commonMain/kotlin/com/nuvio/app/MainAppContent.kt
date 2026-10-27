@@ -113,6 +113,7 @@ import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeRepository
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.streams.StreamLanguagePreferencesRepository
 import com.nuvio.app.features.home.components.HomeHeroTrailerPlaybackController
 import com.nuvio.app.features.home.components.shouldBlurContinueWatchingArtwork
 import com.nuvio.app.features.library.refreshLibraryReleaseScheduleIfStale
@@ -422,9 +423,14 @@ internal fun MainAppContent(
         CloudStreamRepository.uiState
     }.collectAsStateWithLifecycle()
     val cloudStreamRunnableCount = cloudStreamUiState.plugins.count { it.isRunnable }
-    val homeCatalogRefreshKey = remember(addonsUiState.addons, cloudStreamUiState.registryRevision, cloudStreamRunnableCount) {
+    val streamLanguagePreferences by remember {
+        StreamLanguagePreferencesRepository.ensureLoaded()
+        StreamLanguagePreferencesRepository.preferences
+    }.collectAsStateWithLifecycle()
+    val cloudStreamLanguages = streamLanguagePreferences.extensionLanguages
+    val homeCatalogRefreshKey = remember(addonsUiState.addons, cloudStreamUiState.registryRevision, cloudStreamRunnableCount, cloudStreamLanguages) {
         buildAddonCatalogRefreshSignature(addonsUiState.addons) +
-            "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount"
+            "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount:${cloudStreamLanguages.sorted()}"
     }
 
     val serversUiState by remember {

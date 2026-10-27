@@ -147,7 +147,8 @@ object StreamsRepository {
         StreamSearchScopeRepository.ensureLoaded()
         val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
             "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}" +
-            "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}"
+            "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}" +
+            "::lang=${StreamLanguagePreferencesRepository.requestSignature()}"
         val currentState = _uiState.value
         if (
             !forceRefresh &&
@@ -362,6 +363,7 @@ object StreamsRepository {
                 cloudStreamProviderGroups.size +
                 serverSources.size
             val cloudStreamPermits = Semaphore(CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY)
+            val linkProviderLanguages = cloudStreamProviderLanguages()
 
             val installedAddonNames = installedAddonOrder.toSet()
             val installedAddonIds = streamAddons.map { it.addonId }.toSet()
@@ -473,10 +475,12 @@ object StreamsRepository {
                     groups = listOf(group),
                     rules = streamBadgeRules,
                 ).firstOrNull() ?: group
-                return DebridStreamPresentation.apply(
-                    groups = listOf(badgeGroup),
-                    settings = debridSettings,
-                ).firstOrNull() ?: badgeGroup
+                return (
+                    DebridStreamPresentation.apply(
+                        groups = listOf(badgeGroup),
+                        settings = debridSettings,
+                    ).firstOrNull() ?: badgeGroup
+                    ).filteredByLinkLanguage(linkProviderLanguages)
             }
 
             fun publishAddonGroup(group: AddonStreamGroup) {
@@ -702,6 +706,11 @@ object StreamsRepository {
                         if (!completion.error.isNullOrBlank() && pluginFirstErrorByAddonId[completion.addonId].isNullOrBlank()) {
                             pluginFirstErrorByAddonId[completion.addonId] = completion.error
                         }
+                        val completionStreams = AddonStreamGroup(
+                            addonName = "",
+                            addonId = completion.addonId,
+                            streams = completion.streams,
+                        ).filteredByLinkLanguage(linkProviderLanguages).streams
 
                         _uiState.update { current ->
                             val updated = StreamAutoPlaySelector.orderAddonStreams(
@@ -709,10 +718,10 @@ object StreamsRepository {
                                     if (group.addonId != completion.addonId) {
                                         group
                                     } else {
-                                        val mergedStreams = if (completion.streams.isEmpty()) {
+                                        val mergedStreams = if (completionStreams.isEmpty()) {
                                             group.streams
                                         } else {
-                                            (group.streams + completion.streams).sortedForGroupedDisplay()
+                                            (group.streams + completionStreams).sortedForGroupedDisplay()
                                         }
                                         val stillLoading = remaining > 0
                                         val finalError = if (mergedStreams.isEmpty() && !stillLoading) {

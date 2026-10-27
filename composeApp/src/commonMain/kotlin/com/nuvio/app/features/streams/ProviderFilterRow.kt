@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -64,6 +65,8 @@ import nuvio.composeapp.generated.resources.collections_tab_all
 import nuvio.composeapp.generated.resources.streams_pin_source
 import nuvio.composeapp.generated.resources.streams_pinned_source
 import nuvio.composeapp.generated.resources.streams_refresh
+import nuvio.composeapp.generated.resources.streams_language_filter_all
+import nuvio.composeapp.generated.resources.streams_language_filter_title
 import nuvio.composeapp.generated.resources.streams_search_scope_all
 import nuvio.composeapp.generated.resources.streams_search_scope_title
 import nuvio.composeapp.generated.resources.streams_search_scope_unavailable
@@ -96,6 +99,11 @@ internal fun ProviderFilterRow(
     }.collectAsStateWithLifecycle()
     var showSearchScopeSheet by remember { mutableStateOf(false) }
     val showSearchScopeChip = onSearchScopeSelected != null && (sourceOptions.size > 1 || storedScope != null)
+    val languagePreferences by remember {
+        StreamLanguagePreferencesRepository.ensureLoaded()
+        StreamLanguagePreferencesRepository.preferences
+    }.collectAsStateWithLifecycle()
+    val languageFilterPaused by StreamLanguagePreferencesRepository.linkFilterPaused.collectAsStateWithLifecycle()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
     var pinSheetTarget by remember { mutableStateOf<PinTarget?>(null) }
     val chip: @Composable (AddonStreamGroup?, Boolean, () -> Unit) -> Unit =
@@ -133,6 +141,22 @@ internal fun ProviderFilterRow(
                 contentDescription = stringResource(Res.string.streams_search_scope_title),
                 isSelected = scopedName != null,
                 onClick = { showSearchScopeSheet = true },
+            )
+        }
+        if (onRefresh != null && languagePreferences.linkLanguages.isNotEmpty()) {
+            FilterChip(
+                label = if (languageFilterPaused) {
+                    stringResource(Res.string.streams_language_filter_all)
+                } else {
+                    languagePreferences.linkLanguages.sorted().joinToString(", ") { it.uppercase() }
+                },
+                icon = Icons.Rounded.Translate,
+                contentDescription = stringResource(Res.string.streams_language_filter_title),
+                isSelected = !languageFilterPaused,
+                onClick = {
+                    StreamLanguagePreferencesRepository.setLinkFilterPaused(!languageFilterPaused)
+                    onRefresh()
+                },
             )
         }
         chip(null, selectedFilter == null) { onFilterSelected(null) }

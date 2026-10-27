@@ -62,6 +62,7 @@ internal fun cloudStreamProviderGroupsForRequest(
     CloudStreamRepository.initialize()
     return CloudStreamRepository.uiState.value.plugins
         .filter(CloudStreamPluginItem::isRunnable)
+        .filter { plugin -> plugin.isAllowedByLanguagePreferences() }
         .filter { plugin -> plugin.supportsCloudStreamRequest(type, request) }
         .sortedWith(
             compareBy<CloudStreamPluginItem> { plugin ->

@@ -27,6 +27,7 @@ import com.nuvio.app.features.settings.ThemeSettingsStorage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.streams.PinnedStreamSourcesRepository
 import com.nuvio.app.features.streams.StreamSearchScopeRepository
+import com.nuvio.app.features.streams.StreamLanguagePreferencesRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsStorage
 import com.nuvio.app.features.tmdb.TmdbSettingsStorage
@@ -310,6 +311,7 @@ object ProfileSettingsSync {
         StreamBadgeSettingsRepository.onProfileChanged()
         PinnedStreamSourcesRepository.onProfileChanged()
         StreamSearchScopeRepository.onProfileChanged()
+        StreamLanguagePreferencesRepository.onProfileChanged()
 
         DebridSettingsStorage.replaceFromSyncPayload(
             preservingLocalProfileCredentials(

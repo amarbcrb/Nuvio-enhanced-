@@ -62,6 +62,7 @@ import com.nuvio.app.features.search.SearchHistoryRepository
 import com.nuvio.app.features.shuffle.EpisodeShuffleRepository
 import com.nuvio.app.features.streams.PinnedStreamSourcesRepository
 import com.nuvio.app.features.streams.StreamSearchScopeRepository
+import com.nuvio.app.features.streams.StreamLanguagePreferencesRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsStorage
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
@@ -242,6 +243,7 @@ internal object SettingsConfigTransfer {
             StreamBadgeSettingsRepository.onProfileChanged()
             PinnedStreamSourcesRepository.onProfileChanged()
             StreamSearchScopeRepository.onProfileChanged()
+            StreamLanguagePreferencesRepository.onProfileChanged()
         }
         section("debrid") { value ->
             importDebridSettings(value.jsonObject)

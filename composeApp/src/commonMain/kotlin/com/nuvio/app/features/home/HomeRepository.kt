@@ -17,6 +17,7 @@ import com.nuvio.app.features.collection.findCollectionCatalog
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.toMetaPreview
+import com.nuvio.app.features.streams.isAllowedByLanguagePreferences
 import com.nuvio.app.features.servers.ServerCatalog
 import com.nuvio.app.features.trakt.TraktPublicListSourceResolver
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
@@ -77,7 +78,9 @@ object HomeRepository {
     fun refresh(addons: List<ManagedAddon>, force: Boolean = false) {
         CloudStreamRepository.initialize()
         val cloudState = CloudStreamRepository.uiState.value
-        val cloudPlugins = cloudState.plugins.filter(CloudStreamPluginItem::isRunnable)
+        val cloudPlugins = cloudState.plugins
+            .filter(CloudStreamPluginItem::isRunnable)
+            .filter { it.isAllowedByLanguagePreferences() }
         val activeAddons = addons.enabledAddons()
         lastRefreshAddonSignature = buildAddonCatalogRefreshSignature(addons)
         val requests = buildHomeCatalogDefinitions(activeAddons)

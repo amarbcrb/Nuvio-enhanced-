@@ -57,6 +57,7 @@ import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.streams.StreamLanguagePreferencesRepository
 import com.nuvio.app.features.home.components.HomeCatalogRowSection
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.homeSectionHorizontalPaddingForWidth
@@ -150,9 +151,14 @@ fun SearchScreen(
         CloudStreamRepository.uiState
     }.collectAsStateWithLifecycle()
     val cloudStreamRunnableCount = cloudStreamUiState.plugins.count { it.isRunnable }
-    val addonRefreshKey = remember(addonsUiState.addons, cloudStreamUiState.registryRevision, cloudStreamRunnableCount) {
+    val streamLanguagePreferences by remember {
+        StreamLanguagePreferencesRepository.ensureLoaded()
+        StreamLanguagePreferencesRepository.preferences
+    }.collectAsStateWithLifecycle()
+    val cloudStreamLanguages = streamLanguagePreferences.extensionLanguages
+    val addonRefreshKey = remember(addonsUiState.addons, cloudStreamUiState.registryRevision, cloudStreamRunnableCount, cloudStreamLanguages) {
         buildAddonCatalogRefreshSignature(addonsUiState.addons) +
-            "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount"
+            "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount:${cloudStreamLanguages.sorted()}"
     }
     val addonManifestsLoading = addonsUiState.addons.hasPendingEnabledManifests()
 

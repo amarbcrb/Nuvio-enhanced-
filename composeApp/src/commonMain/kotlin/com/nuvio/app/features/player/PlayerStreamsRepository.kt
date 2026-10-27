@@ -29,6 +29,9 @@ import com.nuvio.app.features.streams.StreamParser
 import com.nuvio.app.features.streams.StreamsUiState
 import com.nuvio.app.features.streams.StreamSearchScopeRepository
 import com.nuvio.app.features.streams.buildStreamSourceOptions
+import com.nuvio.app.features.streams.StreamLanguagePreferencesRepository
+import com.nuvio.app.features.streams.cloudStreamProviderLanguages
+import com.nuvio.app.features.streams.filteredByLinkLanguage
 import com.nuvio.app.features.streams.buildCloudStreamSearchRequest
 import com.nuvio.app.features.streams.cloudStreamAddonId
 import com.nuvio.app.features.streams.cloudStreamProviderGroupsForRequest
@@ -302,7 +305,8 @@ object PlayerStreamsRepository {
         StreamSearchScopeRepository.ensureLoaded()
         val requestKey = "$type::$videoId::$season::$episode::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
             "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}" +
-            "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}"
+            "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}" +
+            "::lang=${StreamLanguagePreferencesRepository.requestSignature()}"
         PluginRepository.setLocalPluginSearchPaused(false)
         val current = stateFlow.value
         val cachedKey = requestKeyHolder()
@@ -471,6 +475,7 @@ object PlayerStreamsRepository {
             val totalTasks = streamAddons.size + pluginProviderGroups.sumOf { it.scrapers.size } +
                 cloudStreamProviderGroups.size + serverSources.size
             val cloudStreamPermits = Semaphore(PLAYER_CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY)
+            val linkProviderLanguages = cloudStreamProviderLanguages()
             val completions = Channel<StreamLoadCompletion>(capacity = Channel.BUFFERED)
             val debridAvailabilityJobs = mutableListOf<Job>()
 
@@ -485,10 +490,12 @@ object PlayerStreamsRepository {
                     groups = listOf(group),
                     rules = streamBadgeRules,
                 ).firstOrNull() ?: group
-                return DebridStreamPresentation.apply(
-                    groups = listOf(badgeGroup),
-                    settings = debridSettings,
-                ).firstOrNull() ?: badgeGroup
+                return (
+                    DebridStreamPresentation.apply(
+                        groups = listOf(badgeGroup),
+                        settings = debridSettings,
+                    ).firstOrNull() ?: badgeGroup
+                    ).filteredByLinkLanguage(linkProviderLanguages)
             }
 
             fun publishStreamGroup(group: AddonStreamGroup) {
@@ -657,6 +664,11 @@ object PlayerStreamsRepository {
                         if (!completion.error.isNullOrBlank() && pluginFirstErrorByAddonId[completion.addonId].isNullOrBlank()) {
                             pluginFirstErrorByAddonId[completion.addonId] = completion.error
                         }
+                        val completionStreams = AddonStreamGroup(
+                            addonName = "",
+                            addonId = completion.addonId,
+                            streams = completion.streams,
+                        ).filteredByLinkLanguage(linkProviderLanguages).streams
 
                         stateFlow.update { current ->
                             val updated = StreamAutoPlaySelector.orderAddonStreams(
@@ -664,10 +676,10 @@ object PlayerStreamsRepository {
                                     if (group.addonId != completion.addonId) {
                                         group
                                     } else {
-                                        val mergedStreams = if (completion.streams.isEmpty()) {
+                                        val mergedStreams = if (completionStreams.isEmpty()) {
                                             group.streams
                                         } else {
-                                            (group.streams + completion.streams).sortedForGroupedDisplay()
+                                            (group.streams + completionStreams).sortedForGroupedDisplay()
                                         }
                                         val stillLoading = remaining > 0
                                         val finalError = if (mergedStreams.isEmpty() && !stillLoading) {
