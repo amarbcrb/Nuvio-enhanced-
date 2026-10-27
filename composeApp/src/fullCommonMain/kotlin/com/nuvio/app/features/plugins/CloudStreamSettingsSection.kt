@@ -31,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,43 +65,32 @@ import com.nuvio.app.features.settings.AppLanguage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.streams.PinnedStreamSourcesRepository
 import com.nuvio.app.features.streams.cloudStreamAddonId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun CloudStreamSettingsSection() {
-    LaunchedEffect(Unit) {
-        ThemeSettingsRepository.ensureLoaded()
-        CloudStreamRepository.initialize()
-    }
-    val state by CloudStreamRepository.uiState.collectAsStateWithLifecycle()
-    val selectedAppLanguage by ThemeSettingsRepository.selectedAppLanguage.collectAsStateWithLifecycle()
-    val pinnedSourceIdList by remember {
-        PinnedStreamSourcesRepository.ensureLoaded()
-        PinnedStreamSourcesRepository.pinnedSourceIds
-    }.collectAsStateWithLifecycle()
-    val copy = remember(selectedAppLanguage) { CloudStreamSettingsCopy.forLanguage(selectedAppLanguage) }
-    val scope = rememberCoroutineScope()
-    var repositoryUrl by rememberSaveable { mutableStateOf("") }
-    var editingRepositoryUrl by rememberSaveable { mutableStateOf<String?>(null) }
-    var isAddingRepository by remember { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
-    var selectedLanguage by rememberSaveable { mutableStateOf<String?>(null) }
-    var selectedType by rememberSaveable { mutableStateOf<String?>(null) }
-    var installFilter by rememberSaveable { mutableStateOf(CloudStreamInstallFilter.All) }
-    var message by rememberSaveable { mutableStateOf<String?>(null) }
-    var bulkInstallMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    var isBulkInstalling by remember { mutableStateOf(false) }
+/**
+ * Filters and plugin list of the CloudStream page, kept outside composition so the page header
+ * and the lazily composed plugin cards share them.
+ */
+internal object CloudStreamSettingsListState {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var collecting = false
 
-    val languages = remember(state.plugins) {
-        state.plugins.mapNotNull { it.metadata.language }.distinct().sorted()
-    }
-    val types = remember(state.plugins) {
-        state.plugins.flatMap { it.metadata.rawTvTypes }.distinct().sorted()
-    }
-    val visiblePlugins = remember(state.plugins, query, selectedLanguage, selectedType, installFilter) {
+    var query by mutableStateOf("")
+    var selectedLanguage by mutableStateOf<String?>(null)
+    var selectedType by mutableStateOf<String?>(null)
+    var installFilter by mutableStateOf(CloudStreamInstallFilter.All)
+    var message by mutableStateOf<String?>(null)
+    var plugins by mutableStateOf<List<CloudStreamPluginItem>>(emptyList())
+        private set
+    var securityWarningAccepted by mutableStateOf(false)
+        private set
+
+    val visiblePlugins: List<CloudStreamPluginItem> by derivedStateOf {
         val normalizedQuery = query.trim().lowercase()
-        state.plugins.filter { item ->
+        plugins.filter { item ->
             (normalizedQuery.isBlank() || listOf(
                 item.metadata.name,
                 item.metadata.internalName,
@@ -116,6 +106,68 @@ internal fun CloudStreamSettingsSection() {
                 }
         }
     }
+
+    fun ensureCollecting() {
+        if (collecting) return
+        collecting = true
+        CloudStreamRepository.initialize()
+        scope.launch {
+            CloudStreamRepository.uiState.collect { state ->
+                plugins = state.plugins
+                securityWarningAccepted = state.securityWarningAccepted
+            }
+        }
+    }
+}
+
+/** One plugin card of the CloudStream page, composed only while it is on screen. */
+@Composable
+internal fun CloudStreamPluginListItem(plugin: CloudStreamPluginItem) {
+    val selectedAppLanguage by ThemeSettingsRepository.selectedAppLanguage.collectAsStateWithLifecycle()
+    val pinnedSourceIdList by remember {
+        PinnedStreamSourcesRepository.ensureLoaded()
+        PinnedStreamSourcesRepository.pinnedSourceIds
+    }.collectAsStateWithLifecycle()
+    val copy = remember(selectedAppLanguage) { CloudStreamSettingsCopy.forLanguage(selectedAppLanguage) }
+    val pinnedSourceIds = remember(pinnedSourceIdList) { pinnedSourceIdList.toSet() }
+    CloudStreamPluginCard(
+        plugin = plugin,
+        securityWarningAccepted = CloudStreamSettingsListState.securityWarningAccepted,
+        pinnedSourceIds = pinnedSourceIds,
+        copy = copy,
+        onMessage = { CloudStreamSettingsListState.message = it },
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun CloudStreamSettingsSection() {
+    LaunchedEffect(Unit) {
+        ThemeSettingsRepository.ensureLoaded()
+        CloudStreamRepository.initialize()
+    }
+    val state by CloudStreamRepository.uiState.collectAsStateWithLifecycle()
+    val selectedAppLanguage by ThemeSettingsRepository.selectedAppLanguage.collectAsStateWithLifecycle()
+    val copy = remember(selectedAppLanguage) { CloudStreamSettingsCopy.forLanguage(selectedAppLanguage) }
+    val scope = rememberCoroutineScope()
+    var repositoryUrl by rememberSaveable { mutableStateOf("") }
+    var editingRepositoryUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var isAddingRepository by remember { mutableStateOf(false) }
+    var query by CloudStreamSettingsListState::query
+    var selectedLanguage by CloudStreamSettingsListState::selectedLanguage
+    var selectedType by CloudStreamSettingsListState::selectedType
+    var installFilter by CloudStreamSettingsListState::installFilter
+    var message by CloudStreamSettingsListState::message
+    var bulkInstallMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var isBulkInstalling by remember { mutableStateOf(false) }
+
+    val languages = remember(state.plugins) {
+        state.plugins.mapNotNull { it.metadata.language }.distinct().sorted()
+    }
+    val types = remember(state.plugins) {
+        state.plugins.flatMap { it.metadata.rawTvTypes }.distinct().sorted()
+    }
+    val visiblePlugins = CloudStreamSettingsListState.visiblePlugins
     val bulkActionPlugins = remember(visiblePlugins) {
         visiblePlugins.filter { item ->
             !item.isInstalling &&
@@ -124,7 +176,6 @@ internal fun CloudStreamSettingsSection() {
                 (!item.isRunnable || item.hasUpdate || !item.isInstalled || !item.verified)
         }
     }
-    val pinnedSourceIds = remember(pinnedSourceIdList) { pinnedSourceIdList.toSet() }
 
     NuvioSectionLabel(copy.sectionTitle)
     NuvioSurfaceCard {
@@ -346,16 +397,6 @@ internal fun CloudStreamSettingsSection() {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    }
-
-    visiblePlugins.forEach { plugin ->
-        CloudStreamPluginCard(
-            plugin = plugin,
-            securityWarningAccepted = state.securityWarningAccepted,
-            pinnedSourceIds = pinnedSourceIds,
-            copy = copy,
-            onMessage = { message = it },
-        )
     }
 }
 
@@ -857,9 +898,9 @@ private class CloudStreamSettingsCopy private constructor(
         when (platformSupport) {
             CloudStreamPlatformSupport.AndroidAndIos -> {
                 if (turkish) {
-                    "Bu provider, Nuvio Enhanced içine derlenmiş incelenmiş çapraz platform adaptörü kullanır."
+                    "Bu provider, Nuvio Plus içine derlenmiş incelenmiş çapraz platform adaptörü kullanır."
                 } else {
-                    "This provider has a reviewed cross-platform adapter compiled into Nuvio Enhanced."
+                    "This provider has a reviewed cross-platform adapter compiled into Nuvio Plus."
                 }
             }
             CloudStreamPlatformSupport.AndroidOnly -> {
@@ -928,7 +969,7 @@ private fun CloudStreamFilterChip(
     }
 }
 
-private enum class CloudStreamInstallFilter {
+internal enum class CloudStreamInstallFilter {
     All,
     Installed,
     NotInstalled,

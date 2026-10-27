@@ -29,6 +29,7 @@ import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.filterReleasedItems
+import com.nuvio.app.features.home.withoutDuplicateTitles
 import com.nuvio.app.core.poster.withCustomPosterUrls
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import kotlinx.coroutines.CancellationException
@@ -704,8 +705,9 @@ private data class IndexedSearchResult(
     val error: Throwable? = null,
 )
 
+/** Sections in source order, each title kept only in the first section that shows it. */
 private fun Array<IndexedSearchResult?>.orderedSections(): List<HomeCatalogSection> =
-    mapNotNull { result -> result?.section }
+    mapNotNull { result -> result?.section }.withoutDuplicateTitles()
 
 private fun CatalogPage.withUnreleasedFilter(): CatalogPage {
     if (!HomeCatalogSettingsRepository.snapshot().hideUnreleasedContent) return this
