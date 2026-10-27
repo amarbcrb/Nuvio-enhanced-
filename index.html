@@ -21,7 +21,7 @@
     --ease: cubic-bezier(0.2, 0, 0, 1);
     --radius-card: 16px;
     --gutter: clamp(16px, 4vw, 40px);
-    --lf: 1;
+    --tab-tint: #F5F5F5;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -250,64 +250,75 @@
   }
   .toast.show { transform: translate(-50%, 0); }
 
-  /* ---------- Floating navigation bar (FloatingNavigationBar.android.kt) ---------- */
-  .nv-bar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-    display: flex; justify-content: center; pointer-events: none;
-    padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
-    padding-left: calc(58px - 30px * var(--lf)); padding-right: calc(58px - 30px * var(--lf));
+  /* ---------- iOS tab bar (iosApp ContentView.swift: native TabView, Liquid Glass) ---------- */
+  .glass {
+    background: var(--glass-bg, rgb(28 28 30 / 0.45));
+    -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.8);
+    backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.8);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.25),
+      inset 0 0.5px 0 rgb(255 255 255 / 0.22), inset 0 0 14px rgb(255 255 255 / 0.05);
   }
-  .nv-track {
-    position: relative; pointer-events: auto; width: 100%; max-width: 400px;
-    height: calc(48px + 16px * var(--lf));
-    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
-  }
-  .nv-layer { position: absolute; inset: 0; }
-  .nv-press, .nv-distort, .nv-panel { will-change: transform; }
-  .nv-glass { border-radius: 999px; overflow: hidden; isolation: isolate; box-shadow: 0 12px 40px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.3); }
-  .nv-surface {
-    position: absolute; inset: 0; border-radius: inherit;
-    background: rgb(28 28 30 / 0.55);
-    -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3);
-  }
-  /* Chromium: refraction filter replaces the plain fill (GlassBarShader port) */
-  .nv-refract .nv-surface { background: none; -webkit-backdrop-filter: url(#nv-liquid); backdrop-filter: url(#nv-liquid); }
-  .nv-glow { position: absolute; inset: 0; border-radius: inherit; }
-  .nv-rim {
-    position: absolute; inset: 0; border-radius: inherit; padding: 0.75px; pointer-events: none;
-    background: linear-gradient(to bottom, rgb(255 255 255 / 0.27), rgb(255 255 255 / 0.02));
+  .glass::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
+    background: linear-gradient(140deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.08) 28%, rgb(255 255 255 / 0) 50%,
+      rgb(255 255 255 / 0.06) 72%, rgb(255 255 255 / 0.3) 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
   }
-  .nv-row { display: flex; align-items: center; padding: 4px; }
-  .nv-row.active { --cs: 1; }
-  .nv-pillfill { position: absolute; inset: 0; background: rgb(var(--acc-rgb) / 0.15); }
-  .nv-item { position: relative; flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; }
-  .nv-row.active .nv-item { transform: scale(var(--cs)); }
-  .nv-col { display: flex; flex-direction: column; align-items: center; width: 100%; }
-  .nv-ic { width: 28px; height: 28px; transform: translateY(calc(2px * var(--lf))); }
-  .nv-ic svg { width: 100%; height: 100%; display: block; }
-  .nv-row.inactive .nv-ic svg { fill: var(--text-muted); transition: fill 150ms var(--ease); }
-  .nv-lb {
-    height: calc(16px * var(--lf)); opacity: var(--lf); overflow: hidden; width: 100%;
-    font-size: 13px; line-height: 16px; text-align: center; white-space: nowrap; text-overflow: ellipsis; padding: 0 4px;
-    color: var(--text-muted);
+  .tb {
+    position: fixed; left: 0; right: 0; z-index: 50; height: 62px; pointer-events: none;
+    bottom: calc(max(env(safe-area-inset-bottom), 14px) + 6px);
   }
-  .nv-row.active .nv-lb { color: var(--acc); font-weight: 700; }
-  .nv-targets { display: flex; padding: 0 4px; }
-  .nv-target {
-    flex: 1 1 0; min-width: 0; height: 100%; background: none; border: 0; padding: 0; margin: 0; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; border-radius: 999px; outline: none;
+  .tb-bar {
+    position: absolute; left: 0; bottom: 0; height: 62px; border-radius: 999px; overflow: hidden;
+    pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent; will-change: width, height, transform;
   }
-  .nv-target:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--acc-rgb) / 0.9); }
-  .nv-avatar-wrap { display: flex; flex-direction: column; align-items: center; }
-  .nv-avatar-wrap .nv-sp { height: calc(16px * var(--lf)); }
-  .nv-avatar {
+  .tb-platter { position: absolute; left: 0; top: 4px; height: 54px; border-radius: 999px; background: rgb(255 255 255 / 0.12); will-change: transform; }
+  .tb-row, .tb-lens-row { position: absolute; height: 62px; display: flex; padding: 4px; }
+  .tb-row { left: 0; bottom: 0; }
+  .tb-item {
+    position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    background: none; border: 0; padding: 0; margin: 0; font: inherit; color: var(--text-muted); border-radius: 999px; outline: none; cursor: pointer;
+    transition: color 200ms var(--ease);
+  }
+  .tb-item.on { color: var(--tab-tint); }
+  .tb-item:focus-visible { box-shadow: inset 0 0 0 2px var(--tab-tint); }
+  .tb-ic { width: 28px; height: 28px; display: grid; place-items: center; }
+  .tb-ic svg { width: 25px; height: 25px; display: block; fill: currentColor; }
+  .tb-lb { font-size: 10px; line-height: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
+  /* NuvioNativeTabIcon.profileAvatar: 28pt circle, base #1E88E5, 1.5pt ring (accent when selected) */
+  .tb-ava {
     width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
-    font-size: 13px; font-weight: 800; color: #111; transform: translateY(calc(2px * var(--lf)));
-    box-shadow: 0 0 0 0 rgb(var(--acc-rgb) / 0); transition: box-shadow 220ms var(--ease);
+    font-size: 12.6px; font-weight: 700; color: #1E88E5; background: rgb(30 136 229 / 0.15);
+    box-shadow: inset 0 0 0 1.5px rgb(30 136 229 / 0.5); transition: box-shadow 200ms var(--ease);
   }
-  .nv-avatar.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--acc); }
+  .tb-item.on .tb-ava, .tb-compact .tb-ava { box-shadow: inset 0 0 0 1.5px var(--tab-tint); }
+  .tb-compact {
+    position: absolute; left: 0; bottom: 0; width: 56px; height: 56px; border: 0; padding: 0; margin: 0; background: none;
+    display: grid; place-items: center; color: var(--tab-tint); border-radius: 50%; opacity: 0; pointer-events: none; cursor: pointer; outline: none;
+  }
+  .tb-compact:focus-visible { box-shadow: inset 0 0 0 2px var(--tab-tint); }
+  .tb-lens {
+    position: absolute; display: none; border-radius: 999px; overflow: hidden; pointer-events: none; z-index: 3;
+    background: rgb(255 255 255 / 0.05);
+    -webkit-backdrop-filter: blur(6px) saturate(1.7) brightness(1.12); backdrop-filter: blur(6px) saturate(1.7) brightness(1.12);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 0.35), inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
+      inset 0 1.5px 3px rgb(255 255 255 / 0.35), inset 0 -1.5px 4px rgb(255 255 255 / 0.12),
+      inset 2px 0 3px rgb(255 120 120 / 0.16), inset -2px 0 3px rgb(110 170 255 / 0.18);
+  }
+  .tb-lens::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(120% 70% at 30% 0%, rgb(255 255 255 / 0.22), transparent 55%),
+      radial-gradient(90% 60% at 80% 110%, rgb(255 255 255 / 0.1), transparent 60%);
+  }
+  .tb-lens-row { will-change: transform; }
+  .tb-lens-row .tb-item { cursor: default; }
+
+  .glass-ctl { margin-top: 32px; max-width: 420px; }
+  .glass-ctl label { display: block; font-weight: 600; font-size: 15px; margin-bottom: 10px; }
+  .range-row { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 13px; }
+  .range-row input { flex: 1; min-width: 0; accent-color: var(--acc); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -318,39 +329,6 @@
 </style>
 </head>
 <body>
-
-<!-- Shared SVG defs: accent gradients for active nav icons and the liquid glass filter -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <defs>
-    <linearGradient id="nv-acc-24" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24"></linearGradient>
-    <linearGradient id="nv-acc-20" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="20" y2="20"></linearGradient>
-    <!--
-      Port of GlassBarShader: surface = mix(blurred backdrop, #1C1C1E, 0.55)
-      plus a chromatic edge sheen sampled inward along the capsule normal.
-      The map image encodes the normal in R/G and rim * upperLight in B.
-    -->
-    <filter id="nv-liquid" color-interpolation-filters="sRGB">
-      <feImage id="nv-map" x="0" y="0" width="400" height="64" preserveAspectRatio="none" result="map"/>
-      <feGaussianBlur in="SourceGraphic" stdDeviation="14" edgeMode="duplicate" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" result="surface"
-        values="0.45 0 0 0 0.0604  0 0.45 0 0 0.0604  0 0 0.45 0 0.0647  0 0 0 0 1"/>
-      <feDisplacementMap in="blur" in2="map" scale="32" xChannelSelector="R" yChannelSelector="G" result="dR"/>
-      <feDisplacementMap in="blur" in2="map" scale="124" xChannelSelector="R" yChannelSelector="G" result="dG"/>
-      <feDisplacementMap in="blur" in2="map" scale="114" xChannelSelector="R" yChannelSelector="G" result="dB"/>
-      <feColorMatrix in="dR" type="matrix" result="r" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
-      <feColorMatrix in="dG" type="matrix" result="g" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
-      <feColorMatrix in="dB" type="matrix" result="b" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
-      <feComposite in="r" in2="g" operator="arithmetic" k2="1" k3="1" result="rg"/>
-      <feComposite in="rg" in2="b" operator="arithmetic" k2="1" k3="1" result="refracted"/>
-      <feColorMatrix in="refracted" type="saturate" values="1.25" result="vivid"/>
-      <feColorMatrix in="vivid" type="matrix" result="sheen"
-        values="0.0953 0 0 0 0.1735  0 0.3152 0 0 0.0529  0 0 0.3822 0 0.0184  0 0 0 0 1"/>
-      <feColorMatrix in="map" type="matrix" result="rim" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0"/>
-      <feComposite in="sheen" in2="rim" operator="in" result="edge"/>
-      <feComposite in="surface" in2="edge" operator="arithmetic" k2="1" k3="1"/>
-    </filter>
-  </defs>
-</svg>
 
 <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
 
@@ -377,7 +355,7 @@
         </button>
         <button class="btn btn-glass" type="button" data-nav="2">How it works</button>
       </div>
-      <div class="row-title">Continue watching <small>Drag the nav bar pill to switch tabs</small></div>
+      <div class="row-title">Continue watching <small>Press and slide on the tab bar</small></div>
       <div class="rail" id="railContinue"></div>
     </div>
   </section>
@@ -436,9 +414,13 @@
     <div class="reveal">
       <p class="eyebrow">Profile</p>
       <h2>Who's watching?</h2>
-      <p class="lede">Pick a profile to preview the page in that Nuvio theme. The nav bar, glow and accents follow it.</p>
+      <p class="lede">Pick a profile to preview the page in that Nuvio theme. The tab bar tint follows it, like in the iPhone app.</p>
     </div>
     <div class="profiles reveal" id="profiles" role="group" aria-label="Theme"></div>
+    <div class="glass-ctl reveal">
+      <label for="glassAmt">Liquid Glass</label>
+      <div class="range-row"><span>Clear</span><input type="range" id="glassAmt" min="0" max="100" value="55"><span>Tinted</span></div>
+    </div>
     <div class="install reveal">
       <h3>Install in Nuvio</h3>
       <p>Open Nuvio, go to <b>Settings &gt; Plugins</b>, and add this manifest URL.</p>
@@ -457,23 +439,13 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<nav class="nv-bar" id="nvBar" aria-label="Main">
-  <div class="nv-track" id="nvTrack">
-    <div class="nv-layer nv-press" id="nvPress">
-      <div class="nv-layer nv-distort" id="nvDistort">
-        <div class="nv-layer nv-panel" id="nvPanel">
-          <div class="nv-layer nv-glass">
-            <div class="nv-surface"></div>
-            <div class="nv-glow" id="nvGlow"></div>
-            <div class="nv-rim"></div>
-          </div>
-          <div class="nv-layer nv-row inactive" id="nvRowIdle" aria-hidden="true"></div>
-          <div class="nv-layer nv-row active" id="nvRowActive" aria-hidden="true"><div class="nv-pillfill" id="nvPillFill"></div></div>
-          <div class="nv-layer nv-targets" id="nvTargets" role="tablist"></div>
-        </div>
-      </div>
-    </div>
+<nav class="tb" id="tb" aria-label="Main">
+  <div class="tb-bar glass" id="tbBar">
+    <div class="tb-platter" id="tbPlatter"></div>
+    <div class="tb-row" id="tbRow" role="tablist"></div>
+    <button class="tb-compact" id="tbCompact" type="button" tabindex="-1"><span class="tb-ic" id="tbCompactIcon" aria-hidden="true"></span></button>
   </div>
+  <div class="tb-lens" id="tbLens" aria-hidden="true"><div class="tb-lens-row" id="tbLensRow"></div></div>
 </nav>
 
 <script>
@@ -486,14 +458,14 @@
   const MANIFEST_URL = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/manifest.json`;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* Palettes from ThemeColors.kt */
+  /* Palettes from ThemeColors.kt (nat = nativeAccentHex, the iOS tab bar tint) */
   const THEMES = [
-    { name: 'White', acc: '#F5F5F5', grad: ['#F5F5F5'], on: '#111111', bg: '#0D0D0D' },
-    { name: 'Gold', acc: '#E8A91C', grad: ['#8A5700', '#E8A91C', '#FFF1A8', '#FFD45C', '#9A6200'], on: '#111111', bg: '#0F0E0B' },
-    { name: 'Jade', acc: '#22D37C', grad: ['#7BF08D', '#22D37C', '#0BBF9A'], on: '#111111', bg: '#0B0F0D' },
-    { name: 'Rose Gold', acc: '#EC70A9', grad: ['#B75AFF', '#EC70A9', '#FFB37A'], on: '#111111', bg: '#0D0D0D' },
-    { name: 'Arctic', acc: '#3185F5', grad: ['#4DE3FF', '#3185F5', '#4D55E8'], on: '#FFFFFF', bg: '#0B0E14' },
-    { name: 'Crimson', acc: '#E53935', grad: ['#E53935'], on: '#FFFFFF', bg: '#0D0D0D' },
+    { name: 'White', acc: '#F5F5F5', nat: '#F5F5F5', grad: ['#F5F5F5'], on: '#111111', bg: '#0D0D0D' },
+    { name: 'Gold', acc: '#E8A91C', nat: '#FFD45C', grad: ['#8A5700', '#E8A91C', '#FFF1A8', '#FFD45C', '#9A6200'], on: '#111111', bg: '#0F0E0B' },
+    { name: 'Jade', acc: '#22D37C', nat: '#7BF08D', grad: ['#7BF08D', '#22D37C', '#0BBF9A'], on: '#111111', bg: '#0B0F0D' },
+    { name: 'Rose Gold', acc: '#EC70A9', nat: '#FFB37A', grad: ['#B75AFF', '#EC70A9', '#FFB37A'], on: '#111111', bg: '#0D0D0D' },
+    { name: 'Arctic', acc: '#3185F5', nat: '#4DE3FF', grad: ['#4DE3FF', '#3185F5', '#4D55E8'], on: '#FFFFFF', bg: '#0B0E14' },
+    { name: 'Crimson', acc: '#E53935', nat: '#E53935', grad: ['#E53935'], on: '#FFFFFF', bg: '#0D0D0D' },
   ];
 
   const TITLES = [
@@ -515,21 +487,6 @@
   const $ = (s, r = document) => r.querySelector(s);
   const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-
-  // CSS cubic-bezier solver, used for NuvioTokens.Motion.standard (0.2, 0, 0, 1)
-  function bezier(x1, y1, x2, y2) {
-    const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
-    const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
-    const sx = (t) => ((ax * t + bx) * t + cx) * t;
-    const sy = (t) => ((ay * t + by) * t + cy) * t;
-    const dx = (t) => (3 * ax * t + 2 * bx) * t + cx;
-    return (x) => {
-      let t = x;
-      for (let i = 0; i < 8; i++) { const e = sx(t) - x; const d = dx(t); if (Math.abs(e) < 1e-5 || Math.abs(d) < 1e-6) break; t -= e / d; }
-      return sy(clamp(t, 0, 1));
-    };
-  }
-  const standard = bezier(0.2, 0, 0, 1);
 
   /* ---------------- Posters ---------------- */
   function posterEl(item, i, opts = {}) {
@@ -629,17 +586,20 @@
   }
 
   /* =====================================================================
-     Jelly navigation bar: port of core/ui/jelly/JellySpring.kt + JellyMotion.kt
+     iOS tab bar, after Nuvio's iosApp ContentView.swift: native TabView with
+     .tint(accent), unselectedItemTintColor #969CA3 and
+     .tabBarMinimizeBehavior(.automatic) (collapses on scroll down).
      ===================================================================== */
-  class JellySpring {
-    constructor(value, stiffness, dampingRatio) { this.value = value; this.stiffness = stiffness; this.dampingRatio = dampingRatio; this.velocity = 0; }
+  class Spring {
+    constructor(value, stiffness, dampingRatio) { this.value = value; this.velocity = 0; this.set(stiffness, dampingRatio); }
+    set(stiffness, dampingRatio) { this.stiffness = stiffness; this.dampingRatio = dampingRatio; }
     isAtRest(target) { return Math.abs(this.value - target) < 1e-4 && Math.abs(this.velocity) < 1e-4; }
     snapTo(target) { this.value = target; this.velocity = 0; }
     advance(target, seconds) {
       if (this.isAtRest(target)) { this.snapTo(target); return; }
       const displacement = this.value - target;
       const frequency = Math.sqrt(this.stiffness);
-      if (this.dampingRatio === 1) {
+      if (this.dampingRatio >= 1) {
         const decay = Math.exp(-frequency * seconds);
         const coefficient = this.velocity + frequency * displacement;
         this.value = target + (displacement + coefficient * seconds) * decay;
@@ -648,8 +608,7 @@
         const damping = this.dampingRatio * frequency;
         const damped = frequency * Math.sqrt(1 - this.dampingRatio * this.dampingRatio);
         const decay = Math.exp(-damping * seconds);
-        const cosine = Math.cos(damped * seconds);
-        const sine = Math.sin(damped * seconds);
+        const cosine = Math.cos(damped * seconds), sine = Math.sin(damped * seconds);
         const positionCoefficient = (this.velocity + damping * displacement) / damped;
         const velocityCoefficient = (damping * this.velocity + this.stiffness * displacement) / damped;
         this.value = target + decay * (displacement * cosine + positionCoefficient * sine);
@@ -658,138 +617,11 @@
     }
   }
 
-  function jellyRubberBand(distance, dimension) {
-    if (distance === 0 || dimension <= 0) return 0;
-    const damped = (1 - 1 / (Math.abs(distance) * 0.14 / dimension + 1)) * dimension;
-    return distance < 0 ? -damped : damped;
-  }
-
-  function jellyPanelOffset(rawOffset, width) {
-    if (width <= 0 || rawOffset === 0) return 0;
-    const fraction = clamp(rawOffset / width, -1, 1);
-    const x = Math.abs(fraction);
-    let low = 0, high = 1, p = x;
-    for (let i = 0; i < 10; i++) {
-      const bx = p * p * (3 * (1 - p) * 0.58 + p);
-      if (bx < x) low = p; else high = p;
-      p = (low + high) / 2;
-    }
-    const eased = p * p * (3 * (1 - p) + p);
-    return (fraction < 0 ? -4 : 4) * eased;
-  }
-
-  class JellyMotion {
-    constructor(initialIndex, count) {
-      const distortionDamping = 18 / (2 * Math.sqrt(240 * 0.9));
-      this.position = new JellySpring(Math.max(0, initialIndex), 1000, 1);
-      this.velocity = new JellySpring(0, 300, 0.5);
-      this.press = new JellySpring(0, 1000, 1);
-      this.scaleX = new JellySpring(1, 250, 0.6);
-      this.scaleY = new JellySpring(1, 250, 0.7);
-      this.panel = new JellySpring(0, 300, 1);
-      this.trackY = new JellySpring(0, 240 / 0.9, distortionDamping);
-      this.trackX = new JellySpring(1, 240 / 0.9, distortionDamping);
-      this.trackPress = new JellySpring(1, 240 / 0.9, distortionDamping);
-      this.glow = new JellySpring(0, 240 / 0.9, distortionDamping);
-      this.target = this.position.value;
-      this.pressTarget = 0; this.shapeTarget = 1; this.releasePending = false;
-      this.downX = 0; this.downY = 0; this.dragStartTarget = this.target; this.dragStartPanel = 0; this.dragStartY = 0;
-      this.movedDistance = 0; this.originX = 0; this.width = 0; this.height = 64; this.tabCount = count;
-      this.dragging = false; this.running = false;
-      this.publish();
-    }
-    get maxIndex() { return Math.max(0, this.tabCount - 1); }
-    get tabWidth() { return Math.max(0, (this.width - 8) / Math.max(1, this.tabCount)); }
-    resize(width, height, count) {
-      this.width = width; this.height = height; this.tabCount = count;
-      this.target = clamp(this.target, 0, this.maxIndex);
-      if (!this.dragging) this.originX = this.width / 2;
-      this.publish();
-    }
-    select(index) {
-      this.dragging = false;
-      if (index >= 0) this.target = Math.min(index, this.maxIndex);
-      this.releasePending = true; this.pressTarget = 0; this.shapeTarget = 1; this.running = true;
-    }
-    begin(x, y) {
-      this.downX = x; this.downY = clamp(y, 0, this.height);
-      this.originX = clamp(this.downX, 0, this.width);
-      this.dragStartY = this.trackY.value; this.movedDistance = 0;
-      if (this.tabWidth > 0) this.target = this.indexAt(this.downX);
-      this.dragStartTarget = this.target; this.dragStartPanel = this.panel.value;
-      this.dragging = true; this.releasePending = false; this.pressTarget = 1; this.shapeTarget = 1.3;
-      this.panel.velocity = 0; this.running = true;
-    }
-    drag(dx, dy) {
-      if (!this.dragging || this.tabWidth <= 0) return;
-      this.target = clamp(this.dragStartTarget + dx / this.tabWidth, 0, this.maxIndex);
-      this.panel.snapTo(this.dragStartPanel + dx);
-      this.trackY.snapTo(this.dragStartY + jellyRubberBand(dy, this.height) * 0.25);
-      this.trackX.snapTo(1 - Math.min(Math.abs(dy) / 700, 1) * 0.08);
-      this.originX = clamp(this.downX + dx, 0, this.width);
-      this.movedDistance = Math.max(this.movedDistance, Math.max(Math.abs(dx), Math.abs(dy)));
-      this.publish();
-    }
-    finish() {
-      const index = (this.movedDistance < 4 && this.tabWidth > 0) ? this.indexAt(this.downX)
-        : clamp(Math.floor(this.target + 0.5), 0, this.maxIndex);
-      this.dragging = false; this.panel.velocity = 0; this.target = index;
-      this.releasePending = true; this.running = true;
-      return index;
-    }
-    cancel(selectedIndex) { this.dragging = false; this.panel.velocity = 0; this.select(selectedIndex); }
-    advance(seconds) {
-      const delta = clamp(seconds, 0, 0.064);
-      this.target = clamp(this.target, 0, this.maxIndex);
-      this.position.advance(this.target, delta);
-      this.velocity.advance(this.dragging && this.maxIndex > 0 ? this.position.velocity / this.maxIndex : 0, delta);
-      if (!this.dragging) this.panel.advance(0, delta);
-      if (this.releasePending && Math.abs(this.position.value - this.target) < Math.max(1, this.maxIndex) * 0.025) {
-        this.releasePending = false; this.pressTarget = 0; this.shapeTarget = 1;
-      }
-      this.press.advance(this.pressTarget, delta);
-      this.scaleX.advance(this.shapeTarget, delta);
-      this.scaleY.advance(this.shapeTarget, delta);
-      this.trackPress.advance(this.dragging ? 1.025 : 1, delta);
-      this.glow.advance(this.dragging ? 1 : 0, delta);
-      if (!this.dragging) {
-        this.trackY.advance(0, delta);
-        this.trackX.advance(1, delta);
-        if (this.trackX.isAtRest(1)) this.originX = this.width / 2;
-      }
-      this.publish();
-      this.running = this.dragging || this.releasePending || !this.position.isAtRest(this.target) || !this.velocity.isAtRest(0) ||
-        !this.press.isAtRest(0) || !this.scaleX.isAtRest(1) || !this.scaleY.isAtRest(1) ||
-        !this.panel.isAtRest(0) || !this.trackY.isAtRest(0) || !this.trackX.isAtRest(1) ||
-        !this.trackPress.isAtRest(1) || !this.glow.isAtRest(0);
-    }
-    indexAt(x) { return clamp(Math.floor((x - 4) / this.tabWidth), 0, this.maxIndex); }
-    publish() {
-      const speed = this.velocity.value / 10;
-      this.frame = {
-        position: this.position.value,
-        pillScaleX: this.scaleX.value / (1 - clamp(speed * 0.75, -0.2, 0.2)),
-        pillScaleY: this.scaleY.value * (1 - clamp(speed * 0.25, -0.2, 0.2)),
-        contentScale: 1 + 0.2 * this.press.value,
-        panelOffset: jellyPanelOffset(this.panel.value, this.width),
-        trackScale: this.trackPress.value,
-        trackScaleX: this.trackX.value,
-        trackOffsetY: this.trackY.value,
-        originX: this.originX,
-        glowY: this.downY,
-        glowOpacity: clamp(this.glow.value, 0, 1),
-      };
-    }
-  }
-
-  /* ---------------- Nav bar DOM ---------------- */
+  /* Icons: iosApp Assets.xcassets/NuvioTab*.svg, drawn at 25x25 */
   const ICONS = {
-    // Material Icons.Filled.Home
-    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="FILL24" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
-    // composeResources/drawable/sidebar_search.xml
-    search: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="FILL20" fill-rule="evenodd" d="M4,9a5,5 0,1 1,10 0A5,5 0,0 1,4 9zm5,-7a7,7 0,1 0,4.2 12.6 0.999,0.999 0,0 0,0.093 0.107l3,3a1,1 0,0 0,1.414 -1.414l-3,-3a0.999,0.999 0,0 0,-0.107 -0.093A7,7 0,0 0,9 2z"/></svg>',
-    // composeResources/drawable/sidebar_library.xml
-    library: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="FILL24"><path d="M8.50989,2.00001H15.49C15.7225,1.99995 15.9007,1.99991 16.0565,2.01515C17.1643,2.12352 18.0711,2.78958 18.4556,3.68678H5.54428C5.92879,2.78958 6.83555,2.12352 7.94337,2.01515C8.09917,1.99991 8.27741,1.99995 8.50989,2.00001Z"/><path d="M6.31052,4.72312C4.91989,4.72312 3.77963,5.56287 3.3991,6.67691C3.39117,6.70013 3.38356,6.72348 3.37629,6.74693C3.77444,6.62636 4.18881,6.54759 4.60827,6.49382C5.68865,6.35531 7.05399,6.35538 8.64002,6.35547L8.75846,6.35547L15.5321,6.35547C17.1181,6.35538 18.4835,6.35531 19.5639,6.49382C19.9833,6.54759 20.3977,6.62636 20.7958,6.74693C20.7886,6.72348 20.781,6.70013 20.773,6.67691C20.3925,5.56287 19.2522,4.72312 17.8616,4.72312H6.31052Z"/><path fill-rule="evenodd" d="M8.67239,7.54204H15.3276C18.7024,7.54204 20.3898,7.54204 21.3377,8.52887C22.2855,9.5157 22.0625,11.0403 21.6165,14.0896L21.1935,16.9811C20.8437,19.3724 20.6689,20.568 19.7717,21.284C18.8745,22 17.5512,22 14.9046,22H9.09536C6.44881,22 5.12553,22 4.22834,21.284C3.33115,20.568 3.15626,19.3724 2.80648,16.9811L2.38351,14.0896C1.93748,11.0403 1.71447,9.5157 2.66232,8.52887C3.61017,7.54204 5.29758,7.54204 8.67239,7.54204ZM8,18.0001C8,17.5859 8.3731,17.2501 8.83333,17.2501H15.1667C15.6269,17.2501 16,17.5859 16,18.0001C16,18.4144 15.6269,18.7502 15.1667,18.7502H8.83333C8.3731,18.7502 8,18.4144 8,18.0001Z"/></g></svg>',
+    home: '<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+    search: '<svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 9a5 5 0 1 1 10 0A5 5 0 0 1 4 9Zm5-7a7 7 0 1 0 4.2 12.6.999.999 0 0 0 .093.107l3 3a1 1 0 0 0 1.414-1.414l-3-3a.999.999 0 0 0-.107-.093A7 7 0 0 0 9 2Z"/></svg>',
+    library: '<svg viewBox="0 0 24 24"><path d="M8.50989 2.00001H15.49C15.7225 1.99995 15.9007 1.99991 16.0565 2.01515C17.1643 2.12352 18.0711 2.78958 18.4556 3.68678H5.54428C5.92879 2.78958 6.83555 2.12352 7.94337 2.01515C8.09917 1.99991 8.27741 1.99995 8.50989 2.00001Z"/><path d="M6.31052 4.72312C4.91989 4.72312 3.77963 5.56287 3.3991 6.67691C3.39117 6.70013 3.38356 6.72348 3.37629 6.74693C3.77444 6.62636 4.18881 6.54759 4.60827 6.49382C5.68865 6.35531 7.05399 6.35538 8.64002 6.35547H15.5321C17.1181 6.35538 18.4835 6.35531 19.5639 6.49382C19.9833 6.54759 20.3977 6.62636 20.7958 6.74693C20.7886 6.72348 20.781 6.70013 20.773 6.67691C20.3925 5.56287 19.2522 4.72312 17.8616 4.72312H6.31052Z"/><path fill-rule="evenodd" d="M8.67239 7.54204H15.3276C18.7024 7.54204 20.3898 7.54204 21.3377 8.52887C22.2855 9.5157 22.0625 11.0403 21.6165 14.0896L21.1935 16.9811C20.8437 19.3724 20.6689 20.568 19.7717 21.284C18.8745 22 17.5512 22 14.9046 22H9.09536C6.44881 22 5.12553 22 4.22834 21.284C3.33115 20.568 3.15626 19.3724 2.80648 16.9811L2.38351 14.0896C1.93748 11.0403 1.71447 9.5157 2.66232 8.52887C3.61017 7.54204 5.29758 7.54204 8.67239 7.54204ZM8 18.0001C8 17.5859 8.3731 17.2501 8.83333 17.2501H15.1667C15.6269 17.2501 16 17.5859 16 18.0001C16 18.4144 15.6269 18.7502 15.1667 18.7502H8.83333C8.3731 18.7502 8 18.4144 8 18.0001Z"/></svg>',
   };
   const TABS = [
     { id: 'home', label: 'Home', icon: 'home' },
@@ -798,301 +630,249 @@
     { id: 'profile', label: 'Profile', avatar: true },
   ];
   const sections = TABS.map((t) => document.getElementById(t.id));
+  const iconHtml = (tab) => (tab.avatar ? '<span class="tb-ava">N</span>' : ICONS[tab.icon]);
+  const itemHtml = (tab) => `<span class="tb-ic" aria-hidden="true">${iconHtml(tab)}</span><span class="tb-lb">${tab.label}</span>`;
 
-  const bar = $('#nvBar'), track = $('#nvTrack'), pressEl = $('#nvPress'), distortEl = $('#nvDistort'), panelEl = $('#nvPanel');
-  const rowIdle = $('#nvRowIdle'), rowActive = $('#nvRowActive'), pillFill = $('#nvPillFill'), glowEl = $('#nvGlow'), targetsEl = $('#nvTargets');
-
-  function rowItem(tab, active) {
-    const item = document.createElement('div');
-    item.className = 'nv-item';
-    const icon = tab.icon ? ICONS[tab.icon]
-      .replace('FILL24', active ? 'url(#nv-acc-24)' : 'currentColor')
-      .replace('FILL20', active ? 'url(#nv-acc-20)' : 'currentColor') : '';
-    item.innerHTML = `<div class="nv-col"><div class="nv-ic">${icon}</div><div class="nv-lb">${tab.label}</div></div>`;
-    if (!active) item.querySelectorAll('[fill="currentColor"]').forEach((p) => p.removeAttribute('fill'));
-    return item;
-  }
-  TABS.forEach((tab) => { rowIdle.appendChild(rowItem(tab, false)); rowActive.appendChild(rowItem(tab, true)); });
-
-  const avatars = [];
-  const targets = TABS.map((tab, i) => {
+  const tb = $('#tb'), bar = $('#tbBar'), row = $('#tbRow'), platter = $('#tbPlatter');
+  const lens = $('#tbLens'), lensRow = $('#tbLensRow'), compact = $('#tbCompact'), compactIcon = $('#tbCompactIcon');
+  const buttons = TABS.map((tab) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'nv-target';
+    b.className = 'tb-item';
     b.setAttribute('role', 'tab');
-    b.setAttribute('aria-label', tab.label);
     b.setAttribute('aria-controls', tab.id);
-    if (tab.avatar) {
-      b.innerHTML = '<div class="nv-avatar-wrap"><div class="nv-avatar">N</div><div class="nv-sp"></div></div>';
-      avatars[i] = b.querySelector('.nv-avatar-wrap');
-    }
-    targetsEl.appendChild(b);
+    b.innerHTML = itemHtml(tab);
+    row.appendChild(b);
     return b;
   });
-  const avatarDot = targetsEl.querySelector('.nv-avatar');
+  const lensItems = TABS.map((tab) => {
+    const d = document.createElement('div');
+    d.className = 'tb-item';
+    d.innerHTML = itemHtml(tab);
+    lensRow.appendChild(d);
+    return d;
+  });
+
+  /* ---------------- Layout ---------------- */
+  const N = TABS.length, PAD = 4, BAR_H = 62, PLATTER_H = 54, LENS_H = 78, COMPACT = 56, MAG = 0.24;
+  let W = 0, X0 = 0, itemW = 0;
+  function layout() {
+    const vw = document.documentElement.clientWidth;
+    W = Math.min(420, vw - (vw < 500 ? 40 : 48));
+    X0 = Math.round((vw - W) / 2);
+    itemW = (W - PAD * 2) / N;
+    row.style.width = lensRow.style.width = `${W}px`;
+    platter.style.width = `${itemW}px`;
+  }
 
   /* ---------------- State ---------------- */
-  let selectedIndex = 0;
-  const motion = new JellyMotion(selectedIndex, TABS.length);
-  let lf = 1, lfFrom = 1, lfTo = 1, lfStart = 0; // label fraction tween (NuvioNavBarScrollState.labelVisibility)
-  const LF_MS = 300; // NuvioTokens.Motion.sheetEnterMillis
-  let accentRgb = hexRgb(THEMES[0].acc);
-
-  function applySelection(index) {
-    selectedIndex = index;
-    targets.forEach((t, i) => { t.setAttribute('aria-selected', String(i === index)); t.tabIndex = i === index ? 0 : -1; });
-    avatarDot.classList.toggle('sel', index === TABS.length - 1);
-  }
-  applySelection(0);
-
-  /* ---------------- Render ---------------- */
-  function roundRectPath(l, t, r, b, rx, ry) {
-    rx = Math.max(0, Math.min(rx, (r - l) / 2)); ry = Math.max(0, Math.min(ry, (b - t) / 2));
-    const f = (n) => n.toFixed(2);
-    return `M${f(l + rx)} ${f(t)}H${f(r - rx)}A${f(rx)} ${f(ry)} 0 0 1 ${f(r)} ${f(t + ry)}V${f(b - ry)}A${f(rx)} ${f(ry)} 0 0 1 ${f(r - rx)} ${f(b)}H${f(l + rx)}A${f(rx)} ${f(ry)} 0 0 1 ${f(l)} ${f(b - ry)}V${f(t + ry)}A${f(rx)} ${f(ry)} 0 0 1 ${f(l + rx)} ${f(t)}Z`;
-  }
-  function glowGradient(frame, extraAlpha) {
-    if (frame.glowOpacity <= 0) return '';
-    const a = 0.15 * frame.glowOpacity * extraAlpha;
-    const [r, g, b] = accentRgb;
-    return `radial-gradient(circle 300px at ${frame.originX.toFixed(1)}px ${frame.glowY.toFixed(1)}px, rgb(${r} ${g} ${b} / ${a}), rgb(${r} ${g} ${b} / ${a * 0.43}) 45%, rgb(${r} ${g} ${b} / 0) 100%)`;
-  }
-
-  function measure() {
-    motion.resize(track.offsetWidth, track.offsetHeight, TABS.length);
-    updateGlassMapSize();
-  }
+  let selected = 0, pressing = false;
+  const SLIDE = [380, 0.74], FOLLOW = [900, 0.9];
+  const pos = new Spring(0, ...SLIDE);   // platter / lens centre, in tab units
+  const press = new Spring(0, 420, 0.6); // 0 = resting platter, 1 = lifted glass lens
+  const mini = new Spring(0, 300, 0.82); // 0 = full bar, 1 = minimized to the selected tab
+  let posTarget = 0, pressTarget = 0, miniTarget = 0;
 
   function render() {
-    const f = motion.frame;
-    const W = motion.width, H = motion.height, n = TABS.length;
-    pressEl.style.transform = `scale(${f.trackScale})`;
-    distortEl.style.transformOrigin = `${f.originX}px 50%`;
-    distortEl.style.transform = `translateY(${f.trackOffsetY}px) scaleX(${f.trackScaleX})`;
-    panelEl.style.transform = `translateX(${f.panelOffset}px)`;
+    const m = mini.value, mc = clamp(m, 0, 1);
+    const bw = Math.max(COMPACT * 0.9, W + (COMPACT - W) * m), bh = BAR_H + (COMPACT - BAR_H) * m;
+    const p = press.value, pc = clamp(p, 0, 1);
+    bar.style.left = `${X0}px`;
+    bar.style.width = `${bw}px`;
+    bar.style.height = `${bh}px`;
+    bar.style.transform = `scale(${1 + 0.02 * p})`;
+    row.style.opacity = clamp(1 - mc * 1.8, 0, 1);
+    compact.style.opacity = clamp((mc - 0.3) / 0.7, 0, 1);
 
-    // jellyPillPath
-    const inset = 4, tabW = (W - 2 * inset) / n, itemH = H - 2 * inset;
-    const cx = inset + (f.position + 0.5) * tabW;
-    const hw = tabW * f.pillScaleX / 2, hh = itemH * f.pillScaleY / 2;
-    const radius = Math.min(tabW, itemH) / 2;
-    const pill = roundRectPath(cx - hw, H / 2 - hh, cx + hw, H / 2 + hh, radius * f.pillScaleX, radius * f.pillScaleY);
-    rowActive.style.clipPath = `path("${pill}")`;
-    rowIdle.style.clipPath = `path(evenodd, "M-80 -40H${W + 80}V${H + 40}H-80Z ${pill}")`;
-    rowActive.style.setProperty('--cs', f.contentScale.toFixed(4));
+    const x = pos.value;
+    platter.style.transform = `translateX(${PAD + x * itemW}px)`;
+    platter.style.opacity = (1 - pc) * clamp(1 - mc * 2, 0, 1);
 
-    const glow = glowGradient(f, 1);
-    glowEl.style.background = glow || 'none';
-    pillFill.style.background = glow ? `${glow}, rgb(var(--acc-rgb) / 0.15)` : '';
-
-    // Profile avatar scales by pill coverage (JellyTabTargets)
-    avatars.forEach((el, i) => {
-      if (!el) return;
-      const coverage = clamp(1 - Math.abs(f.position - i), 0, 1);
-      el.style.transform = `scale(${1 + (f.contentScale - 1) * coverage})`;
-    });
+    if (p > 0.01 && mc < 0.5) {
+      const stretch = clamp(Math.abs(pos.velocity) * 0.025, 0, 0.22);
+      const lw = itemW * (1 + 0.2 * p) * (1 + stretch);
+      const lh = (PLATTER_H + (LENS_H - PLATTER_H) * p) * (1 - stretch * 0.5);
+      const barTop = BAR_H - bh;
+      const cx = X0 + PAD + (x + 0.5) * itemW, cy = barTop + bh / 2;
+      const left = cx - lw / 2, top = cy - lh / 2;
+      lens.style.display = 'block';
+      lens.style.left = `${left}px`;
+      lens.style.top = `${top}px`;
+      lens.style.width = `${lw}px`;
+      lens.style.height = `${lh}px`;
+      lens.style.opacity = clamp(p * 2.5, 0, 1);
+      // Magnified copy of the tab row, aligned with the real one under the lens
+      lensRow.style.left = `${X0 - left}px`;
+      lensRow.style.top = `${barTop - top}px`;
+      lensRow.style.transformOrigin = `${cx - X0}px ${cy - barTop}px`;
+      lensRow.style.transform = `scale(${1 + MAG * pc})`;
+      const hover = clamp(Math.round(x), 0, N - 1);
+      lensItems.forEach((el, i) => el.classList.toggle('on', i === hover));
+    } else {
+      lens.style.display = 'none';
+    }
   }
 
-  /* ---------------- Frame loop ---------------- */
   let raf = 0, lastTs = 0;
   function kick() { if (!raf) raf = requestAnimationFrame(tick); }
   function tick(now) {
     raf = 0;
-    const dt = lastTs ? (now - lastTs) / 1000 : 0;
+    const dt = lastTs ? Math.min((now - lastTs) / 1000, 0.064) : 0;
     lastTs = now;
-    let busy = false;
-    if (lf !== lfTo) {
-      const t = reduceMotion ? 1 : clamp((now - lfStart) / LF_MS, 0, 1);
-      lf = t >= 1 ? lfTo : lfFrom + (lfTo - lfFrom) * standard(t);
-      bar.style.setProperty('--lf', lf.toFixed(4));
-      document.documentElement.style.setProperty('--lf', lf.toFixed(4));
-      measure();
-      busy = lf !== lfTo;
-    }
-    if (motion.running) { motion.advance(dt); busy = busy || motion.running; }
+    if (reduceMotion) { pos.snapTo(posTarget); press.snapTo(pressTarget); mini.snapTo(miniTarget); }
+    else { pos.advance(posTarget, dt); press.advance(pressTarget, dt); mini.advance(miniTarget, dt); }
     render();
-    if (busy) raf = requestAnimationFrame(tick); else lastTs = 0;
-  }
-  function setLabels(visible) {
-    const to = visible ? 1 : 0;
-    if (to === lfTo) return;
-    lfFrom = lf; lfTo = to; lfStart = performance.now();
-    kick();
+    if (pressing || !pos.isAtRest(posTarget) || !press.isAtRest(pressTarget) || !mini.isAtRest(miniTarget)) raf = requestAnimationFrame(tick);
+    else lastTs = 0;
   }
 
   /* ---------------- Selection ---------------- */
-  let spyLockUntil = 0;
-  function selectTab(index, { scroll = true } = {}) {
-    applySelection(index);
-    motion.select(index);
+  function applySelection(i) {
+    selected = i;
+    buttons.forEach((b, j) => {
+      b.classList.toggle('on', j === i);
+      b.setAttribute('aria-selected', String(j === i));
+      b.tabIndex = j === i && !miniTarget ? 0 : -1;
+    });
+    compactIcon.innerHTML = iconHtml(TABS[i]);
+    compact.setAttribute('aria-label', `${TABS[i].label}. Show all tabs`);
+  }
+  function setMini(on) {
+    const t = on ? 1 : 0;
+    if (t === miniTarget) return;
+    miniTarget = t;
+    compact.style.pointerEvents = on ? 'auto' : 'none';
+    compact.tabIndex = on ? 0 : -1;
+    row.toggleAttribute('inert', on);
+    applySelection(selected);
     kick();
-    if (scroll) {
-      spyLockUntil = performance.now() + 1200;
-      const top = index === 0 ? 0 : sections[index].getBoundingClientRect().top + scrollY - 16;
-      scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
-    }
+  }
+  let spyLockUntil = 0;
+  function scrollToSection(i) {
+    spyLockUntil = performance.now() + 1200;
+    const top = i === 0 ? 0 : sections[i].getBoundingClientRect().top + scrollY - 16;
+    scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
+  function goTo(i, scroll = true) {
+    applySelection(i);
+    pos.set(...SLIDE);
+    posTarget = i;
+    kick();
+    if (scroll) scrollToSection(i);
   }
   document.querySelectorAll('[data-nav]').forEach((el) => el.addEventListener('click', (e) => {
     e.preventDefault();
-    selectTab(Number(el.dataset.nav));
+    goTo(Number(el.dataset.nav));
   }));
 
-  /* ---------------- Gestures (detectJellyTabGestures) ---------------- */
-  let activePointer = null, downX = 0, downY = 0;
-  track.addEventListener('pointerdown', (e) => {
-    if (activePointer !== null) { // second finger: cancel like the Compose gesture loop
-      motion.cancel(selectedIndex); activePointer = null; kick(); return;
-    }
-    if (e.button !== 0) return;
-    activePointer = e.pointerId;
-    const r = track.getBoundingClientRect();
-    downX = e.clientX; downY = e.clientY;
-    motion.begin(e.clientX - r.left, e.clientY - r.top);
-    track.setPointerCapture(e.pointerId);
+  /* ---------------- Press, lens and scrub ---------------- */
+  let pid = null, startX = 0, hover = -1;
+  const fingerPos = (clientX) => clamp((clientX - tb.getBoundingClientRect().left - X0 - PAD) / itemW - 0.5, -0.25, N - 0.75);
+  bar.addEventListener('pointerdown', (e) => {
+    if (pid !== null || e.button !== 0 || miniTarget) return;
+    pid = e.pointerId;
+    bar.setPointerCapture(pid);
+    pressing = true;
+    startX = e.clientX;
+    pos.set(...FOLLOW);
+    posTarget = fingerPos(e.clientX);
+    pressTarget = 1;
+    hover = clamp(Math.round(posTarget), 0, N - 1);
     kick();
   });
-  track.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== activePointer || !motion.dragging) return;
-    motion.drag(e.clientX - downX, e.clientY - downY);
+  bar.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== pid) return;
+    posTarget = fingerPos(e.clientX);
+    const h = clamp(Math.round(posTarget), 0, N - 1);
+    if (h !== hover) { hover = h; if (navigator.vibrate) navigator.vibrate(6); }
     kick();
   });
-  track.addEventListener('pointerup', (e) => {
-    if (e.pointerId !== activePointer) return;
-    activePointer = null;
-    motion.drag(e.clientX - downX, e.clientY - downY);
-    const index = motion.finish();
-    kick();
-    if (index !== selectedIndex) selectTab(index);
-    else { applySelection(index); spyLockUntil = performance.now() + 1200; scrollTo({ top: index === 0 ? 0 : sections[index].getBoundingClientRect().top + scrollY - 16, behavior: reduceMotion ? 'auto' : 'smooth' }); }
-    targets[index].focus({ preventScroll: true });
-  });
-  const cancelPointer = (e) => {
-    if (e.pointerId !== activePointer) return;
-    activePointer = null;
-    motion.cancel(selectedIndex);
-    kick();
-  };
-  track.addEventListener('pointercancel', cancelPointer);
-  track.addEventListener('lostpointercapture', cancelPointer);
+  function release(e, commit) {
+    if (e.pointerId !== pid) return;
+    pid = null;
+    pressing = false;
+    pressTarget = 0;
+    const i = commit ? clamp(Math.round(fingerPos(e.clientX)), 0, N - 1) : selected;
+    goTo(i, commit);
+  }
+  bar.addEventListener('pointerup', (e) => release(e, true));
+  bar.addEventListener('pointercancel', (e) => release(e, false));
+  bar.addEventListener('lostpointercapture', (e) => release(e, false));
+  compact.addEventListener('click', () => { setMini(false); buttons[selected].focus({ preventScroll: true }); });
 
   // Keyboard: clicks with detail === 0 come from Enter/Space, pointer taps are handled above
-  targets.forEach((t, i) => t.addEventListener('click', (e) => { if (e.detail === 0) selectTab(i); }));
-  targetsEl.addEventListener('keydown', (e) => {
-    const cur = targets.indexOf(document.activeElement);
+  buttons.forEach((b, i) => b.addEventListener('click', (e) => { if (e.detail === 0) goTo(i); }));
+  row.addEventListener('keydown', (e) => {
+    const cur = buttons.indexOf(document.activeElement);
     if (cur < 0) return;
     let next = -1;
-    if (e.key === 'ArrowRight') next = (cur + 1) % TABS.length;
-    else if (e.key === 'ArrowLeft') next = (cur - 1 + TABS.length) % TABS.length;
+    if (e.key === 'ArrowRight') next = (cur + 1) % N;
+    else if (e.key === 'ArrowLeft') next = (cur - 1 + N) % N;
     else if (e.key === 'Home') next = 0;
-    else if (e.key === 'End') next = TABS.length - 1;
+    else if (e.key === 'End') next = N - 1;
     if (next < 0) return;
     e.preventDefault();
-    targets[next].focus();
-    selectTab(next);
+    goTo(next);
+    buttons[next].focus();
   });
 
-  /* ---------------- Scroll: label collapse + section spy ---------------- */
-  const SCROLL_THRESHOLD = 60;
+  /* ---------------- Scroll: minimize on scroll down + section spy ---------------- */
+  const MINI_THRESHOLD = 40;
   let lastY = scrollY, acc = 0, scrollQueued = false;
   function onScroll() {
     scrollQueued = false;
-    const y = scrollY;
-    const delta = lastY - y; // > 0 scrolling up, like NestedScroll available.y
+    const y = scrollY, d = y - lastY;
     lastY = y;
-    if (y <= 4) { acc = 0; setLabels(true); }
-    else if (delta !== 0) {
-      if ((delta < 0 && acc > 0) || (delta > 0 && acc < 0)) acc = 0;
-      acc += delta;
-      if (acc < -SCROLL_THRESHOLD) { setLabels(false); acc = 0; }
-      else if (acc > SCROLL_THRESHOLD) { setLabels(true); acc = 0; }
+    const locked = performance.now() < spyLockUntil;
+    if (y < 40) { acc = 0; setMini(false); }
+    else if (d && !locked && !pressing) {
+      if (Math.sign(d) !== Math.sign(acc)) acc = 0;
+      acc += d;
+      if (acc > MINI_THRESHOLD) { setMini(true); acc = 0; }
+      else if (acc < -MINI_THRESHOLD) { setMini(false); acc = 0; }
     }
-    if (performance.now() < spyLockUntil || motion.dragging) return;
+    if (locked || pressing) return;
     const probe = innerHeight * 0.4;
     let idx = 0;
     sections.forEach((s, i) => { if (s.getBoundingClientRect().top <= probe) idx = i; });
-    if (innerHeight + y >= document.documentElement.scrollHeight - 4) idx = TABS.length - 1;
-    if (idx !== selectedIndex) { applySelection(idx); motion.select(idx); kick(); }
+    if (innerHeight + y >= document.documentElement.scrollHeight - 4) idx = N - 1;
+    if (idx !== selected) goTo(idx, false);
   }
   addEventListener('scroll', () => { if (!scrollQueued) { scrollQueued = true; requestAnimationFrame(onScroll); } }, { passive: true });
   addEventListener('scrollend', () => { spyLockUntil = 0; });
 
-  /* ---------------- Liquid glass map (Chromium only) ---------------- */
-  const isChromium = !!(navigator.userAgentData && navigator.userAgentData.brands &&
-    navigator.userAgentData.brands.some((b) => /Chromium/.test(b.brand)));
-  const feMap = document.getElementById('nv-map');
-  let mapW = 0, mapH = 0, mapTimer = 0;
-  function buildGlassMap(W, H) {
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const ctx = c.getContext('2d');
-    const img = ctx.createImageData(W, H);
-    const d = img.data;
-    const hx = W / 2, hy = H / 2, radius = hy;
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const lx = x + 0.5 - hx, ly = y + 0.5 - hy;
-        const capX = Math.max(Math.abs(lx) - hx + radius, 0), capY = ly;
-        const dist = Math.hypot(capX, capY);
-        const edge = dist - radius;
-        const depth = Math.max(-edge, 0);
-        const nx = (capX * Math.sign(lx)) / Math.max(dist, 0.001), ny = capY / Math.max(dist, 0.001);
-        let rimV = 0, bend = 0;
-        if (depth < 16) {
-          const rim = Math.exp(-0.0565 * depth - 0.0322 * depth * depth);
-          const upperLight = 0.18 + 0.82 * Math.pow(Math.max(-ny, 0), 0.65);
-          bend = Math.pow(rim, 0.18);
-          rimV = rim * upperLight;
-        }
-        const o = (y * W + x) * 4;
-        // feDisplacementMap offset = scale * (C - 0.5): sample inward, against the normal
-        d[o] = Math.round(clamp(0.5 - 0.5 * nx * bend, 0, 1) * 255);
-        d[o + 1] = Math.round(clamp(0.5 - 0.5 * ny * bend, 0, 1) * 255);
-        d[o + 2] = Math.round(clamp(rimV, 0, 1) * 255);
-        d[o + 3] = 255;
-      }
-    }
-    ctx.putImageData(img, 0, 0);
-    feMap.setAttribute('href', c.toDataURL());
-    mapW = W; mapH = H;
+  /* ---------------- Liquid Glass: Clear to Tinted ---------------- */
+  const glassAmt = $('#glassAmt');
+  function applyGlass(v) {
+    const g = clamp(v, 0, 100) / 100;
+    const root = document.documentElement.style;
+    root.setProperty('--glass-bg', `rgb(28 28 30 / ${(0.12 + 0.6 * g).toFixed(3)})`);
+    root.setProperty('--glass-blur', `${(3 + 19 * g).toFixed(1)}px`);
+    try { localStorage.setItem('nv-glass', String(v)); } catch {}
   }
-  function updateGlassMapSize() {
-    if (!isChromium) return;
-    const W = Math.round(motion.width), H = Math.round(motion.height);
-    if (!W || !H) return;
-    feMap.setAttribute('width', W);
-    feMap.setAttribute('height', H);
-    if (W !== mapW || H !== mapH) {
-      clearTimeout(mapTimer);
-      mapTimer = setTimeout(() => buildGlassMap(Math.round(motion.width), Math.round(motion.height)), mapW ? 160 : 0);
-    }
-  }
-  if (isChromium) track.classList.add('nv-refract');
+  glassAmt.addEventListener('input', () => applyGlass(Number(glassAmt.value)));
+  try { const saved = localStorage.getItem('nv-glass'); if (saved !== null) glassAmt.value = saved; } catch {}
+  applyGlass(Number(glassAmt.value));
 
   /* ---------------- Themes ---------------- */
   const profilesEl = $('#profiles');
-  const stopsFor = (grad) => (grad.length > 1 ? grad : [grad[0], grad[0]])
-    .map((c, i, a) => `<stop offset="${i / (a.length - 1)}" stop-color="${c}"/>`).join('');
+  const swatch = (th) => (th.grad.length > 1 ? `linear-gradient(135deg, ${th.grad.join(', ')})` : th.acc);
   function applyTheme(i) {
     const th = THEMES[i];
-    accentRgb = hexRgb(th.acc);
     const root = document.documentElement.style;
-    root.setProperty('--acc-rgb', accentRgb.join(' '));
+    root.setProperty('--acc-rgb', hexRgb(th.acc).join(' '));
     root.setProperty('--on-acc', th.on);
     root.setProperty('--bg', th.bg);
+    root.setProperty('--tab-tint', th.nat);
     document.querySelector('meta[name="theme-color"]').setAttribute('content', th.bg);
-    document.getElementById('nv-acc-24').innerHTML = stopsFor(th.grad);
-    document.getElementById('nv-acc-20').innerHTML = stopsFor(th.grad);
-    avatarDot.style.background = th.grad.length > 1 ? `linear-gradient(135deg, ${th.grad.join(', ')})` : th.acc;
-    avatarDot.style.color = th.on;
     profilesEl.querySelectorAll('.profile').forEach((p, j) => p.setAttribute('aria-pressed', String(j === i)));
     try { localStorage.setItem('nv-theme', String(i)); } catch {}
-    render();
   }
   THEMES.forEach((th, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'profile';
-    b.innerHTML = `<div class="ava" style="background:${th.grad.length > 1 ? `linear-gradient(135deg, ${th.grad.join(', ')})` : th.acc};color:${th.on}">${th.name[0]}</div><span>${th.name}</span>`;
+    b.innerHTML = `<div class="ava" style="background:${swatch(th)};color:${th.on}">${th.name[0]}</div><span>${th.name}</span>`;
     b.addEventListener('click', () => { applyTheme(i); showToast(`${th.name} theme`); });
     profilesEl.appendChild(b);
   });
@@ -1101,8 +881,9 @@
   applyTheme(savedTheme);
 
   /* ---------------- Init ---------------- */
-  new ResizeObserver(() => { measure(); render(); }).observe(track);
-  measure();
+  addEventListener('resize', () => { layout(); render(); });
+  layout();
+  applySelection(0);
   onScroll();
   render();
 })();
