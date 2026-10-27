@@ -29,6 +29,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,14 +88,14 @@ object HomeRepository {
         // Only the catalog source chosen in the settings is shown (and loaded), when there is one.
         val catalogSourceOptions = buildCatalogSourceOptions(activeAddons, allCloudPlugins)
         CatalogSourceRepository.updateAvailable(catalogSourceOptions)
-        val catalogSourceId = CatalogSourceRepository.resolveSelectedId(catalogSourceOptions)
+        val catalogSourceIds = CatalogSourceRepository.resolveSelectedIds(catalogSourceOptions)
         val cloudPlugins = allCloudPlugins.filter { plugin ->
-            catalogSourceId == null || cloudStreamAddonId(plugin.metadata.id.value) == catalogSourceId
+            catalogSourceIds == null || cloudStreamAddonId(plugin.metadata.id.value) in catalogSourceIds
         }
         val requests = buildHomeCatalogDefinitions(activeAddons).filter { definition ->
-            catalogSourceId == null ||
+            catalogSourceIds == null ||
                 definition.serverConnectionId != null ||
-                addonCatalogSourceId(definition.manifestUrl) == catalogSourceId
+                addonCatalogSourceId(definition.manifestUrl) in catalogSourceIds
         }
         currentDefinitions = requests
         val requestCacheKeys = requests.mapTo(mutableSetOf(), HomeCatalogDefinition::cacheKey)
@@ -439,52 +440,72 @@ object HomeRepository {
         )
     }
 
+    /**
+     * Home rows of the CloudStream extensions, several extensions at a time, kept in extension
+     * order and titled "Extension · Category" so each extension's rows stay together.
+     */
     private suspend fun loadCloudSections(
         plugins: List<CloudStreamPluginItem>,
-    ): CloudHomeSectionsResult {
-        if (plugins.isEmpty()) return CloudHomeSectionsResult(sections = emptyList(), errorMessage = null)
+    ): CloudHomeSectionsResult = coroutineScope {
+        if (plugins.isEmpty()) return@coroutineScope CloudHomeSectionsResult(sections = emptyList(), errorMessage = null)
+        val scanned = plugins.take(HOME_CLOUDSTREAM_PROVIDER_SCAN_LIMIT)
+        // With only a few chosen extensions, each one can show more of its categories.
+        val rowsPerProvider = if (scanned.size <= 3) {
+            HOME_CLOUDSTREAM_ROWS_PER_CHOSEN_PROVIDER
+        } else {
+            HOME_CLOUDSTREAM_ROWS_PER_PROVIDER
+        }
+        val permits = Semaphore(HOME_CLOUDSTREAM_PROVIDER_CONCURRENCY)
+        val results = scanned.map { plugin ->
+            async {
+                permits.withPermit {
+                    plugin to withTimeoutOrNull(HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS) {
+                        CloudStreamRepository.getMainPage(plugin.metadata.id.value, page = 1)
+                    }
+                }
+            }
+        }.awaitAll()
+
         val sections = mutableListOf<HomeCatalogSection>()
         var firstError: String? = null
-        withTimeoutOrNull(HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS) {
-            for (plugin in plugins.take(HOME_CLOUDSTREAM_PROVIDER_SCAN_LIMIT)) {
-                if (sections.size >= HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT) break
-                val result = withTimeoutOrNull(HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS) {
-                    CloudStreamRepository.getMainPage(plugin.metadata.id.value, page = 1)
-                }
-                if (result == null) {
-                    if (firstError == null) firstError = "${plugin.metadata.name} timed out"
-                    continue
-                }
-                result.fold(
-                    onSuccess = { categories ->
-                        categories.forEach { (categoryName, items) ->
-                            if (sections.size >= HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT) return@forEach
-                            if (items.isEmpty()) return@forEach
-                            val previews = items.take(HOME_CATALOG_PREVIEW_FETCH_LIMIT).map { it.toMetaPreview() }
-                            sections += HomeCatalogSection(
-                                key = "cloudstream:${plugin.metadata.id.storageKey}:${categoryName.hashCode()}",
-                                title = categoryName,
-                                subtitle = "${plugin.metadata.name} · CloudStream",
-                                addonName = plugin.metadata.name,
-                                target = CatalogTarget.CloudStream(
-                                    providerId = plugin.metadata.id.value,
-                                    categoryName = categoryName,
-                                    contentType = items.first().type.nuvioType,
-                                    supportsPagination = false,
-                                ),
-                                items = previews,
-                                availableItemCount = items.size,
-                                hasMore = items.size > previews.size,
-                            )
-                        }
-                    },
-                    onFailure = { error ->
-                        if (firstError == null) firstError = error.message
-                    },
-                )
+        for ((plugin, result) in results) {
+            if (result == null) {
+                if (firstError == null) firstError = "${plugin.metadata.name} timed out"
+                continue
             }
+            val categories = result.getOrNull()
+            if (categories == null) {
+                if (firstError == null) firstError = result.exceptionOrNull()?.message
+                continue
+            }
+            val pluginName = plugin.metadata.name.ifBlank { plugin.metadata.internalName }
+            categories
+                .filter { (_, items) -> items.isNotEmpty() }
+                .take(rowsPerProvider)
+                .forEach { (categoryName, items) ->
+                    val previews = items.take(HOME_CATALOG_PREVIEW_FETCH_LIMIT).map { it.toMetaPreview() }
+                    sections += HomeCatalogSection(
+                        key = "cloudstream:${plugin.metadata.id.storageKey}:${categoryName.hashCode()}",
+                        title = if (categoryName.contains(pluginName, ignoreCase = true)) {
+                            categoryName
+                        } else {
+                            "$pluginName · $categoryName"
+                        },
+                        subtitle = "$pluginName · CloudStream",
+                        addonName = pluginName,
+                        target = CatalogTarget.CloudStream(
+                            providerId = plugin.metadata.id.value,
+                            categoryName = categoryName,
+                            contentType = items.first().type.nuvioType,
+                            supportsPagination = false,
+                        ),
+                        items = previews,
+                        availableItemCount = items.size,
+                        hasMore = items.size > previews.size,
+                    )
+                }
         }
-        return CloudHomeSectionsResult(sections = sections, errorMessage = firstError)
+        CloudHomeSectionsResult(sections = sections, errorMessage = firstError)
     }
 
     private fun ensureCollectionHeroFallback(
@@ -657,9 +678,10 @@ private const val HOME_CATALOG_MAX_CONCURRENT_FETCHES = 6
 private const val HOME_CATALOG_FETCH_TIMEOUT_MS = 30_000L
 private const val HOME_CATALOG_PREVIEW_FETCH_LIMIT = 18
 private const val HOME_CLOUDSTREAM_PROVIDER_SCAN_LIMIT = 18
-private const val HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT = 8
-private const val HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS = 5_000L
-private const val HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS = 15_000L
+private const val HOME_CLOUDSTREAM_ROWS_PER_PROVIDER = 4
+private const val HOME_CLOUDSTREAM_ROWS_PER_CHOSEN_PROVIDER = 12
+private const val HOME_CLOUDSTREAM_PROVIDER_CONCURRENCY = 4
+private const val HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS = 12_000L
 private const val HOME_CATALOG_PUBLISH_THROTTLE_MS = 200L
 private const val HOME_SNAPSHOT_SAVE_DELAY_MS = 1_500L
 

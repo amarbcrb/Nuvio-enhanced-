@@ -5,16 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppFeaturePolicy
-import com.nuvio.app.core.ui.NuvioDropdownField
-import com.nuvio.app.core.ui.NuvioSelectOption
-import com.nuvio.app.features.home.CatalogSourceRepository
+import com.nuvio.app.features.home.CatalogSourcePicker
 import com.nuvio.app.features.search.SearchHistoryRepository
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_settings_page_addons
 import nuvio.composeapp.generated.resources.compose_settings_page_media_servers
 import nuvio.composeapp.generated.resources.compose_settings_page_plugins
 import nuvio.composeapp.generated.resources.compose_settings_page_cloudstream
-import nuvio.composeapp.generated.resources.settings_catalog_source_all
 import nuvio.composeapp.generated.resources.settings_catalog_source_description
 import nuvio.composeapp.generated.resources.settings_catalog_source_section
 import nuvio.composeapp.generated.resources.settings_catalog_source_title
@@ -39,34 +36,17 @@ internal fun LazyListScope.contentDiscoveryContent(
     onMediaServersClick: () -> Unit,
 ) {
     item {
-        val selectedSource by remember {
-            CatalogSourceRepository.ensureLoaded()
-            CatalogSourceRepository.selected
-        }.collectAsStateWithLifecycle()
-        val availableSources by CatalogSourceRepository.available.collectAsStateWithLifecycle()
-        // Keep the saved choice listed even before the Home has reported its sources.
-        val sources = (availableSources + listOfNotNull(selectedSource)).distinctBy { it.id }
-
         SettingsSection(
             title = stringResource(Res.string.settings_catalog_source_section),
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
-                val allLabel = stringResource(Res.string.settings_catalog_source_all)
                 SettingsDropdownRow(
                     title = stringResource(Res.string.settings_catalog_source_title),
                     description = stringResource(Res.string.settings_catalog_source_description),
                     isTablet = isTablet,
                 ) {
-                    NuvioDropdownField(
-                        valueLabel = selectedSource?.name ?: allLabel,
-                        options = listOf(NuvioSelectOption(key = "", label = allLabel)) +
-                            sources.map { NuvioSelectOption(key = it.id, label = it.name) },
-                        selectedKeys = setOf(selectedSource?.id.orEmpty()),
-                        onSelect = { option ->
-                            CatalogSourceRepository.select(sources.firstOrNull { it.id == option.key })
-                        },
-                    )
+                    CatalogSourcePicker()
                 }
             }
         }

@@ -429,7 +429,7 @@ internal fun MainAppContent(
         StreamLanguagePreferencesRepository.preferences
     }.collectAsStateWithLifecycle()
     val cloudStreamLanguages = streamLanguagePreferences.extensionLanguages
-    val catalogSource by remember {
+    val catalogSources by remember {
         CatalogSourceRepository.ensureLoaded()
         CatalogSourceRepository.selected
     }.collectAsStateWithLifecycle()
@@ -438,11 +438,11 @@ internal fun MainAppContent(
         cloudStreamUiState.registryRevision,
         cloudStreamRunnableCount,
         cloudStreamLanguages,
-        catalogSource,
+        catalogSources,
     ) {
         buildAddonCatalogRefreshSignature(addonsUiState.addons) +
             "cloudstream:${cloudStreamUiState.registryRevision}:$cloudStreamRunnableCount:${cloudStreamLanguages.sorted()}" +
-            "catalog:${catalogSource?.id.orEmpty()}"
+            "catalog:${catalogSources.joinToString(",") { it.id }}"
     }
 
     val serversUiState by remember {

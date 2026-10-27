@@ -108,16 +108,16 @@ object SearchRepository {
             .filter(CloudStreamPluginItem::isRunnable)
             .filter { it.isAllowedByLanguagePreferences() }
         // Like the Home, only the catalog source chosen in the settings is searched, when there is one.
-        val catalogSourceId = CatalogSourceRepository.resolveSelectedId(
+        val catalogSourceIds = CatalogSourceRepository.resolveSelectedIds(
             buildCatalogSourceOptions(enabledAddons, runnableCloudPlugins),
         )
         val activeAddons = enabledAddons.filter { addon ->
             addon.manifest != null &&
-                (catalogSourceId == null || addonCatalogSourceId(addon.manifestUrl) == catalogSourceId)
+                (catalogSourceIds == null || addonCatalogSourceId(addon.manifestUrl) in catalogSourceIds)
         }
         val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
             runnableCloudPlugins.filter { plugin ->
-                catalogSourceId == null || cloudStreamAddonId(plugin.metadata.id.value) == catalogSourceId
+                catalogSourceIds == null || cloudStreamAddonId(plugin.metadata.id.value) in catalogSourceIds
             }
         } else {
             emptyList()

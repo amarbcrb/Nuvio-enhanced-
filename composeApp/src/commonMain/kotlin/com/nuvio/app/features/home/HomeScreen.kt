@@ -6,6 +6,7 @@ import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -920,6 +921,13 @@ fun HomeScreen(
     val keyedEnabledHomeItems = remember(enabledHomeItems) {
         enabledHomeItems.withDuplicateSafeLazyKeys(HomeCatalogSettingsItem::key)
     }
+    // CloudStream rows (and any other row without a catalog setting) follow the addon rows, grouped
+    // by extension in the order they were loaded.
+    val unmanagedSections = remember(homeUiState.sections, homeSettingsUiState.items) {
+        val managedKeys = homeSettingsUiState.items.mapTo(mutableSetOf()) { it.key }
+        homeUiState.sections.filter { it.key !in managedKeys && it.items.isNotEmpty() }
+    }
+    val catalogSourceOptions by CatalogSourceRepository.available.collectAsStateWithLifecycle()
     val resolvedBadgeInputs = remember(activeProfileId, effectiveWatchProgressSource) {
         mutableStateOf<Triple<WatchedUiState, List<WatchProgressEntry>, String>?>(null)
     }
@@ -1193,6 +1201,18 @@ fun HomeScreen(
                         disintegrationRequest = continueWatchingDisintegrationRequest,
                         )
 
+                        if (catalogSourceOptions.size > 1) {
+                            item(key = HOME_CATALOG_SOURCE_PICKER_KEY) {
+                                CatalogSourcePicker(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = homeSectionPadding)
+                                        .padding(bottom = 16.dp),
+                                    showLabel = true,
+                                )
+                            }
+                        }
+
                         keyedEnabledHomeItems.forEach { keyedSettingsItem ->
                             val settingsItem = keyedSettingsItem.value
                             if (settingsItem.isCollection) {
@@ -1229,6 +1249,26 @@ fun HomeScreen(
                                         )
                                     }
                                 }
+                            }
+                        }
+
+                        unmanagedSections.forEach { section ->
+                            item(key = "home_unmanaged_${section.key}") {
+                                HomeCatalogRowSection(
+                                    section = section,
+                                    entries = section.items.take(HOME_CATALOG_PREVIEW_LIMIT),
+                                    modifier = Modifier.padding(bottom = 12.dp),
+                                    sectionPadding = homeSectionPadding,
+                                    onViewAllClick = if (section.canOpenCatalog(HOME_CATALOG_PREVIEW_LIMIT)) {
+                                        onCatalogClick?.let { { it(section) } }
+                                    } else {
+                                        null
+                                    },
+                                    watchedKeys = watchedUiState.watchedKeys,
+                                    fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
+                                    onPosterClick = onPosterClick,
+                                    onPosterLongClick = onPosterLongClick,
+                                )
                             }
                         }
                     }
@@ -1294,6 +1334,7 @@ private fun LazyListScope.homeContinueWatchingSections(
 }
 
 private const val HOME_CATALOG_PREVIEW_LIMIT = 18
+private const val HOME_CATALOG_SOURCE_PICKER_KEY = "home_catalog_source_picker"
 private const val HOME_CONTINUE_WATCHING_SECTION_KEY = "home_continue_watching"
 private const val HOME_UPCOMING_SECTION_KEY = "home_upcoming"
 internal const val HomeContinueWatchingMaxRecentProgressItems = 300
