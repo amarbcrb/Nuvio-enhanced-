@@ -250,67 +250,78 @@
   }
   .toast.show { transform: translate(-50%, 0); }
 
-  /* ---------- iOS tab bar (iosApp ContentView.swift: native TabView, Liquid Glass) ---------- */
+  /* ---------- iOS 27 tab bar ----------
+     Behaviour: Nuvio iosApp ContentView.swift (native TabView, .tint(accent),
+     unselectedItemTintColor #969CA3, .tabBarMinimizeBehavior(.automatic)).
+     Geometry and material: Apple iOS 27 UI Kit 27.0.2 measurements
+     (54pt button row in a 62pt glass platter, 25pt side padding, -8pt tab
+     overlap, selection pill +4pt, minimized 48pt circle with diamond.fill). */
   .glass {
-    background: var(--glass-bg, rgb(28 28 30 / 0.45));
-    -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.8);
-    backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.8);
-    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.25),
-      inset 0 0.5px 0 rgb(255 255 255 / 0.22), inset 0 0 14px rgb(255 255 255 / 0.05);
+    background: rgb(48 48 50 / var(--glass-a, 0.52));
+    -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.6);
+    backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.6);
+    box-shadow:
+      0 8px 15px rgb(0 0 0 / 0.04), 0 10px 30px rgb(0 0 0 / 0.3),
+      0 0 0 0.5px rgb(0 0 0 / 0.35), -1.25px 0 0 -0.75px rgb(0 0 0 / 0.3), 1.25px 0 0 -0.75px rgb(0 0 0 / 0.3),
+      inset 0 40px 10px -40px rgb(26 26 26 / 0.9), inset 0 -40px 10px -40px rgb(26 26 26 / 0.9);
   }
+  /* Specular rim: brighter in iOS 27, lit from the top */
   .glass::before {
-    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
-    background: linear-gradient(140deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.08) 28%, rgb(255 255 255 / 0) 50%,
-      rgb(255 255 255 / 0.06) 72%, rgb(255 255 255 / 0.3) 100%);
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 0.75px; pointer-events: none; z-index: 2;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.1) 30%, rgb(255 255 255 / 0.04) 60%, rgb(255 255 255 / 0.16));
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
   }
-  .tb {
-    position: fixed; left: 0; right: 0; z-index: 50; height: 62px; pointer-events: none;
-    bottom: calc(max(env(safe-area-inset-bottom), 14px) + 6px);
-  }
+  .tb { position: fixed; left: 0; right: 0; bottom: 0; height: 140px; z-index: 50; pointer-events: none; }
   .tb-bar {
-    position: absolute; left: 0; bottom: 0; height: 62px; border-radius: 999px; overflow: hidden;
-    pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent; will-change: width, height, transform;
+    position: absolute; border-radius: 999px; overflow: hidden; pointer-events: auto;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   }
-  .tb-platter { position: absolute; left: 0; top: 4px; height: 54px; border-radius: 999px; background: rgb(255 255 255 / 0.12); will-change: transform; }
-  .tb-row, .tb-lens-row { position: absolute; height: 62px; display: flex; padding: 4px; }
-  .tb-row { left: 0; bottom: 0; }
+  .tb-pill {
+    position: absolute; top: 4px; height: 54px; border-radius: 100px; left: 0;
+    /* iOS 27 dark mode: the glass got lighter, so the selected pill now reads darker than the bar */
+    background: rgb(0 0 0 / 0.26); will-change: transform;
+  }
+  .tb-row, .tb-lens-row { position: absolute; height: 54px; }
+  .tb-row { left: 4px; top: 4px; }
   .tb-item {
-    position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    background: none; border: 0; padding: 0; margin: 0; font: inherit; color: var(--text-muted); border-radius: 999px; outline: none; cursor: pointer;
+    position: absolute; top: 0; height: 54px; padding: 6px 8px 7px; margin: 0; border: 0; background: none; font: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 0.5px;
+    color: var(--text-muted); border-radius: 100px; outline: none; cursor: pointer;
     transition: color 200ms var(--ease);
   }
-  .tb-item.on { color: var(--tab-tint); }
+  .tb-item.on { color: var(--tab-tint); gap: 1px; }
   .tb-item:focus-visible { box-shadow: inset 0 0 0 2px var(--tab-tint); }
-  .tb-ic { width: 28px; height: 28px; display: grid; place-items: center; }
+  .tb-ic { width: 28px; height: 28px; display: grid; place-items: center; flex: none; }
   .tb-ic svg { width: 25px; height: 25px; display: block; fill: currentColor; }
-  .tb-lb { font-size: 10px; line-height: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
+  .tb-lb { height: 12px; font-size: 10px; line-height: 12px; font-weight: 600; white-space: nowrap; }
+  .tb-item.on .tb-lb { letter-spacing: -0.1px; }
   /* NuvioNativeTabIcon.profileAvatar: 28pt circle, base #1E88E5, 1.5pt ring (accent when selected) */
   .tb-ava {
     width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
     font-size: 12.6px; font-weight: 700; color: #1E88E5; background: rgb(30 136 229 / 0.15);
     box-shadow: inset 0 0 0 1.5px rgb(30 136 229 / 0.5); transition: box-shadow 200ms var(--ease);
   }
-  .tb-item.on .tb-ava, .tb-compact .tb-ava { box-shadow: inset 0 0 0 1.5px var(--tab-tint); }
+  .tb-item.on .tb-ava { box-shadow: inset 0 0 0 1.5px var(--tab-tint); }
   .tb-compact {
-    position: absolute; left: 0; bottom: 0; width: 56px; height: 56px; border: 0; padding: 0; margin: 0; background: none;
+    position: absolute; left: 0; bottom: 0; width: 48px; height: 48px; border: 0; padding: 0; margin: 0; background: none;
     display: grid; place-items: center; color: var(--tab-tint); border-radius: 50%; opacity: 0; pointer-events: none; cursor: pointer; outline: none;
   }
+  .tb-compact svg { width: 20px; height: 20px; fill: currentColor; }
+  .tb-compact::after { content: ""; position: absolute; inset: -4px; } /* 56pt hit area, the 48pt circle is under 44pt + margin */
   .tb-compact:focus-visible { box-shadow: inset 0 0 0 2px var(--tab-tint); }
   .tb-lens {
     position: absolute; display: none; border-radius: 999px; overflow: hidden; pointer-events: none; z-index: 3;
-    background: rgb(255 255 255 / 0.05);
-    -webkit-backdrop-filter: blur(6px) saturate(1.7) brightness(1.12); backdrop-filter: blur(6px) saturate(1.7) brightness(1.12);
-    box-shadow: 0 10px 28px rgb(0 0 0 / 0.35), inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
-      inset 0 1.5px 3px rgb(255 255 255 / 0.35), inset 0 -1.5px 4px rgb(255 255 255 / 0.12),
-      inset 2px 0 3px rgb(255 120 120 / 0.16), inset -2px 0 3px rgb(110 170 255 / 0.18);
+    background: rgb(255 255 255 / 0.04);
+    -webkit-backdrop-filter: blur(5px) saturate(1.7) brightness(1.12); backdrop-filter: blur(5px) saturate(1.7) brightness(1.12);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.3),
+      inset 0 0 0 0.75px rgb(255 255 255 / 0.32), inset 0 2px 3px rgb(255 255 255 / 0.4), inset 0 -2px 4px rgb(255 255 255 / 0.16),
+      inset 2px 0 3px rgb(255 120 120 / 0.14), inset -2px 0 3px rgb(110 170 255 / 0.16);
   }
   .tb-lens::after {
     content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-    background: radial-gradient(120% 70% at 30% 0%, rgb(255 255 255 / 0.22), transparent 55%),
-      radial-gradient(90% 60% at 80% 110%, rgb(255 255 255 / 0.1), transparent 60%);
+    background: radial-gradient(110% 60% at 50% 0%, rgb(255 255 255 / 0.2), transparent 60%),
+      radial-gradient(90% 50% at 50% 105%, rgb(255 255 255 / 0.1), transparent 60%);
   }
   .tb-lens-row { will-change: transform; }
   .tb-lens-row .tb-item { cursor: default; }
@@ -419,7 +430,7 @@
     <div class="profiles reveal" id="profiles" role="group" aria-label="Theme"></div>
     <div class="glass-ctl reveal">
       <label for="glassAmt">Liquid Glass</label>
-      <div class="range-row"><span>Clear</span><input type="range" id="glassAmt" min="0" max="100" value="55"><span>Tinted</span></div>
+      <div class="range-row"><span>Clear</span><input type="range" id="glassAmt" min="0" max="100" value="50" aria-valuetext="Default"><span>Tinted</span></div>
     </div>
     <div class="install reveal">
       <h3>Install in Nuvio</h3>
@@ -441,9 +452,12 @@
 
 <nav class="tb" id="tb" aria-label="Main">
   <div class="tb-bar glass" id="tbBar">
-    <div class="tb-platter" id="tbPlatter"></div>
+    <div class="tb-pill" id="tbPill"></div>
     <div class="tb-row" id="tbRow" role="tablist"></div>
-    <button class="tb-compact" id="tbCompact" type="button" tabindex="-1"><span class="tb-ic" id="tbCompactIcon" aria-hidden="true"></span></button>
+    <button class="tb-compact" id="tbCompact" type="button" tabindex="-1">
+      <!-- diamond.fill, the iOS 27 minimized tab bar symbol -->
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 2.6a2.1 2.1 0 0 1 3 0l7.9 7.9a2.1 2.1 0 0 1 0 3l-7.9 7.9a2.1 2.1 0 0 1-3 0l-7.9-7.9a2.1 2.1 0 0 1 0-3z"/></svg>
+    </button>
   </div>
   <div class="tb-lens" id="tbLens" aria-hidden="true"><div class="tb-lens-row" id="tbLensRow"></div></div>
 </nav>
@@ -586,7 +600,7 @@
   }
 
   /* =====================================================================
-     iOS tab bar, after Nuvio's iosApp ContentView.swift: native TabView with
+     iOS 27 tab bar, after Nuvio's iosApp ContentView.swift: native TabView with
      .tint(accent), unselectedItemTintColor #969CA3 and
      .tabBarMinimizeBehavior(.automatic) (collapses on scroll down).
      ===================================================================== */
@@ -633,78 +647,91 @@
   const iconHtml = (tab) => (tab.avatar ? '<span class="tb-ava">N</span>' : ICONS[tab.icon]);
   const itemHtml = (tab) => `<span class="tb-ic" aria-hidden="true">${iconHtml(tab)}</span><span class="tb-lb">${tab.label}</span>`;
 
-  const tb = $('#tb'), bar = $('#tbBar'), row = $('#tbRow'), platter = $('#tbPlatter');
-  const lens = $('#tbLens'), lensRow = $('#tbLensRow'), compact = $('#tbCompact'), compactIcon = $('#tbCompactIcon');
+  const tb = $('#tb'), bar = $('#tbBar'), row = $('#tbRow'), pill = $('#tbPill');
+  const lens = $('#tbLens'), lensRow = $('#tbLensRow'), compact = $('#tbCompact');
+  const makeItem = (tab, tag) => {
+    const el = document.createElement(tag);
+    el.className = 'tb-item';
+    el.innerHTML = itemHtml(tab);
+    return el;
+  };
   const buttons = TABS.map((tab) => {
-    const b = document.createElement('button');
+    const b = makeItem(tab, 'button');
     b.type = 'button';
-    b.className = 'tb-item';
     b.setAttribute('role', 'tab');
     b.setAttribute('aria-controls', tab.id);
-    b.innerHTML = itemHtml(tab);
     row.appendChild(b);
     return b;
   });
-  const lensItems = TABS.map((tab) => {
-    const d = document.createElement('div');
-    d.className = 'tb-item';
-    d.innerHTML = itemHtml(tab);
-    lensRow.appendChild(d);
-    return d;
-  });
+  const lensItems = TABS.map((tab) => { const d = makeItem(tab, 'div'); lensRow.appendChild(d); return d; });
 
-  /* ---------------- Layout ---------------- */
-  const N = TABS.length, PAD = 4, BAR_H = 62, PLATTER_H = 54, LENS_H = 78, COMPACT = 56, MAG = 0.24;
-  let W = 0, X0 = 0, itemW = 0;
+  /* ---------------- Layout (iOS 27 kit, 402pt artboard) ---------------- */
+  const N = TABS.length;
+  const SIDE = 25, ROW_H = 54, INSET = 4, OVERLAP = 8, PILL_GROW = 4;
+  const GLASS_H = ROW_H + INSET * 2, GLASS_BOTTOM = SIDE - INSET;        // 62pt platter, 21pt from the bottom
+  const MINI = 48, MINI_BOTTOM = 28, MINI_SHIFT = 7;                     // 40pt control in a 48pt circle, padding 32
+  const LENS_GROW_W = 0.18, LENS_GROW_H = 18, MAG = 0.22;
+  const TB_H = 140;
+  let rowW = 0, glassW = 0, glassX = 0, tabW = 0, step = 0;
   function layout() {
     const vw = document.documentElement.clientWidth;
-    W = Math.min(420, vw - (vw < 500 ? 40 : 48));
-    X0 = Math.round((vw - W) / 2);
-    itemW = (W - PAD * 2) / N;
-    row.style.width = lensRow.style.width = `${W}px`;
-    platter.style.width = `${itemW}px`;
+    rowW = Math.min(352, vw - SIDE * 2);
+    glassW = rowW + INSET * 2;
+    glassX = Math.round((vw - glassW) / 2);
+    tabW = (rowW + OVERLAP * (N - 1)) / N;
+    step = tabW - OVERLAP;
+    [row, lensRow].forEach((r) => { r.style.width = `${rowW}px`; });
+    [...buttons, ...lensItems].forEach((el) => {
+      const i = el.parentNode === row ? buttons.indexOf(el) : lensItems.indexOf(el);
+      el.style.left = `${i * step}px`;
+      el.style.width = `${tabW}px`;
+    });
+    pill.style.width = `${tabW + PILL_GROW}px`;
   }
+  const lerp = (a, b, t) => a + (b - a) * t;
 
   /* ---------------- State ---------------- */
   let selected = 0, pressing = false;
-  const SLIDE = [380, 0.74], FOLLOW = [900, 0.9];
-  const pos = new Spring(0, ...SLIDE);   // platter / lens centre, in tab units
-  const press = new Spring(0, 420, 0.6); // 0 = resting platter, 1 = lifted glass lens
-  const mini = new Spring(0, 300, 0.82); // 0 = full bar, 1 = minimized to the selected tab
+  const SLIDE = [380, 0.8], FOLLOW = [900, 0.9];  // snappy-like spring for the pill, tighter while scrubbing
+  const pos = new Spring(0, ...SLIDE);   // pill / lens position, in tab units
+  const press = new Spring(0, 420, 0.6); // 0 = resting pill, 1 = lifted glass lens
+  const mini = new Spring(0, 300, 0.82); // 0 = full bar, 1 = minimized circle
   let posTarget = 0, pressTarget = 0, miniTarget = 0;
 
   function render() {
     const m = mini.value, mc = clamp(m, 0, 1);
-    const bw = Math.max(COMPACT * 0.9, W + (COMPACT - W) * m), bh = BAR_H + (COMPACT - BAR_H) * m;
+    const w = Math.max(MINI * 0.9, lerp(glassW, MINI, m)), h = lerp(GLASS_H, MINI, m);
+    const left = lerp(glassX, glassX + MINI_SHIFT, m), bottom = lerp(GLASS_BOTTOM, MINI_BOTTOM, m);
     const p = press.value, pc = clamp(p, 0, 1);
-    bar.style.left = `${X0}px`;
-    bar.style.width = `${bw}px`;
-    bar.style.height = `${bh}px`;
+    bar.style.left = `${left}px`;
+    bar.style.bottom = `${bottom}px`;
+    bar.style.width = `${w}px`;
+    bar.style.height = `${h}px`;
     bar.style.transform = `scale(${1 + 0.02 * p})`;
     row.style.opacity = clamp(1 - mc * 1.8, 0, 1);
     compact.style.opacity = clamp((mc - 0.3) / 0.7, 0, 1);
 
     const x = pos.value;
-    platter.style.transform = `translateX(${PAD + x * itemW}px)`;
-    platter.style.opacity = (1 - pc) * clamp(1 - mc * 2, 0, 1);
+    pill.style.transform = `translateX(${INSET + x * step - PILL_GROW / 2}px)`;
+    pill.style.opacity = (1 - pc) * clamp(1 - mc * 2, 0, 1);
 
     if (p > 0.01 && mc < 0.5) {
       const stretch = clamp(Math.abs(pos.velocity) * 0.025, 0, 0.22);
-      const lw = itemW * (1 + 0.2 * p) * (1 + stretch);
-      const lh = (PLATTER_H + (LENS_H - PLATTER_H) * p) * (1 - stretch * 0.5);
-      const barTop = BAR_H - bh;
-      const cx = X0 + PAD + (x + 0.5) * itemW, cy = barTop + bh / 2;
-      const left = cx - lw / 2, top = cy - lh / 2;
+      const lw = (tabW + PILL_GROW) * (1 + LENS_GROW_W * p) * (1 + stretch);
+      const lh = (ROW_H + LENS_GROW_H * p) * (1 - stretch * 0.5);
+      const rowLeft = left + INSET, rowTop = TB_H - bottom - h + INSET;
+      const cx = rowLeft + x * step + tabW / 2, cy = rowTop + ROW_H / 2;
+      const lx = cx - lw / 2, ly = cy - lh / 2;
       lens.style.display = 'block';
-      lens.style.left = `${left}px`;
-      lens.style.top = `${top}px`;
+      lens.style.left = `${lx}px`;
+      lens.style.top = `${ly}px`;
       lens.style.width = `${lw}px`;
       lens.style.height = `${lh}px`;
       lens.style.opacity = clamp(p * 2.5, 0, 1);
       // Magnified copy of the tab row, aligned with the real one under the lens
-      lensRow.style.left = `${X0 - left}px`;
-      lensRow.style.top = `${barTop - top}px`;
-      lensRow.style.transformOrigin = `${cx - X0}px ${cy - barTop}px`;
+      lensRow.style.left = `${rowLeft - lx}px`;
+      lensRow.style.top = `${rowTop - ly}px`;
+      lensRow.style.transformOrigin = `${cx - rowLeft}px ${ROW_H / 2}px`;
       lensRow.style.transform = `scale(${1 + MAG * pc})`;
       const hover = clamp(Math.round(x), 0, N - 1);
       lensItems.forEach((el, i) => el.classList.toggle('on', i === hover));
@@ -734,7 +761,6 @@
       b.setAttribute('aria-selected', String(j === i));
       b.tabIndex = j === i && !miniTarget ? 0 : -1;
     });
-    compactIcon.innerHTML = iconHtml(TABS[i]);
     compact.setAttribute('aria-label', `${TABS[i].label}. Show all tabs`);
   }
   function setMini(on) {
@@ -766,14 +792,13 @@
   }));
 
   /* ---------------- Press, lens and scrub ---------------- */
-  let pid = null, startX = 0, hover = -1;
-  const fingerPos = (clientX) => clamp((clientX - tb.getBoundingClientRect().left - X0 - PAD) / itemW - 0.5, -0.25, N - 0.75);
+  let pid = null, hover = -1;
+  const fingerPos = (clientX) => clamp((clientX - tb.getBoundingClientRect().left - glassX - INSET - tabW / 2) / step, -0.25, N - 0.75);
   bar.addEventListener('pointerdown', (e) => {
     if (pid !== null || e.button !== 0 || miniTarget) return;
     pid = e.pointerId;
     bar.setPointerCapture(pid);
     pressing = true;
-    startX = e.clientX;
     pos.set(...FOLLOW);
     posTarget = fingerPos(e.clientX);
     pressTarget = 1;
@@ -841,13 +866,15 @@
   addEventListener('scroll', () => { if (!scrollQueued) { scrollQueued = true; requestAnimationFrame(onScroll); } }, { passive: true });
   addEventListener('scrollend', () => { spyLockUntil = 0; });
 
-  /* ---------------- Liquid Glass: Clear to Tinted ---------------- */
+  /* ---------------- Liquid Glass slider (iOS 27 Settings > Appearance) ----------------
+     t = 1 ultra clear ... 0 fully tinted; opacity and blur scale as in the kit-derived model */
   const glassAmt = $('#glassAmt');
   function applyGlass(v) {
-    const g = clamp(v, 0, 100) / 100;
+    const t = 1 - clamp(v, 0, 100) / 100;
+    const opacityScale = 1.6 - 1.1 * t, blurScale = 0.5 + 0.8 * t;
     const root = document.documentElement.style;
-    root.setProperty('--glass-bg', `rgb(28 28 30 / ${(0.12 + 0.6 * g).toFixed(3)})`);
-    root.setProperty('--glass-blur', `${(3 + 19 * g).toFixed(1)}px`);
+    root.setProperty('--glass-a', clamp(0.5 * opacityScale, 0, 0.92).toFixed(3));
+    root.setProperty('--glass-blur', `${(14 * blurScale).toFixed(1)}px`);
     try { localStorage.setItem('nv-glass', String(v)); } catch {}
   }
   glassAmt.addEventListener('input', () => applyGlass(Number(glassAmt.value)));
