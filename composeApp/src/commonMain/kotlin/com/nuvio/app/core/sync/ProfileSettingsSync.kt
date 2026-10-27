@@ -26,6 +26,7 @@ import com.nuvio.app.core.ui.PosterCardStyleStorage
 import com.nuvio.app.features.settings.ThemeSettingsStorage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.streams.PinnedStreamSourcesRepository
+import com.nuvio.app.features.streams.StreamSearchScopeRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsStorage
 import com.nuvio.app.features.tmdb.TmdbSettingsStorage
@@ -308,6 +309,7 @@ object ProfileSettingsSync {
         StreamBadgeSettingsStorage.replaceFromSyncPayload(blob.features.streamBadgeSettings)
         StreamBadgeSettingsRepository.onProfileChanged()
         PinnedStreamSourcesRepository.onProfileChanged()
+        StreamSearchScopeRepository.onProfileChanged()
 
         DebridSettingsStorage.replaceFromSyncPayload(
             preservingLocalProfileCredentials(

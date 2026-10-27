@@ -300,7 +300,7 @@
     <string name="collections_pinned">Épinglé</string>
     <string name="collections_tab_all">Tout</string>
     <string name="collections_your_collections">Vos collections</string>
-    <string name="compose_about_made_with">Fait avec ❤️ par Tapframe et ses amis</string>
+    <string name="compose_about_made_with">Fait avec ❤️ par AMAR BOUCHAREB</string>
     <string name="compose_about_version_format">Version %1$s (%2$s)</string>
     <string name="compose_action_off">Désactivé</string>
     <string name="compose_action_on">Activé</string>
@@ -1336,6 +1336,9 @@
     <string name="streams_no_direct_link">Aucun lien direct du stream disponible</string>
     <string name="streams_no_metadata">Aucune métadonnée disponible</string>
     <string name="streams_refresh">Actualiser les streams</string>
+    <string name="streams_search_scope_all">Toutes les sources</string>
+    <string name="streams_search_scope_title">Chercher dans</string>
+    <string name="streams_search_scope_unavailable">%1$s ne propose pas ce titre : toutes les sources sont interrogées.</string>
     <string name="streams_resume_from_percent">Reprendre depuis %1$d%</string>
     <string name="streams_resume_from_time">Reprendre depuis %1$s</string>
     <string name="streams_size">TAILLE %1$s</string>

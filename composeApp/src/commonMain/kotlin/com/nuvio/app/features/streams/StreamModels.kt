@@ -325,6 +325,10 @@ data class StreamsUiState(
     val isDirectAutoPlayFlow: Boolean = false,
     val showDirectAutoPlayOverlay: Boolean = false,
     val overlayMessage: String? = null,
+    /** Every source able to serve this title, for the "search only in" picker. */
+    val sourceOptions: List<StreamSourceOption> = emptyList(),
+    /** The single source actually searched, or null when every source was searched. */
+    val searchScopeId: String? = null,
 ) {
     val filteredGroups: List<AddonStreamGroup>
         get() = if (selectedFilter == null) groups

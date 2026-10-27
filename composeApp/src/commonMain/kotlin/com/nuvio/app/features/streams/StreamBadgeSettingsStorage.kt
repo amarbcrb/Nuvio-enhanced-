@@ -21,6 +21,8 @@ internal expect object StreamBadgeSettingsStorage {
     fun saveStreamBadgePlacement(placement: String)
     fun loadPinnedStreamSources(): String?
     fun savePinnedStreamSources(sources: String)
+    fun loadStreamSearchScope(): String?
+    fun saveStreamSearchScope(sourceId: String)
     fun loadLegacyDebridStreamBadgeRules(): String?
     fun clearLegacyDebridStreamBadgeRules()
     fun exportToSyncPayload(): JsonObject

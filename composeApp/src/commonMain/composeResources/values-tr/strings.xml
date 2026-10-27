@@ -309,7 +309,7 @@
     <string name="collections_pinned">Sabitlendi</string>
     <string name="collections_tab_all">Tümü</string>
     <string name="collections_your_collections">Koleksiyonların</string>
-    <string name="compose_about_made_with">Tapframe ve arkadaşları tarafından ❤️ ile yapıldı</string>
+    <string name="compose_about_made_with">AMAR BOUCHAREB tarafından ❤️ ile yapıldı</string>
     <string name="compose_about_version_format">Sürüm %1$s (%2$s)</string>
     <string name="compose_action_off">Kapalı</string>
     <string name="compose_action_on">Açık</string>
@@ -1468,6 +1468,9 @@
     <string name="streams_no_direct_link">Doğrudan yayın bağlantısı yok</string>
     <string name="streams_no_metadata">Meta veri yok</string>
     <string name="streams_refresh">Yayınları yenile</string>
+    <string name="streams_search_scope_all">Tüm kaynaklar</string>
+    <string name="streams_search_scope_title">Şurada ara</string>
+    <string name="streams_search_scope_unavailable">%1$s bu başlığı oynatamıyor, tüm kaynaklar aranıyor.</string>
     <string name="streams_resume_from_percent">%1$d% konumundan devam et</string>
     <string name="streams_resume_from_time">%1$s konumundan devam et</string>
     <string name="streams_size">BOYUT %1$s</string>

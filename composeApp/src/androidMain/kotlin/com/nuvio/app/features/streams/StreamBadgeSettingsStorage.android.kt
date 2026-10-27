@@ -23,6 +23,7 @@ actual object StreamBadgeSettingsStorage {
     private const val streamBackgroundModeKey = "stream_background_mode"
     private const val streamBadgePlacementKey = "stream_badge_placement"
     private const val pinnedStreamSourcesKey = "pinned_stream_sources"
+    private const val streamSearchScopeKey = "stream_search_scope"
     private const val legacyDebridStreamBadgeRulesKey = "debrid_stream_badge_rules"
 
     private val syncKeys = listOf(streamBadgeRulesKey, showFileSizeBadgesKey, showInPlayerKey, playerBadgeSourceKey, streamBadgePlacementKey, streamBackgroundModeKey, pinnedStreamSourcesKey)
@@ -87,6 +88,12 @@ actual object StreamBadgeSettingsStorage {
 
     actual fun savePinnedStreamSources(sources: String) {
         saveString(pinnedStreamSourcesKey, sources)
+    }
+
+    actual fun loadStreamSearchScope(): String? = loadString(streamSearchScopeKey)
+
+    actual fun saveStreamSearchScope(sourceId: String) {
+        saveString(streamSearchScopeKey, sourceId)
     }
 
     actual fun loadLegacyDebridStreamBadgeRules(): String? =

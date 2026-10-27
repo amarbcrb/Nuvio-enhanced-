@@ -54,6 +54,8 @@ import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.shimmer
 import com.nuvio.app.features.streams.ProviderFilterRow
 import com.nuvio.app.features.streams.StreamsUiState
+import com.nuvio.app.features.streams.StreamSearchScopeRepository
+import com.nuvio.app.features.streams.StreamSourceOption
 import com.nuvio.app.features.streams.rememberRefreshRotation
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.collections_tab_all
@@ -214,6 +216,14 @@ internal fun PlayerProviderFilterRow(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         spacing = 16.dp,
+        sourceOptions = streamsUiState.sourceOptions,
+        searchScopeId = streamsUiState.searchScopeId,
+        onSearchScopeSelected = onRefresh?.let { reload ->
+            { option: StreamSourceOption? ->
+                StreamSearchScopeRepository.setScope(option)
+                reload()
+            }
+        },
         refreshChip = { isLoading, onClick ->
             val rotation = rememberRefreshRotation(isLoading)
             AddonFilterChip(

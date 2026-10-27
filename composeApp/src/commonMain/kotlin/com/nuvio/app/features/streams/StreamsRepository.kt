@@ -144,8 +144,10 @@ object StreamsRepository {
             episode = episode,
             manualSelection = manualSelection,
         )
+        StreamSearchScopeRepository.ensureLoaded()
         val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
-            "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}"
+            "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}" +
+            "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}"
         val currentState = _uiState.value
         if (
             !forceRefresh &&
@@ -239,25 +241,25 @@ object StreamsRepository {
         }
 
         val isNativeServerRequest = ServerStreams.isNativeRequest(videoId)
-        val serverSources = ServerStreams.sources(type, videoId, season, episode, forceRefresh)
-        val preferredGroupIds = serverSources.filter { it.preferred }.mapTo(mutableSetOf()) { it.addonId }
+        val allServerSources = ServerStreams.sources(type, videoId, season, episode, forceRefresh)
+        val preferredGroupIds = allServerSources.filter { it.preferred }.mapTo(mutableSetOf()) { it.addonId }
         val installedAddons = if (isNativeServerRequest) emptyList() else AddonRepository.uiState.value.addons.enabledAddons()
         val pluginScrapers = if (AppFeaturePolicy.pluginsEnabled && !isNativeServerRequest) {
             PluginRepository.getEnabledScrapersForType(type)
         } else {
             emptyList()
         }
-        val pluginProviderGroups = pluginScrapers.toPluginProviderGroups(
+        val allPluginProviderGroups = pluginScrapers.toPluginProviderGroups(
             repositories = pluginUiState.repositories,
             groupByRepository = pluginUiState.groupStreamsByRepository,
         )
-        val cloudStreamProviderGroups = if (AppFeaturePolicy.pluginsEnabled && !isNativeServerRequest) {
+        val allCloudStreamProviderGroups = if (AppFeaturePolicy.pluginsEnabled && !isNativeServerRequest) {
             cloudStreamProviderGroupsForRequest(type, cloudStreamSearchRequest)
         } else {
             emptyList()
         }
 
-        if (installedAddons.isEmpty() && pluginProviderGroups.isEmpty() && cloudStreamProviderGroups.isEmpty() && serverSources.isEmpty()) {
+        if (installedAddons.isEmpty() && allPluginProviderGroups.isEmpty() && allCloudStreamProviderGroups.isEmpty() && allServerSources.isEmpty()) {
             InAppLogger.warn("Streams/StreamsRepository", "No stream addons or plugin scrapers installed for type=$type id=$videoId")
             _uiState.value = StreamsUiState(
                 requestToken = requestToken,
@@ -268,7 +270,7 @@ object StreamsRepository {
             return
         }
 
-        val streamAddons = installedAddons
+        val allStreamAddons = installedAddons
             .mapNotNull { addon ->
                 val manifest = addon.manifest ?: return@mapNotNull null
                 if (!manifest.supportsStream(type, videoId)) return@mapNotNull null
@@ -280,14 +282,14 @@ object StreamsRepository {
                 )
             }
 
-        log.d { "Found ${streamAddons.size} addons for stream type=$type id=$videoId" }
+        log.d { "Found ${allStreamAddons.size} addons for stream type=$type id=$videoId" }
         InAppLogger.info(
             "Streams/StreamsRepository",
-            "Found addons=${streamAddons.size} pluginGroups=${pluginProviderGroups.size} pluginScrapers=${pluginScrapers.size} " +
-                "cloudStreamProviders=${cloudStreamProviderGroups.size} for type=$type id=$videoId",
+            "Found addons=${allStreamAddons.size} pluginGroups=${allPluginProviderGroups.size} pluginScrapers=${pluginScrapers.size} " +
+                "cloudStreamProviders=${allCloudStreamProviderGroups.size} for type=$type id=$videoId",
         )
 
-        if (streamAddons.isEmpty() && pluginProviderGroups.isEmpty() && cloudStreamProviderGroups.isEmpty() && serverSources.isEmpty()) {
+        if (allStreamAddons.isEmpty() && allPluginProviderGroups.isEmpty() && allCloudStreamProviderGroups.isEmpty() && allServerSources.isEmpty()) {
             InAppLogger.warn("Streams/StreamsRepository", "No compatible stream addon/plugin for type=$type id=$videoId")
             _uiState.value = StreamsUiState(
                 requestToken = requestToken,
@@ -297,6 +299,19 @@ object StreamsRepository {
             )
             return
         }
+
+        val sourceOptions = buildStreamSourceOptions(
+            streamAddons = allStreamAddons,
+            pluginProviderGroups = allPluginProviderGroups,
+            cloudStreamProviderGroups = allCloudStreamProviderGroups,
+            serverGroups = allServerSources.map { it.loadingGroup() },
+        )
+        val searchScopeId = StreamSearchScopeRepository.resolveScopeId(sourceOptions)
+        fun isInSearchScope(addonId: String): Boolean = searchScopeId == null || addonId == searchScopeId
+        val streamAddons = allStreamAddons.filter { isInSearchScope(it.addonId) }
+        val pluginProviderGroups = allPluginProviderGroups.filter { isInSearchScope(it.addonId) }
+        val cloudStreamProviderGroups = allCloudStreamProviderGroups.filter { isInSearchScope(it.addonId) }
+        val serverSources = allServerSources.filter { isInSearchScope(it.addonId) }
 
         // Initialise loading placeholders
         val installedAddonOrder = streamAddons.map { it.addonName }
@@ -329,6 +344,8 @@ object StreamsRepository {
             activeAddonIds = initialGroups.map { it.addonId }.toSet(),
             isAnyLoading = isInitiallyLoading,
             emptyStateReason = null,
+            sourceOptions = sourceOptions,
+            searchScopeId = searchScopeId,
             isDirectAutoPlayFlow = isDirectAutoPlayFlow,
             autoPlayDecided = true,
             showDirectAutoPlayOverlay = isDirectAutoPlayFlow,

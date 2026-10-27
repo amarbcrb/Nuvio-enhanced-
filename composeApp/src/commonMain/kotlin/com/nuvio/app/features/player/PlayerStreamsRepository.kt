@@ -27,6 +27,8 @@ import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamLoadCompletion
 import com.nuvio.app.features.streams.StreamParser
 import com.nuvio.app.features.streams.StreamsUiState
+import com.nuvio.app.features.streams.StreamSearchScopeRepository
+import com.nuvio.app.features.streams.buildStreamSourceOptions
 import com.nuvio.app.features.streams.buildCloudStreamSearchRequest
 import com.nuvio.app.features.streams.cloudStreamAddonId
 import com.nuvio.app.features.streams.cloudStreamProviderGroupsForRequest
@@ -297,8 +299,10 @@ object PlayerStreamsRepository {
         } else {
             0L
         }
+        StreamSearchScopeRepository.ensureLoaded()
         val requestKey = "$type::$videoId::$season::$episode::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
-            "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}"
+            "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}" +
+            "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}"
         PluginRepository.setLocalPluginSearchPaused(false)
         val current = stateFlow.value
         val cachedKey = requestKeyHolder()
@@ -355,8 +359,8 @@ object PlayerStreamsRepository {
         }
 
         val isNativeServerRequest = ServerStreams.isNativeRequest(videoId)
-        val serverSources = ServerStreams.sources(type, videoId, season, episode, forceRefresh)
-        val preferredGroupIds = serverSources.filter { it.preferred }.mapTo(mutableSetOf()) { it.addonId }
+        val allServerSources = ServerStreams.sources(type, videoId, season, episode, forceRefresh)
+        val preferredGroupIds = allServerSources.filter { it.preferred }.mapTo(mutableSetOf()) { it.addonId }
         val installedAddons = if (isNativeServerRequest) emptyList() else AddonRepository.uiState.value.addons.enabledAddons()
         PlayerSettingsRepository.ensureLoaded()
         val playerSettings = PlayerSettingsRepository.uiState.value
@@ -366,17 +370,17 @@ object PlayerStreamsRepository {
         } else {
             emptyList()
         }
-        val pluginProviderGroups = pluginScrapers.toPluginProviderGroups(
+        val allPluginProviderGroups = pluginScrapers.toPluginProviderGroups(
             repositories = pluginUiState.repositories,
             groupByRepository = pluginUiState.groupStreamsByRepository,
         )
-        val cloudStreamProviderGroups = if (AppFeaturePolicy.pluginsEnabled && !isNativeServerRequest) {
+        val allCloudStreamProviderGroups = if (AppFeaturePolicy.pluginsEnabled && !isNativeServerRequest) {
             cloudStreamProviderGroupsForRequest(type, cloudStreamSearchRequest)
         } else {
             emptyList()
         }
 
-        if (installedAddons.isEmpty() && pluginProviderGroups.isEmpty() && cloudStreamProviderGroups.isEmpty() && serverSources.isEmpty()) {
+        if (installedAddons.isEmpty() && allPluginProviderGroups.isEmpty() && allCloudStreamProviderGroups.isEmpty() && allServerSources.isEmpty()) {
             InAppLogger.warn("Streams/PlayerStreamsRepository", "No stream addons or plugin scrapers installed for type=$type id=$videoId")
             stateFlow.value = StreamsUiState(
                 isAnyLoading = false,
@@ -385,7 +389,7 @@ object PlayerStreamsRepository {
             return
         }
 
-        val streamAddons = installedAddons
+        val allStreamAddons = installedAddons
             .mapNotNull { addon ->
                 val manifest = addon.manifest ?: return@mapNotNull null
                 if (!manifest.supportsStream(type, videoId)) return@mapNotNull null
@@ -399,11 +403,11 @@ object PlayerStreamsRepository {
 
         InAppLogger.info(
             "Streams/PlayerStreamsRepository",
-            "Found addons=${streamAddons.size} pluginGroups=${pluginProviderGroups.size} pluginScrapers=${pluginScrapers.size} " +
+            "Found addons=${allStreamAddons.size} pluginGroups=${allPluginProviderGroups.size} pluginScrapers=${pluginScrapers.size} " +
                 "for type=$type id=$videoId",
         )
 
-        if (streamAddons.isEmpty() && pluginProviderGroups.isEmpty() && cloudStreamProviderGroups.isEmpty() && serverSources.isEmpty()) {
+        if (allStreamAddons.isEmpty() && allPluginProviderGroups.isEmpty() && allCloudStreamProviderGroups.isEmpty() && allServerSources.isEmpty()) {
             InAppLogger.warn("Streams/PlayerStreamsRepository", "No compatible stream addon/plugin for type=$type id=$videoId")
             stateFlow.value = StreamsUiState(
                 isAnyLoading = false,
@@ -411,6 +415,19 @@ object PlayerStreamsRepository {
             )
             return
         }
+
+        val sourceOptions = buildStreamSourceOptions(
+            streamAddons = allStreamAddons,
+            pluginProviderGroups = allPluginProviderGroups,
+            cloudStreamProviderGroups = allCloudStreamProviderGroups,
+            serverGroups = allServerSources.map { it.loadingGroup() },
+        )
+        val searchScopeId = StreamSearchScopeRepository.resolveScopeId(sourceOptions)
+        fun isInSearchScope(addonId: String): Boolean = searchScopeId == null || addonId == searchScopeId
+        val streamAddons = allStreamAddons.filter { isInSearchScope(it.addonId) }
+        val pluginProviderGroups = allPluginProviderGroups.filter { isInSearchScope(it.addonId) }
+        val cloudStreamProviderGroups = allCloudStreamProviderGroups.filter { isInSearchScope(it.addonId) }
+        val serverSources = allServerSources.filter { isInSearchScope(it.addonId) }
 
         val installedAddonOrder = streamAddons.map { it.addonName }
         val initialGroups = StreamAutoPlaySelector.orderAddonStreams(streamAddons.map { addon ->
@@ -440,6 +457,8 @@ object PlayerStreamsRepository {
             groups = initialGroups,
             activeAddonIds = initialGroups.map { it.addonId }.toSet(),
             isAnyLoading = isInitiallyLoading,
+            sourceOptions = sourceOptions,
+            searchScopeId = searchScopeId,
         )
 
         val job = scope.launch {

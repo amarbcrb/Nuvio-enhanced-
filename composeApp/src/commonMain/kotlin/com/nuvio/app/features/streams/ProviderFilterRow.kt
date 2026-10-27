@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +64,9 @@ import nuvio.composeapp.generated.resources.collections_tab_all
 import nuvio.composeapp.generated.resources.streams_pin_source
 import nuvio.composeapp.generated.resources.streams_pinned_source
 import nuvio.composeapp.generated.resources.streams_refresh
+import nuvio.composeapp.generated.resources.streams_search_scope_all
+import nuvio.composeapp.generated.resources.streams_search_scope_title
+import nuvio.composeapp.generated.resources.streams_search_scope_unavailable
 import nuvio.composeapp.generated.resources.streams_unpin_source
 import org.jetbrains.compose.resources.stringResource
 import com.nuvio.app.core.ui.glass.ambientLiquidGlass
@@ -80,8 +85,17 @@ internal fun ProviderFilterRow(
         RefreshChip(isLoading = isLoading, onClick = onClick)
     },
     filterChip: (@Composable (AddonStreamGroup?, Boolean, () -> Unit) -> Unit)? = null,
+    sourceOptions: List<StreamSourceOption> = emptyList(),
+    searchScopeId: String? = null,
+    onSearchScopeSelected: ((StreamSourceOption?) -> Unit)? = null,
 ) {
     val addonGroups = groups.filter { it.streams.isNotEmpty() || it.isLoading }
+    val storedScope by remember {
+        StreamSearchScopeRepository.ensureLoaded()
+        StreamSearchScopeRepository.scope
+    }.collectAsStateWithLifecycle()
+    var showSearchScopeSheet by remember { mutableStateOf(false) }
+    val showSearchScopeChip = onSearchScopeSelected != null && (sourceOptions.size > 1 || storedScope != null)
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
     var pinSheetTarget by remember { mutableStateOf<PinTarget?>(null) }
     val chip: @Composable (AddonStreamGroup?, Boolean, () -> Unit) -> Unit =
@@ -111,6 +125,16 @@ internal fun ProviderFilterRow(
         if (onRefresh != null) {
             refreshChip(isRefreshing, onRefresh)
         }
+        if (showSearchScopeChip) {
+            val scopedName = sourceOptions.firstOrNull { it.id == searchScopeId }?.name
+            FilterChip(
+                label = scopedName ?: stringResource(Res.string.streams_search_scope_all),
+                icon = Icons.Rounded.Tune,
+                contentDescription = stringResource(Res.string.streams_search_scope_title),
+                isSelected = scopedName != null,
+                onClick = { showSearchScopeSheet = true },
+            )
+        }
         chip(null, selectedFilter == null) { onFilterSelected(null) }
         addonGroups.forEach { group ->
             chip(group, selectedFilter == group.addonId) { onFilterSelected(group.addonId) }
@@ -121,6 +145,82 @@ internal fun ProviderFilterRow(
         target = pinSheetTarget,
         onDismiss = { pinSheetTarget = null },
     )
+
+    if (showSearchScopeSheet && onSearchScopeSelected != null) {
+        StreamSearchScopeSheet(
+            options = sourceOptions,
+            storedScope = storedScope,
+            appliedScopeId = searchScopeId,
+            onSelected = { option ->
+                showSearchScopeSheet = false
+                onSearchScopeSelected(option)
+            },
+            onDismiss = { showSearchScopeSheet = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StreamSearchScopeSheet(
+    options: List<StreamSourceOption>,
+    storedScope: StreamSourceOption?,
+    appliedScopeId: String?,
+    onSelected: (StreamSourceOption?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+    fun select(option: StreamSourceOption?) {
+        coroutineScope.launch {
+            dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = { onSelected(option) })
+        }
+    }
+
+    NuvioModalBottomSheet(
+        onDismissRequest = {
+            coroutineScope.launch {
+                dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
+            }
+        },
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = nuvioSafeBottomPadding(16.dp)),
+        ) {
+            Text(
+                text = stringResource(Res.string.streams_search_scope_title),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (storedScope != null && appliedScopeId == null) {
+                Text(
+                    text = stringResource(Res.string.streams_search_scope_unavailable, storedScope.name),
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            NuvioBottomSheetDivider()
+            NuvioBottomSheetActionRow(
+                title = stringResource(Res.string.streams_search_scope_all),
+                selected = storedScope == null,
+                onClick = { select(null) },
+            )
+            options.forEach { option ->
+                NuvioBottomSheetActionRow(
+                    title = option.name,
+                    selected = storedScope?.id == option.id,
+                    onClick = { select(option) },
+                )
+            }
+        }
+    }
 }
 
 @Composable

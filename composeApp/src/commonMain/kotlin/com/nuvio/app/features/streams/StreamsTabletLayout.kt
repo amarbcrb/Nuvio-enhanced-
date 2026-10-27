@@ -217,6 +217,12 @@ internal fun TabletStreamsLayout(
                                 selectedFilter = uiState.selectedFilter,
                                 onFilterSelected = { addonId -> StreamsRepository.selectFilter(addonId) },
                                 onRefresh = onRefresh,
+                                sourceOptions = uiState.sourceOptions,
+                                searchScopeId = uiState.searchScopeId,
+                                onSearchScopeSelected = { option ->
+                                    StreamSearchScopeRepository.setScope(option)
+                                    onRefresh()
+                                },
                             )
 
                             ActiveScrapersStatusBlock(
