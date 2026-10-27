@@ -1,10 +1,22 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.Chip
+import com.nuvio.app.core.ui.NuvioDropdownField
+import com.nuvio.app.core.ui.NuvioDropdownOption
+import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.streams.StreamDubMode
 import com.nuvio.app.features.streams.StreamLanguageChoices
 import com.nuvio.app.features.streams.StreamLanguagePreferencesRepository
@@ -130,6 +142,7 @@ internal fun CloudStreamExtensionLanguageSettings(
     }
 }
 
+/** Multi-choice language list in a dropdown; "All" clears the choice. */
 @Composable
 private fun LanguageChipRow(
     title: String,
@@ -140,22 +153,59 @@ private fun LanguageChipRow(
     onClearSelection: () -> Unit,
     onToggle: (String) -> Unit,
 ) {
-    SettingsChipRow(
-        title = title,
-        description = description,
-        isTablet = isTablet,
-    ) {
-        Chip(
-            label = stringResource(Res.string.settings_language_any),
-            selected = selected.isEmpty(),
-            onClick = onClearSelection,
+    val anyLabel = stringResource(Res.string.settings_language_any)
+    val options = remember(languages, anyLabel) {
+        listOf(NuvioDropdownOption(key = "", label = anyLabel)) +
+            languages
+                .map { code -> NuvioDropdownOption(key = code, label = streamLanguageDisplayName(code)) }
+                .sortedBy { it.label.lowercase() }
+    }
+    SettingsDropdownRow(title = title, description = description, isTablet = isTablet) {
+        NuvioDropdownField(
+            valueLabel = if (selected.isEmpty()) {
+                anyLabel
+            } else {
+                selected.map(::streamLanguageDisplayName).sorted().joinToString(", ")
+            },
+            options = options,
+            selectedKeys = if (selected.isEmpty()) setOf("") else selected,
+            multiSelect = true,
+            onSelect = { option -> if (option.key.isEmpty()) onClearSelection() else onToggle(option.key) },
         )
-        languages.forEach { code ->
-            Chip(
-                label = streamLanguageDisplayName(code),
-                selected = code in selected,
-                onClick = { onToggle(code) },
+    }
+}
+
+/** A settings row with a title, a description and a dropdown field below them. */
+@Composable
+internal fun SettingsDropdownRow(
+    title: String,
+    description: String,
+    isTablet: Boolean,
+    field: @Composable () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = if (isTablet) 20.dp else 16.dp,
+                vertical = if (isTablet) 16.dp else 14.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = tokens.colors.textPrimary,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = tokens.colors.textMuted,
             )
         }
+        field()
     }
 }

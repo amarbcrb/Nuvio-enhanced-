@@ -5,7 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppFeaturePolicy
-import com.nuvio.app.core.ui.Chip
+import com.nuvio.app.core.ui.NuvioDropdownField
+import com.nuvio.app.core.ui.NuvioDropdownOption
 import com.nuvio.app.features.home.CatalogSourceRepository
 import com.nuvio.app.features.search.SearchHistoryRepository
 import nuvio.composeapp.generated.resources.Res
@@ -51,23 +52,21 @@ internal fun LazyListScope.contentDiscoveryContent(
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
-                SettingsChipRow(
+                val allLabel = stringResource(Res.string.settings_catalog_source_all)
+                SettingsDropdownRow(
                     title = stringResource(Res.string.settings_catalog_source_title),
                     description = stringResource(Res.string.settings_catalog_source_description),
                     isTablet = isTablet,
                 ) {
-                    Chip(
-                        label = stringResource(Res.string.settings_catalog_source_all),
-                        selected = selectedSource == null,
-                        onClick = { CatalogSourceRepository.select(null) },
+                    NuvioDropdownField(
+                        valueLabel = selectedSource?.name ?: allLabel,
+                        options = listOf(NuvioDropdownOption(key = "", label = allLabel)) +
+                            sources.map { NuvioDropdownOption(key = it.id, label = it.name) },
+                        selectedKeys = setOf(selectedSource?.id.orEmpty()),
+                        onSelect = { option ->
+                            CatalogSourceRepository.select(sources.firstOrNull { it.id == option.key })
+                        },
                     )
-                    sources.forEach { source ->
-                        Chip(
-                            label = source.name,
-                            selected = selectedSource?.id == source.id,
-                            onClick = { CatalogSourceRepository.select(source) },
-                        )
-                    }
                 }
             }
         }

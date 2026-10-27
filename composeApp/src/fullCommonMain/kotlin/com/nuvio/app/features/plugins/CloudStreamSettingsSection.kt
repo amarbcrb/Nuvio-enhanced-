@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
@@ -47,6 +49,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.nuvio.app.core.ui.NuvioDropdownField
+import com.nuvio.app.core.ui.NuvioDropdownOption
 import com.nuvio.app.core.ui.NuvioIconActionButton
 import com.nuvio.app.core.ui.NuvioInfoBadge
 import com.nuvio.app.core.ui.NuvioInputField
@@ -59,12 +63,14 @@ import com.nuvio.app.features.cloudstream.CloudStreamInstallResult
 import com.nuvio.app.features.cloudstream.CloudStreamPlatformSupport
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.CloudStreamRepositoryItem
 import com.nuvio.app.features.cloudstream.CloudStreamSite
 import com.nuvio.app.features.cloudstream.normalizeCloudStreamSiteUrl
 import com.nuvio.app.features.settings.AppLanguage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.streams.PinnedStreamSourcesRepository
 import com.nuvio.app.features.streams.cloudStreamAddonId
+import com.nuvio.app.features.streams.streamLanguageDisplayName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -92,6 +98,49 @@ internal object CloudStreamSettingsListState {
         private set
     var securityWarningAccepted by mutableStateOf(false)
         private set
+    var repositories by mutableStateOf<List<CloudStreamRepositoryItem>>(emptyList())
+        private set
+    var repositoryUrl by mutableStateOf("")
+    var editingRepositoryUrl by mutableStateOf<String?>(null)
+    var expandedRepositories by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    private val hasActiveFilter: Boolean
+        get() = query.isNotBlank() || selectedLanguage != null || selectedType != null ||
+            installFilter != CloudStreamInstallFilter.All
+
+    /**
+     * Extensions grouped by the repository they come from, like in CloudStream. While a filter is
+     * active, repositories without a matching extension are left out.
+     */
+    val pluginGroups: List<CloudStreamPluginGroup> by derivedStateOf {
+        val visibleByRepository = visiblePlugins.groupBy { it.metadata.repositoryManifestUrl }
+        val allByRepository = plugins.groupBy { it.metadata.repositoryManifestUrl }
+        val known = repositories.map { repository ->
+            val url = repository.manifest.sourceUrl
+            CloudStreamPluginGroup(
+                key = url,
+                repository = repository,
+                plugins = visibleByRepository[url].orEmpty(),
+                allPlugins = allByRepository[url].orEmpty(),
+            )
+        }
+        val knownUrls = repositories.map { it.manifest.sourceUrl }.toSet()
+        val orphans = visiblePlugins.filter { it.metadata.repositoryManifestUrl !in knownUrls }
+        val groups = known + listOfNotNull(
+            orphans.takeIf { it.isNotEmpty() }?.let {
+                CloudStreamPluginGroup(key = "", repository = null, plugins = it, allPlugins = it)
+            },
+        )
+        if (hasActiveFilter) groups.filter { it.plugins.isNotEmpty() } else groups
+    }
+
+    /** Extensions of a repository are listed once it is opened, or right away while filtering. */
+    fun isExpanded(key: String): Boolean = hasActiveFilter || key in expandedRepositories
+
+    fun toggleExpanded(key: String) {
+        expandedRepositories = if (key in expandedRepositories) expandedRepositories - key else expandedRepositories + key
+    }
 
     val visiblePlugins: List<CloudStreamPluginItem> by derivedStateOf {
         val normalizedQuery = query.trim().lowercase()
@@ -190,11 +239,20 @@ internal object CloudStreamSettingsListState {
         scope.launch {
             CloudStreamRepository.uiState.collect { state ->
                 plugins = state.plugins
+                repositories = state.repositories
                 securityWarningAccepted = state.securityWarningAccepted
             }
         }
     }
 }
+
+internal data class CloudStreamPluginGroup(
+    val key: String,
+    val repository: CloudStreamRepositoryItem?,
+    /** Extensions of the repository that match the filters. */
+    val plugins: List<CloudStreamPluginItem>,
+    val allPlugins: List<CloudStreamPluginItem>,
+)
 
 internal sealed interface CloudStreamHealth {
     data object Checking : CloudStreamHealth
@@ -232,8 +290,8 @@ internal fun CloudStreamSettingsSection() {
     val selectedAppLanguage by ThemeSettingsRepository.selectedAppLanguage.collectAsStateWithLifecycle()
     val copy = remember(selectedAppLanguage) { CloudStreamSettingsCopy.forLanguage(selectedAppLanguage) }
     val scope = rememberCoroutineScope()
-    var repositoryUrl by rememberSaveable { mutableStateOf("") }
-    var editingRepositoryUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var repositoryUrl by CloudStreamSettingsListState::repositoryUrl
+    var editingRepositoryUrl by CloudStreamSettingsListState::editingRepositoryUrl
     var isAddingRepository by remember { mutableStateOf(false) }
     var query by CloudStreamSettingsListState::query
     var selectedLanguage by CloudStreamSettingsListState::selectedLanguage
@@ -352,46 +410,6 @@ internal fun CloudStreamSettingsSection() {
         }
     }
 
-    if (state.repositories.isNotEmpty()) {
-        NuvioSectionLabel(copy.repositoriesSectionTitle)
-        state.repositories.forEach { repository ->
-            NuvioSurfaceCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(repository.manifest.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(
-                            repository.manifest.sourceUrl,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        repository.errorMessage?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                    IconButton(
-                        onClick = {
-                            repositoryUrl = repository.manifest.sourceUrl
-                            editingRepositoryUrl = repository.manifest.sourceUrl
-                        },
-                    ) {
-                        Icon(Icons.Rounded.Edit, contentDescription = copy.editRepositoryContentDescription)
-                    }
-                    IconButton(onClick = { CloudStreamRepository.refreshRepository(repository.manifest.sourceUrl) }) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = copy.refreshRepositoryContentDescription)
-                    }
-                    IconButton(onClick = { CloudStreamRepository.removeRepository(repository.manifest.sourceUrl) }) {
-                        Icon(Icons.Rounded.Delete, contentDescription = copy.removeRepositoryContentDescription)
-                    }
-                }
-            }
-        }
-    }
-
     if (state.plugins.isNotEmpty()) {
         NuvioSectionLabel(copy.providersSectionTitle)
         NuvioSurfaceCard {
@@ -403,41 +421,34 @@ internal fun CloudStreamSettingsSection() {
                 placeholder = copy.searchPlaceholder,
             )
             Spacer(Modifier.height(10.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CloudStreamInstallFilter.entries.forEach { filter ->
-                    CloudStreamFilterChip(copy.installFilterLabel(filter), installFilter == filter) {
-                        installFilter = filter
-                    }
-                }
-            }
+            NuvioDropdownField(
+                label = copy.installationLabel,
+                valueLabel = copy.installFilterLabel(installFilter),
+                options = CloudStreamInstallFilter.entries.map { NuvioDropdownOption(it.name, copy.installFilterLabel(it)) },
+                selectedKeys = setOf(installFilter.name),
+                onSelect = { option -> installFilter = CloudStreamInstallFilter.valueOf(option.key) },
+            )
             Spacer(Modifier.height(8.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CloudStreamFilterChip(copy.allLanguages, selectedLanguage == null) { selectedLanguage = null }
-                languages.forEach { language ->
-                    CloudStreamFilterChip(language.uppercase(), selectedLanguage == language) {
-                        selectedLanguage = language.takeUnless { selectedLanguage == language }
-                    }
-                }
-            }
+            NuvioDropdownField(
+                label = copy.languageLabel,
+                valueLabel = selectedLanguage?.let(::streamLanguageDisplayName) ?: copy.allLanguages,
+                options = listOf(NuvioDropdownOption("", copy.allLanguages)) +
+                    languages
+                        .map { NuvioDropdownOption(it, streamLanguageDisplayName(it)) }
+                        .sortedBy { it.label.lowercase() },
+                selectedKeys = setOf(selectedLanguage.orEmpty()),
+                onSelect = { option -> selectedLanguage = option.key.ifEmpty { null } },
+            )
             if (types.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CloudStreamFilterChip(copy.allTypes, selectedType == null) { selectedType = null }
-                    types.forEach { type ->
-                        CloudStreamFilterChip(type, selectedType == type) {
-                            selectedType = type.takeUnless { selectedType == type }
-                        }
-                    }
-                }
+                NuvioDropdownField(
+                    label = copy.typeLabel,
+                    valueLabel = selectedType ?: copy.allTypes,
+                    options = listOf(NuvioDropdownOption("", copy.allTypes)) +
+                        types.map { NuvioDropdownOption(it, it) },
+                    selectedKeys = setOf(selectedType.orEmpty()),
+                    onSelect = { option -> selectedType = option.key.ifEmpty { null } },
+                )
             }
             Spacer(Modifier.height(12.dp))
             Button(
@@ -484,6 +495,74 @@ internal fun CloudStreamSettingsSection() {
             copy = copy,
             onMessage = { message = it },
         )
+    }
+}
+
+/** A repository with its extension counts; opening it lists its extensions below. */
+@Composable
+internal fun CloudStreamRepositoryGroupCard(group: CloudStreamPluginGroup) {
+    val selectedAppLanguage by ThemeSettingsRepository.selectedAppLanguage.collectAsStateWithLifecycle()
+    val copy = remember(selectedAppLanguage) { CloudStreamSettingsCopy.forLanguage(selectedAppLanguage) }
+    val listState = CloudStreamSettingsListState
+    val expanded = listState.isExpanded(group.key)
+    val repository = group.repository
+    NuvioSurfaceCard(modifier = Modifier.clickable { listState.toggleExpanded(group.key) }) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    repository?.manifest?.name ?: copy.otherExtensions,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    copy.repositoryPluginCounts(
+                        total = group.allPlugins.size,
+                        installed = group.allPlugins.count { it.isInstalled },
+                        enabled = group.allPlugins.count { it.isRunnable },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                repository?.errorMessage?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            Icon(
+                if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+            )
+        }
+        if (repository != null && expanded) {
+            Spacer(Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    repository.manifest.sourceUrl,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                IconButton(
+                    onClick = {
+                        listState.repositoryUrl = repository.manifest.sourceUrl
+                        listState.editingRepositoryUrl = repository.manifest.sourceUrl
+                    },
+                ) {
+                    Icon(Icons.Rounded.Edit, contentDescription = copy.editRepositoryContentDescription)
+                }
+                IconButton(onClick = { CloudStreamRepository.refreshRepository(repository.manifest.sourceUrl) }) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = copy.refreshRepositoryContentDescription)
+                }
+                IconButton(onClick = { CloudStreamRepository.removeRepository(repository.manifest.sourceUrl) }) {
+                    Icon(
+                        Icons.Rounded.Delete,
+                        contentDescription = copy.removeRepositoryContentDescription,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -845,6 +924,17 @@ private class CloudStreamSettingsCopy private constructor(
         else -> english
     }
 
+    val installationLabel: String = text(english = "Installation", french = "Installation", turkish = "Kurulum")
+    val languageLabel: String = text(english = "Language", french = "Langue", turkish = "Dil")
+    val typeLabel: String = text(english = "Type", french = "Type", turkish = "Tür")
+    val otherExtensions: String = text(english = "Other extensions", french = "Autres extensions", turkish = "Diğer eklentiler")
+
+    fun repositoryPluginCounts(total: Int, installed: Int, enabled: Int): String = text(
+        english = "$total extensions · $installed installed · $enabled enabled",
+        french = "$total extensions · $installed installées · $enabled activées",
+        turkish = "$total eklenti · $installed kurulu · $enabled etkin",
+    )
+
     val healthTitle: String = text(
         english = "Check extensions",
         french = "Vérifier les extensions",
@@ -1151,28 +1241,6 @@ private fun String.localizedCloudStreamFailure(copy: CloudStreamSettingsCopy): S
         "Paket kuruldu ama doğrulama/uyumluluk şartları nedeniyle aktif edilemedi." -> copy.packageEnableFailure
         else -> this
     }
-
-@Composable
-private fun CloudStreamFilterChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(999.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Text(
-            label,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
 
 internal enum class CloudStreamInstallFilter {
     All,

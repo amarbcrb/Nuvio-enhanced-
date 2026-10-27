@@ -179,8 +179,42 @@ val StreamLanguageChoices: List<Pair<String, String>> = listOf(
     "ko" to "한국어",
 )
 
-fun streamLanguageDisplayName(code: String): String =
-    StreamLanguageChoices.firstOrNull { it.first == code.lowercase() }?.second ?: code.uppercase()
+/** Native names of other languages CloudStream extensions declare. */
+private val extraLanguageNames: Map<String, String> = mapOf(
+    "bn" to "বাংলা",
+    "cs" to "Čeština",
+    "el" to "Ελληνικά",
+    "fa" to "فارسی",
+    "fil" to "Filipino",
+    "he" to "עברית",
+    "hu" to "Magyar",
+    "id" to "Bahasa Indonesia",
+    "ms" to "Bahasa Melayu",
+    "mx" to "Español (México)",
+    "nl" to "Nederlands",
+    "pl" to "Polski",
+    "pt-br" to "Português (Brasil)",
+    "pt-pt" to "Português (Portugal)",
+    "ro" to "Română",
+    "sv" to "Svenska",
+    "ta" to "தமிழ்",
+    "te" to "తెలుగు",
+    "th" to "ไทย",
+    "tl" to "Tagalog",
+    "uk" to "Українська",
+    "ur" to "اردو",
+    "vi" to "Tiếng Việt",
+    "zh" to "中文",
+    "multi" to "Multi",
+    "mul" to "Multi",
+)
+
+fun streamLanguageDisplayName(code: String): String {
+    val normalized = code.lowercase()
+    return StreamLanguageChoices.firstOrNull { it.first == normalized }?.second
+        ?: extraLanguageNames[normalized]
+        ?: code.uppercase()
+}
 
 data class StreamLanguagePreferences(
     /** Link languages to keep; empty keeps every link. */
