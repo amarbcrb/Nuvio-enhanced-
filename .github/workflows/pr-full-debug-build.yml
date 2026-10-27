@@ -19,6 +19,8 @@ jobs:
   full-debug-build:
     name: Build fullDebug APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -59,3 +61,21 @@ jobs:
           archive: false
           if-no-files-found: error
           retention-days: 7
+
+      # Fixed download link for phones: the APK of the latest push replaces the previous one in
+      # the nuvio-plus-latest release.
+      - name: Publish APK to the nuvio-plus-latest release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          cp androidApp/build/outputs/apk/full/debug/androidApp-full-debug.apk NuvioPlus.apk
+          tag=nuvio-plus-latest
+          notes="Build $RUN_NUMBER (${GITHUB_SHA::7})"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" NuvioPlus.apk --clobber
+            gh release edit "$tag" --notes "$notes"
+          else
+            gh release create "$tag" NuvioPlus.apk --title "Nuvio Plus" --notes "$notes" --target "$GITHUB_SHA" --latest
+          fi
