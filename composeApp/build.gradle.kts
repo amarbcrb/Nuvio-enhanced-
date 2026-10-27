@@ -29,6 +29,9 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val appVersionCode: Property<Int>
 
     @get:Input
+    abstract val buildLabel: Property<String>
+
+    @get:Input
     abstract val supabaseUrl: Property<String>
 
     @get:Input
@@ -187,6 +190,7 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |object AppVersionConfig {
                 |    const val VERSION_NAME = "${appVersionName.get()}"
                 |    const val VERSION_CODE = ${appVersionCode.get()}
+                |    const val BUILD_LABEL = "${buildLabel.get()}"
                 |}
                 """.trimMargin()
             )
@@ -326,6 +330,13 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     localPropertiesFile.set(rootProject.layout.projectDirectory.file("local.properties"))
     appVersionName.set(releaseAppVersionName)
     appVersionCode.set(releaseAppVersionCode)
+    // Identifies CI builds (e.g. "build 9 · 90604f4") in Settings, since they all share the same version.
+    buildLabel.set(
+        listOfNotNull(
+            providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.let { "build $it" },
+            providers.environmentVariable("GITHUB_SHA").orNull?.take(7),
+        ).joinToString(" · "),
+    )
     supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL", fallback = publicNuvioApiUrl))
     supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY", fallback = publicNuvioApiKey))
     supabaseFallbackUrl.set(runtimeConfigValue("NUVIO_SUPABASE_FALLBACK_URL"))

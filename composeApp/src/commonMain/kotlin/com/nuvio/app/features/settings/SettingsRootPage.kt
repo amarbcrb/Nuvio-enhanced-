@@ -322,7 +322,7 @@ internal fun LazyListScope.settingsRootContent(
                     Res.string.compose_about_version_format,
                     AppVersionConfig.VERSION_NAME,
                     AppVersionConfig.VERSION_CODE,
-                ),
+                ) + AppVersionConfig.BUILD_LABEL.takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(),
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
