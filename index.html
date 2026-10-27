@@ -21,7 +21,6 @@
     --ease: cubic-bezier(0.2, 0, 0, 1);
     --radius-card: 16px;
     --gutter: clamp(16px, 4vw, 40px);
-    --tab-tint: #F5F5F5;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -250,86 +249,43 @@
   }
   .toast.show { transform: translate(-50%, 0); }
 
-  /* ---------- iOS 27 tab bar ----------
-     Behaviour: Nuvio iosApp ContentView.swift (native TabView, .tint(accent),
-     unselectedItemTintColor #969CA3, .tabBarMinimizeBehavior(.automatic)).
-     Geometry and material: Apple iOS 27 UI Kit 27.0.2 measurements
-     (54pt button row in a 62pt glass platter, 25pt side padding, -8pt tab
-     overlap, selection pill +4pt, minimized 48pt circle with diamond.fill). */
-  .glass {
-    background: rgb(48 48 50 / var(--glass-a, 0.52));
-    -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.6);
-    backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.6);
-    box-shadow:
-      0 8px 15px rgb(0 0 0 / 0.04), 0 10px 30px rgb(0 0 0 / 0.3),
-      0 0 0 0.5px rgb(0 0 0 / 0.35), -1.25px 0 0 -0.75px rgb(0 0 0 / 0.3), 1.25px 0 0 -0.75px rgb(0 0 0 / 0.3),
-      inset 0 40px 10px -40px rgb(26 26 26 / 0.9), inset 0 -40px 10px -40px rgb(26 26 26 / 0.9);
+  /* ---------- Floating navigation bar ----------
+     Port of the Nuvio Enhanced Android bar (core/ui/FloatingNavigationBar.kt,
+     jelly/*, glass/LiquidGlass*.kt). The glass and the selected lens are drawn by
+     a WebGL port of Kyant's backdrop "lens" shader. */
+  .nb {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; pointer-events: none;
+    display: flex; justify-content: center;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 14px);
   }
-  /* Specular rim: brighter in iOS 27, lit from the top */
-  .glass::before {
-    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 0.75px; pointer-events: none; z-index: 2;
-    background: linear-gradient(to bottom, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.1) 30%, rgb(255 255 255 / 0.04) 60%, rgb(255 255 255 / 0.16));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude;
+  .nb-track {
+    position: relative; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
-  .tb { position: fixed; left: 0; right: 0; bottom: 0; height: 140px; z-index: 50; pointer-events: none; }
-  .tb-bar {
-    position: absolute; border-radius: 999px; overflow: hidden; pointer-events: auto;
-    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  .nb-layer { position: absolute; inset: 0; }
+  .nb-press, .nb-distort, .nb-panel { will-change: transform; }
+  /* LiquidGlassFrostedBar: vibrancy + 10dp blur (+ 20dp lens in Chromium), surface tint 0.4, Shadow.Default */
+  .nb-glass {
+    position: absolute; inset: 0; border-radius: 999px;
+    background: rgb(var(--nb-surface, 26 26 30) / 0.4);
+    -webkit-backdrop-filter: saturate(1.5) blur(10px); backdrop-filter: saturate(1.5) blur(10px);
+    box-shadow: 0 4px 24px rgb(0 0 0 / 0.1);
   }
-  .tb-pill {
-    position: absolute; top: 4px; height: 54px; border-radius: 100px; left: 0;
-    /* iOS 27 dark mode: the glass got lighter, so the selected pill now reads darker than the bar */
-    background: rgb(0 0 0 / 0.26); will-change: transform;
+  .nb-refract .nb-glass { -webkit-backdrop-filter: url(#nbBarLens); backdrop-filter: url(#nbBarLens); }
+  .nb-canvas { position: absolute; pointer-events: none; }
+  .nb-targets { display: flex; padding: 0 4px; }
+  .nb-target {
+    flex: 1 1 0; min-width: 0; height: 100%; background: none; border: 0; padding: 0; margin: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; border-radius: 999px; outline: none;
   }
-  .tb-row, .tb-lens-row { position: absolute; height: 54px; }
-  .tb-row { left: 4px; top: 4px; }
-  .tb-item {
-    position: absolute; top: 0; height: 54px; padding: 6px 8px 7px; margin: 0; border: 0; background: none; font: inherit;
-    display: flex; flex-direction: column; align-items: center; gap: 0.5px;
-    color: var(--text-muted); border-radius: 100px; outline: none; cursor: pointer;
-    transition: color 200ms var(--ease);
-  }
-  .tb-item.on { color: var(--tab-tint); gap: 1px; }
-  .tb-item:focus-visible { box-shadow: inset 0 0 0 2px var(--tab-tint); }
-  .tb-ic { width: 28px; height: 28px; display: grid; place-items: center; flex: none; }
-  .tb-ic svg { width: 25px; height: 25px; display: block; fill: currentColor; }
-  .tb-lb { height: 12px; font-size: 10px; line-height: 12px; font-weight: 600; white-space: nowrap; }
-  .tb-item.on .tb-lb { letter-spacing: -0.1px; }
-  /* NuvioNativeTabIcon.profileAvatar: 28pt circle, base #1E88E5, 1.5pt ring (accent when selected) */
-  .tb-ava {
+  .nb-target:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--acc-rgb) / 0.9); }
+  .nb-avatar-wrap { display: flex; flex-direction: column; align-items: center; will-change: transform; }
+  .nb-avatar {
     width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
-    font-size: 12.6px; font-weight: 700; color: #1E88E5; background: rgb(30 136 229 / 0.15);
-    box-shadow: inset 0 0 0 1.5px rgb(30 136 229 / 0.5); transition: box-shadow 200ms var(--ease);
+    font-size: 12px; font-weight: 800; color: #fff;
+    background: radial-gradient(circle at 50% 35%, #3b4a6b, #1b2235 70%);
+    box-shadow: inset 0 0 0 2px #2c3a55, 0 0 0 1px rgb(255 255 255 / 0.12);
   }
-  .tb-item.on .tb-ava { box-shadow: inset 0 0 0 1.5px var(--tab-tint); }
-  .tb-compact {
-    position: absolute; left: 0; bottom: 0; width: 48px; height: 48px; border: 0; padding: 0; margin: 0; background: none;
-    display: grid; place-items: center; color: var(--tab-tint); border-radius: 50%; opacity: 0; pointer-events: none; cursor: pointer; outline: none;
-  }
-  .tb-compact svg { width: 20px; height: 20px; fill: currentColor; }
-  .tb-compact::after { content: ""; position: absolute; inset: -4px; } /* 56pt hit area, the 48pt circle is under 44pt + margin */
-  .tb-compact:focus-visible { box-shadow: inset 0 0 0 2px var(--tab-tint); }
-  .tb-lens {
-    position: absolute; display: none; border-radius: 999px; overflow: hidden; pointer-events: none; z-index: 3;
-    background: rgb(255 255 255 / 0.04);
-    -webkit-backdrop-filter: blur(5px) saturate(1.7) brightness(1.12); backdrop-filter: blur(5px) saturate(1.7) brightness(1.12);
-    box-shadow: 0 10px 28px rgb(0 0 0 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.3),
-      inset 0 0 0 0.75px rgb(255 255 255 / 0.32), inset 0 2px 3px rgb(255 255 255 / 0.4), inset 0 -2px 4px rgb(255 255 255 / 0.16),
-      inset 2px 0 3px rgb(255 120 120 / 0.14), inset -2px 0 3px rgb(110 170 255 / 0.16);
-  }
-  .tb-lens::after {
-    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-    background: radial-gradient(110% 60% at 50% 0%, rgb(255 255 255 / 0.2), transparent 60%),
-      radial-gradient(90% 50% at 50% 105%, rgb(255 255 255 / 0.1), transparent 60%);
-  }
-  .tb-lens-row { will-change: transform; }
-  .tb-lens-row .tb-item { cursor: default; }
-
-  .glass-ctl { margin-top: 32px; max-width: 420px; }
-  .glass-ctl label { display: block; font-weight: 600; font-size: 15px; margin-bottom: 10px; }
-  .range-row { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 13px; }
-  .range-row input { flex: 1; min-width: 0; accent-color: var(--acc); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -340,6 +296,16 @@
 </style>
 </head>
 <body>
+
+<!-- Chromium only: Kyant lens on the bar backdrop (vibrancy, 10dp blur, 20dp refraction) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="nbBarLens" color-interpolation-filters="sRGB">
+    <feColorMatrix in="SourceGraphic" type="saturate" values="1.5" result="vibrant"/>
+    <feGaussianBlur in="vibrant" stdDeviation="10" edgeMode="duplicate" result="blur"/>
+    <feImage id="nbBarMap" x="0" y="0" width="268" height="48" preserveAspectRatio="none" result="map"/>
+    <feDisplacementMap in="blur" in2="map" scale="48" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
 
 <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
 
@@ -366,7 +332,7 @@
         </button>
         <button class="btn btn-glass" type="button" data-nav="2">How it works</button>
       </div>
-      <div class="row-title">Continue watching <small>Press and slide on the tab bar</small></div>
+      <div class="row-title">Continue watching <small>Drag the pill along the nav bar</small></div>
       <div class="rail" id="railContinue"></div>
     </div>
   </section>
@@ -425,13 +391,9 @@
     <div class="reveal">
       <p class="eyebrow">Profile</p>
       <h2>Who's watching?</h2>
-      <p class="lede">Pick a profile to preview the page in that Nuvio theme. The tab bar tint follows it, like in the iPhone app.</p>
+      <p class="lede">Pick a profile to preview the page in that Nuvio theme. The nav bar pill, icons and glow follow it.</p>
     </div>
     <div class="profiles reveal" id="profiles" role="group" aria-label="Theme"></div>
-    <div class="glass-ctl reveal">
-      <label for="glassAmt">Liquid Glass</label>
-      <div class="range-row"><span>Clear</span><input type="range" id="glassAmt" min="0" max="100" value="50" aria-valuetext="Default"><span>Tinted</span></div>
-    </div>
     <div class="install reveal">
       <h3>Install in Nuvio</h3>
       <p>Open Nuvio, go to <b>Settings &gt; Plugins</b>, and add this manifest URL.</p>
@@ -450,16 +412,18 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<nav class="tb" id="tb" aria-label="Main">
-  <div class="tb-bar glass" id="tbBar">
-    <div class="tb-pill" id="tbPill"></div>
-    <div class="tb-row" id="tbRow" role="tablist"></div>
-    <button class="tb-compact" id="tbCompact" type="button" tabindex="-1">
-      <!-- diamond.fill, the iOS 27 minimized tab bar symbol -->
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 2.6a2.1 2.1 0 0 1 3 0l7.9 7.9a2.1 2.1 0 0 1 0 3l-7.9 7.9a2.1 2.1 0 0 1-3 0l-7.9-7.9a2.1 2.1 0 0 1 0-3z"/></svg>
-    </button>
+<nav class="nb" id="nb" aria-label="Main">
+  <div class="nb-track" id="nbTrack">
+    <div class="nb-layer nb-press" id="nbPress">
+      <div class="nb-layer nb-distort" id="nbDistort">
+        <div class="nb-layer nb-panel" id="nbPanel">
+          <div class="nb-glass"></div>
+          <canvas class="nb-canvas" id="nbCanvas" aria-hidden="true"></canvas>
+          <div class="nb-layer nb-targets" id="nbTargets" role="tablist"></div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="tb-lens" id="tbLens" aria-hidden="true"><div class="tb-lens-row" id="tbLensRow"></div></div>
 </nav>
 
 <script>
@@ -472,14 +436,15 @@
   const MANIFEST_URL = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/manifest.json`;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* Palettes from ThemeColors.kt (nat = nativeAccentHex, the iOS tab bar tint) */
+  /* Palettes from ThemeColors.kt (surface = backgroundElevated) */
   const THEMES = [
-    { name: 'White', acc: '#F5F5F5', nat: '#F5F5F5', grad: ['#F5F5F5'], on: '#111111', bg: '#0D0D0D' },
-    { name: 'Gold', acc: '#E8A91C', nat: '#FFD45C', grad: ['#8A5700', '#E8A91C', '#FFF1A8', '#FFD45C', '#9A6200'], on: '#111111', bg: '#0F0E0B' },
-    { name: 'Jade', acc: '#22D37C', nat: '#7BF08D', grad: ['#7BF08D', '#22D37C', '#0BBF9A'], on: '#111111', bg: '#0B0F0D' },
-    { name: 'Rose Gold', acc: '#EC70A9', nat: '#FFB37A', grad: ['#B75AFF', '#EC70A9', '#FFB37A'], on: '#111111', bg: '#0D0D0D' },
-    { name: 'Arctic', acc: '#3185F5', nat: '#4DE3FF', grad: ['#4DE3FF', '#3185F5', '#4D55E8'], on: '#FFFFFF', bg: '#0B0E14' },
-    { name: 'Crimson', acc: '#E53935', nat: '#E53935', grad: ['#E53935'], on: '#FFFFFF', bg: '#0D0D0D' },
+    { name: 'Violet', acc: '#8E24AA', grad: ['#8E24AA'], on: '#FFFFFF', bg: '#0D0D0F', surface: '#1A1A1E' },
+    { name: 'White', acc: '#F5F5F5', grad: ['#F5F5F5'], on: '#111111', bg: '#0D0D0D', surface: '#1A1A1A' },
+    { name: 'Gold', acc: '#E8A91C', grad: ['#8A5700', '#E8A91C', '#FFF1A8', '#FFD45C', '#9A6200'], on: '#111111', bg: '#0F0E0B', surface: '#1D1A14' },
+    { name: 'Jade', acc: '#22D37C', grad: ['#7BF08D', '#22D37C', '#0BBF9A'], on: '#111111', bg: '#0B0F0D', surface: '#141D18' },
+    { name: 'Rose Gold', acc: '#EC70A9', grad: ['#B75AFF', '#EC70A9', '#FFB37A'], on: '#111111', bg: '#100C0F', surface: '#1F161D' },
+    { name: 'Arctic', acc: '#3185F5', grad: ['#4DE3FF', '#3185F5', '#4D55E8'], on: '#FFFFFF', bg: '#0B0E14', surface: '#141A24' },
+    { name: 'Crimson', acc: '#E53935', grad: ['#E53935'], on: '#FFFFFF', bg: '#0D0D0D', surface: '#1A1A1A' },
   ];
 
   const TITLES = [
@@ -600,20 +565,22 @@
   }
 
   /* =====================================================================
-     iOS 27 tab bar, after Nuvio's iosApp ContentView.swift: native TabView with
-     .tint(accent), unselectedItemTintColor #969CA3 and
-     .tabBarMinimizeBehavior(.automatic) (collapses on scroll down).
+     Floating navigation bar, ported from Nuvio Enhanced (Android):
+     core/ui/FloatingNavigationBar.kt, jelly/JellyMotion.kt, jelly/JellySpring.kt,
+     glass/LiquidGlassNavigationSurfaces.kt, glass/LiquidGlassEffectSettings.kt.
+     The selected pill is Kyant's backdrop "lens" (internal/Shaders.kt,
+     RoundedRectRefractionShaderString), here as a WebGL fragment shader. While the
+     pill is dragged sideways it refracts the tab icons, which bend like a drop of water.
      ===================================================================== */
-  class Spring {
-    constructor(value, stiffness, dampingRatio) { this.value = value; this.velocity = 0; this.set(stiffness, dampingRatio); }
-    set(stiffness, dampingRatio) { this.stiffness = stiffness; this.dampingRatio = dampingRatio; }
+  class JellySpring {
+    constructor(value, stiffness, dampingRatio) { this.value = value; this.stiffness = stiffness; this.dampingRatio = dampingRatio; this.velocity = 0; }
     isAtRest(target) { return Math.abs(this.value - target) < 1e-4 && Math.abs(this.velocity) < 1e-4; }
     snapTo(target) { this.value = target; this.velocity = 0; }
     advance(target, seconds) {
       if (this.isAtRest(target)) { this.snapTo(target); return; }
       const displacement = this.value - target;
       const frequency = Math.sqrt(this.stiffness);
-      if (this.dampingRatio >= 1) {
+      if (this.dampingRatio === 1) {
         const decay = Math.exp(-frequency * seconds);
         const coefficient = this.velocity + frequency * displacement;
         this.value = target + (displacement + coefficient * seconds) * decay;
@@ -631,147 +598,604 @@
     }
   }
 
-  /* Icons: iosApp Assets.xcassets/NuvioTab*.svg, drawn at 25x25 */
+  function jellyRubberBand(distance, dimension) {
+    if (distance === 0 || dimension <= 0) return 0;
+    const damped = (1 - 1 / (Math.abs(distance) * 0.14 / dimension + 1)) * dimension;
+    return distance < 0 ? -damped : damped;
+  }
+
+  function jellyPanelOffset(rawOffset, width) {
+    if (width <= 0 || rawOffset === 0) return 0;
+    const fraction = clamp(rawOffset / width, -1, 1);
+    const x = Math.abs(fraction);
+    let low = 0, high = 1, p = x;
+    for (let i = 0; i < 10; i++) {
+      const bx = p * p * (3 * (1 - p) * 0.58 + p);
+      if (bx < x) low = p; else high = p;
+      p = (low + high) / 2;
+    }
+    const eased = p * p * (3 * (1 - p) + p);
+    return (fraction < 0 ? -4 : 4) * eased;
+  }
+
+  class JellyMotion {
+    constructor(initialIndex, count) {
+      const distortionDamping = 18 / (2 * Math.sqrt(240 * 0.9));
+      this.position = new JellySpring(Math.max(0, initialIndex), 1000, 1);
+      this.velocity = new JellySpring(0, 300, 0.5);
+      this.press = new JellySpring(0, 1000, 1);
+      this.scaleX = new JellySpring(1, 250, 0.6);
+      this.scaleY = new JellySpring(1, 250, 0.7);
+      this.panel = new JellySpring(0, 300, 1);
+      this.trackY = new JellySpring(0, 240 / 0.9, distortionDamping);
+      this.trackX = new JellySpring(1, 240 / 0.9, distortionDamping);
+      this.trackPress = new JellySpring(1, 240 / 0.9, distortionDamping);
+      this.glow = new JellySpring(0, 240 / 0.9, distortionDamping);
+      this.target = this.position.value;
+      this.pressTarget = 0; this.shapeTarget = 1; this.releasePending = false;
+      this.downX = 0; this.downY = 0; this.dragStartTarget = this.target; this.dragStartPanel = 0; this.dragStartY = 0;
+      this.movedDistance = 0; this.originX = 0; this.width = 0; this.height = 64; this.tabCount = count;
+      this.dragging = false; this.running = false; this.tabIconRefractionActive = false; this.lastDragCommit = null;
+      this.publish();
+    }
+    get maxIndex() { return Math.max(0, this.tabCount - 1); }
+    get tabWidth() { return Math.max(0, (this.width - 8) / Math.max(1, this.tabCount)); }
+    resize(width, height, count) {
+      this.width = width; this.height = height; this.tabCount = count;
+      this.target = clamp(this.target, 0, this.maxIndex);
+      if (!this.dragging) this.originX = this.width / 2;
+      this.publish();
+    }
+    select(index) {
+      this.dragging = false; this.tabIconRefractionActive = false;
+      if (index >= 0) this.target = Math.min(index, this.maxIndex);
+      this.releasePending = true; this.pressTarget = 0; this.shapeTarget = 1; this.running = true;
+    }
+    snap(index) {
+      if (index < 0 || this.dragging) return;
+      this.tabIconRefractionActive = false;
+      const t = Math.min(index, this.maxIndex);
+      if (this.target === t && this.position.isAtRest(t)) return;
+      this.target = t;
+      this.position.snapTo(t);
+      this.velocity.snapTo(0);
+      this.publish();
+      this.running = true;
+    }
+    begin(x, y) {
+      this.downX = x; this.downY = clamp(y, 0, this.height);
+      this.originX = clamp(this.downX, 0, this.width);
+      this.dragStartY = this.trackY.value; this.movedDistance = 0;
+      if (this.tabWidth > 0) this.target = this.indexAt(this.downX);
+      this.dragStartTarget = this.target; this.dragStartPanel = this.panel.value;
+      this.tabIconRefractionActive = false;
+      this.dragging = true; this.releasePending = false; this.pressTarget = 1; this.shapeTarget = 1.3;
+      this.panel.velocity = 0; this.running = true;
+    }
+    drag(dx, dy) {
+      if (!this.dragging || this.tabWidth <= 0) return;
+      // Only a meaningful horizontal movement of the lens turns icon refraction on.
+      if (Math.abs(dx) >= 4) this.tabIconRefractionActive = true;
+      this.target = clamp(this.dragStartTarget + dx / this.tabWidth, 0, this.maxIndex);
+      this.panel.snapTo(this.dragStartPanel + dx);
+      this.trackY.snapTo(this.dragStartY + jellyRubberBand(dy, this.height) * 0.25);
+      this.trackX.snapTo(1 - Math.min(Math.abs(dy) / 700, 1) * 0.08);
+      this.originX = clamp(this.downX + dx, 0, this.width);
+      this.movedDistance = Math.max(this.movedDistance, Math.max(Math.abs(dx), Math.abs(dy)));
+      this.publish();
+    }
+    finish() {
+      const wasDrag = !(this.movedDistance < 4 && this.tabWidth > 0);
+      const index = wasDrag ? clamp(Math.floor(this.target + 0.5), 0, this.maxIndex) : this.indexAt(this.downX);
+      this.lastDragCommit = wasDrag ? index : null;
+      this.dragging = false; this.tabIconRefractionActive = false; this.panel.velocity = 0; this.target = index;
+      this.releasePending = true; this.running = true;
+      return index;
+    }
+    cancel(selectedIndex) { this.dragging = false; this.tabIconRefractionActive = false; this.panel.velocity = 0; this.select(selectedIndex); }
+    advance(seconds) {
+      const delta = clamp(seconds, 0, 0.064);
+      this.target = clamp(this.target, 0, this.maxIndex);
+      this.position.advance(this.target, delta);
+      this.velocity.advance(this.dragging && this.maxIndex > 0 ? this.position.velocity / this.maxIndex : 0, delta);
+      if (!this.dragging) this.panel.advance(0, delta);
+      if (this.releasePending && Math.abs(this.position.value - this.target) < Math.max(1, this.maxIndex) * 0.025) {
+        this.releasePending = false; this.pressTarget = 0; this.shapeTarget = 1;
+      }
+      this.press.advance(this.pressTarget, delta);
+      this.scaleX.advance(this.shapeTarget, delta);
+      this.scaleY.advance(this.shapeTarget, delta);
+      this.trackPress.advance(this.dragging ? 1.025 : 1, delta);
+      this.glow.advance(this.dragging ? 1 : 0, delta);
+      if (!this.dragging) {
+        this.trackY.advance(0, delta);
+        this.trackX.advance(1, delta);
+        if (this.trackX.isAtRest(1)) this.originX = this.width / 2;
+      }
+      this.publish();
+      this.running = this.dragging || this.releasePending || !this.position.isAtRest(this.target) || !this.velocity.isAtRest(0) ||
+        !this.press.isAtRest(0) || !this.scaleX.isAtRest(1) || !this.scaleY.isAtRest(1) ||
+        !this.panel.isAtRest(0) || !this.trackY.isAtRest(0) || !this.trackX.isAtRest(1) ||
+        !this.trackPress.isAtRest(1) || !this.glow.isAtRest(0);
+    }
+    indexAt(x) { return clamp(Math.floor((x - 4) / this.tabWidth), 0, this.maxIndex); }
+    publish() {
+      const speed = this.velocity.value / 10;
+      this.frame = {
+        position: this.position.value,
+        pillScaleX: this.scaleX.value / (1 - clamp(speed * 0.75, -0.2, 0.2)),
+        pillScaleY: this.scaleY.value * (1 - clamp(speed * 0.25, -0.2, 0.2)),
+        contentScale: 1 + 0.2 * this.press.value,
+        panelOffset: jellyPanelOffset(this.panel.value, this.width),
+        trackScale: this.trackPress.value,
+        trackScaleX: this.trackX.value,
+        trackOffsetY: this.trackY.value,
+        originX: this.originX,
+        glowY: this.downY,
+        glowOpacity: clamp(this.glow.value, 0, 1),
+      };
+    }
+  }
+
+  /* ---------------- Tabs ---------------- */
+  // Icon vectors: Material Icons.Filled.Home and composeResources sidebar_search / sidebar_library
   const ICONS = {
-    home: '<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
-    search: '<svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 9a5 5 0 1 1 10 0A5 5 0 0 1 4 9Zm5-7a7 7 0 1 0 4.2 12.6.999.999 0 0 0 .093.107l3 3a1 1 0 0 0 1.414-1.414l-3-3a.999.999 0 0 0-.107-.093A7 7 0 0 0 9 2Z"/></svg>',
-    library: '<svg viewBox="0 0 24 24"><path d="M8.50989 2.00001H15.49C15.7225 1.99995 15.9007 1.99991 16.0565 2.01515C17.1643 2.12352 18.0711 2.78958 18.4556 3.68678H5.54428C5.92879 2.78958 6.83555 2.12352 7.94337 2.01515C8.09917 1.99991 8.27741 1.99995 8.50989 2.00001Z"/><path d="M6.31052 4.72312C4.91989 4.72312 3.77963 5.56287 3.3991 6.67691C3.39117 6.70013 3.38356 6.72348 3.37629 6.74693C3.77444 6.62636 4.18881 6.54759 4.60827 6.49382C5.68865 6.35531 7.05399 6.35538 8.64002 6.35547H15.5321C17.1181 6.35538 18.4835 6.35531 19.5639 6.49382C19.9833 6.54759 20.3977 6.62636 20.7958 6.74693C20.7886 6.72348 20.781 6.70013 20.773 6.67691C20.3925 5.56287 19.2522 4.72312 17.8616 4.72312H6.31052Z"/><path fill-rule="evenodd" d="M8.67239 7.54204H15.3276C18.7024 7.54204 20.3898 7.54204 21.3377 8.52887C22.2855 9.5157 22.0625 11.0403 21.6165 14.0896L21.1935 16.9811C20.8437 19.3724 20.6689 20.568 19.7717 21.284C18.8745 22 17.5512 22 14.9046 22H9.09536C6.44881 22 5.12553 22 4.22834 21.284C3.33115 20.568 3.15626 19.3724 2.80648 16.9811L2.38351 14.0896C1.93748 11.0403 1.71447 9.5157 2.66232 8.52887C3.61017 7.54204 5.29758 7.54204 8.67239 7.54204ZM8 18.0001C8 17.5859 8.3731 17.2501 8.83333 17.2501H15.1667C15.6269 17.2501 16 17.5859 16 18.0001C16 18.4144 15.6269 18.7502 15.1667 18.7502H8.83333C8.3731 18.7502 8 18.4144 8 18.0001Z"/></svg>',
+    home: { vb: 24, paths: [['M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z']] },
+    search: { vb: 20, paths: [['M4,9a5,5 0,1 1,10 0A5,5 0,0 1,4 9zm5,-7a7,7 0,1 0,4.2 12.6 0.999,0.999 0,0 0,0.093 0.107l3,3a1,1 0,0 0,1.414 -1.414l-3,-3a0.999,0.999 0,0 0,-0.107 -0.093A7,7 0,0 0,9 2z', 'evenodd']] },
+    library: { vb: 24, paths: [
+      ['M8.50989,2.00001H15.49C15.7225,1.99995 15.9007,1.99991 16.0565,2.01515C17.1643,2.12352 18.0711,2.78958 18.4556,3.68678H5.54428C5.92879,2.78958 6.83555,2.12352 7.94337,2.01515C8.09917,1.99991 8.27741,1.99995 8.50989,2.00001Z'],
+      ['M6.31052,4.72312C4.91989,4.72312 3.77963,5.56287 3.3991,6.67691C3.39117,6.70013 3.38356,6.72348 3.37629,6.74693C3.77444,6.62636 4.18881,6.54759 4.60827,6.49382C5.68865,6.35531 7.05399,6.35538 8.64002,6.35547L8.75846,6.35547L15.5321,6.35547C17.1181,6.35538 18.4835,6.35531 19.5639,6.49382C19.9833,6.54759 20.3977,6.62636 20.7958,6.74693C20.7886,6.72348 20.781,6.70013 20.773,6.67691C20.3925,5.56287 19.2522,4.72312 17.8616,4.72312H6.31052Z'],
+      ['M8.67239,7.54204H15.3276C18.7024,7.54204 20.3898,7.54204 21.3377,8.52887C22.2855,9.5157 22.0625,11.0403 21.6165,14.0896L21.1935,16.9811C20.8437,19.3724 20.6689,20.568 19.7717,21.284C18.8745,22 17.5512,22 14.9046,22H9.09536C6.44881,22 5.12553,22 4.22834,21.284C3.33115,20.568 3.15626,19.3724 2.80648,16.9811L2.38351,14.0896C1.93748,11.0403 1.71447,9.5157 2.66232,8.52887C3.61017,7.54204 5.29758,7.54204 8.67239,7.54204ZM8,18.0001C8,17.5859 8.3731,17.2501 8.83333,17.2501H15.1667C15.6269,17.2501 16,17.5859 16,18.0001C16,18.4144 15.6269,18.7502 15.1667,18.7502H8.83333C8.3731,18.7502 8,18.4144 8,18.0001Z', 'evenodd'],
+    ] },
   };
+  Object.values(ICONS).forEach((ic) => { ic.paths = ic.paths.map(([d, rule]) => [new Path2D(d), rule || 'nonzero']); });
   const TABS = [
     { id: 'home', label: 'Home', icon: 'home' },
     { id: 'search', label: 'Search', icon: 'search' },
     { id: 'library', label: 'Library', icon: 'library' },
     { id: 'profile', label: 'Profile', avatar: true },
   ];
+  const N = TABS.length;
   const sections = TABS.map((t) => document.getElementById(t.id));
-  const iconHtml = (tab) => (tab.avatar ? '<span class="tb-ava">N</span>' : ICONS[tab.icon]);
-  const itemHtml = (tab) => `<span class="tb-ic" aria-hidden="true">${iconHtml(tab)}</span><span class="tb-lb">${tab.label}</span>`;
 
-  const tb = $('#tb'), bar = $('#tbBar'), row = $('#tbRow'), pill = $('#tbPill');
-  const lens = $('#tbLens'), lensRow = $('#tbLensRow'), compact = $('#tbCompact');
-  const makeItem = (tab, tag) => {
-    const el = document.createElement(tag);
-    el.className = 'tb-item';
-    el.innerHTML = itemHtml(tab);
-    return el;
-  };
-  const buttons = TABS.map((tab) => {
-    const b = makeItem(tab, 'button');
+  // The recording shows the Compact style (Settings > Navigation bar): labels hidden.
+  // Set to 'auto' to show labels at the top of the page and hide them on scroll, like the default style.
+  const NAV_STYLE = 'compact';
+  const MX = 40, MY = 30;                              // canvas margin around the track for the lifted lens
+  const LENS = { height: 12, amount: 20, depth: 1 };   // LiquidGlassEffectDefaults.selectionLens
+  const BAR = { refraction: 20, amount: 20 };          // LiquidGlassEffectDefaults.floatingBar
+
+  const track = $('#nbTrack'), pressEl = $('#nbPress'), distortEl = $('#nbDistort'), panelEl = $('#nbPanel');
+  const canvas = $('#nbCanvas'), targetsEl = $('#nbTargets');
+  const iconCanvas = document.createElement('canvas');
+  const ictx = iconCanvas.getContext('2d');
+
+  const avatars = [];
+  const targets = TABS.map((tab, i) => {
+    const b = document.createElement('button');
     b.type = 'button';
+    b.className = 'nb-target';
     b.setAttribute('role', 'tab');
+    b.setAttribute('aria-label', tab.label);
     b.setAttribute('aria-controls', tab.id);
-    row.appendChild(b);
+    if (tab.avatar) {
+      b.innerHTML = '<div class="nb-avatar-wrap"><div class="nb-avatar">N</div></div>';
+      avatars[i] = b.querySelector('.nb-avatar-wrap');
+    }
+    targetsEl.appendChild(b);
     return b;
   });
-  const lensItems = TABS.map((tab) => { const d = makeItem(tab, 'div'); lensRow.appendChild(d); return d; });
 
-  /* ---------------- Layout (iOS 27 kit, 402pt artboard) ---------------- */
-  const N = TABS.length;
-  const SIDE = 25, ROW_H = 54, INSET = 4, OVERLAP = 8, PILL_GROW = 4;
-  const GLASS_H = ROW_H + INSET * 2, GLASS_BOTTOM = SIDE - INSET;        // 62pt platter, 21pt from the bottom
-  const MINI = 48, MINI_BOTTOM = 28, MINI_SHIFT = 7;                     // 40pt control in a 48pt circle, padding 32
-  const LENS_GROW_W = 0.18, LENS_GROW_H = 18, MAG = 0.22;
-  const TB_H = 140;
-  let rowW = 0, glassW = 0, glassX = 0, tabW = 0, step = 0;
-  function layout() {
-    const vw = document.documentElement.clientWidth;
-    rowW = Math.min(352, vw - SIDE * 2);
-    glassW = rowW + INSET * 2;
-    glassX = Math.round((vw - glassW) / 2);
-    tabW = (rowW + OVERLAP * (N - 1)) / N;
-    step = tabW - OVERLAP;
-    [row, lensRow].forEach((r) => { r.style.width = `${rowW}px`; });
-    [...buttons, ...lensItems].forEach((el) => {
-      const i = el.parentNode === row ? buttons.indexOf(el) : lensItems.indexOf(el);
-      el.style.left = `${i * step}px`;
-      el.style.width = `${tabW}px`;
-    });
-    pill.style.width = `${tabW + PILL_GROW}px`;
+  /* ---------------- Theme colours used by the bar ---------------- */
+  let theme = { accent: [142, 36, 170], grad: ['#8E24AA'], surface: [26, 26, 30], bg: [13, 13, 15] };
+  function setNavTheme(th) {
+    theme = { accent: hexRgb(th.acc), grad: th.grad, surface: hexRgb(th.surface), bg: hexRgb(th.bg) };
+    document.documentElement.style.setProperty('--nb-surface', theme.surface.join(' '));
+    drawFrame();
   }
-  const lerp = (a, b, t) => a + (b - a) * t;
 
   /* ---------------- State ---------------- */
-  let selected = 0, pressing = false;
-  const SLIDE = [380, 0.8], FOLLOW = [900, 0.9];  // snappy-like spring for the pill, tighter while scrubbing
-  const pos = new Spring(0, ...SLIDE);   // pill / lens position, in tab units
-  const press = new Spring(0, 420, 0.6); // 0 = resting pill, 1 = lifted glass lens
-  const mini = new Spring(0, 300, 0.82); // 0 = full bar, 1 = minimized circle
-  let posTarget = 0, pressTarget = 0, miniTarget = 0;
+  let selected = 0;
+  const motion = new JellyMotion(0, N);
+  let lf = NAV_STYLE === 'compact' ? 0 : 1, lfFrom = lf, lfTo = lf, lfStart = 0;
+  let W = 0, H = 0, dpr = 1;
 
-  function render() {
-    const m = mini.value, mc = clamp(m, 0, 1);
-    const w = Math.max(MINI * 0.9, lerp(glassW, MINI, m)), h = lerp(GLASS_H, MINI, m);
-    const left = lerp(glassX, glassX + MINI_SHIFT, m), bottom = lerp(GLASS_BOTTOM, MINI_BOTTOM, m);
-    const p = press.value, pc = clamp(p, 0, 1);
-    bar.style.left = `${left}px`;
-    bar.style.bottom = `${bottom}px`;
-    bar.style.width = `${w}px`;
-    bar.style.height = `${h}px`;
-    bar.style.transform = `scale(${1 + 0.02 * p})`;
-    row.style.opacity = clamp(1 - mc * 1.8, 0, 1);
-    compact.style.opacity = clamp((mc - 0.3) / 0.7, 0, 1);
+  function layout() {
+    const vw = document.documentElement.clientWidth;
+    W = Math.min(400, vw - (58 - 30 * lf) * 2);
+    H = 48 + 16 * lf;
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
+    track.style.width = `${W}px`;
+    track.style.height = `${H}px`;
+    const cw = W + MX * 2, ch = H + MY * 2;
+    Object.assign(canvas.style, { left: `${-MX}px`, top: `${-MY}px`, width: `${cw}px`, height: `${ch}px` });
+    const pw = Math.round(cw * dpr), ph = Math.round(ch * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) { canvas.width = iconCanvas.width = pw; canvas.height = iconCanvas.height = ph; }
+    motion.resize(W, H, N);
+    updateBarMap();
+  }
 
-    const x = pos.value;
-    pill.style.transform = `translateX(${INSET + x * step - PILL_GROW / 2}px)`;
-    pill.style.opacity = (1 - pc) * clamp(1 - mc * 2, 0, 1);
+  /* ---------------- Pill geometry (jelly/JellyDrawing.kt jellyPillPath) ---------------- */
+  function pillGeometry(f) {
+    const tabW = (W - 8) / N, itemH = H - 8;
+    return {
+      cx: 4 + (f.position + 0.5) * tabW, cy: H / 2,
+      hw: tabW / 2, hh: itemH / 2, r: Math.min(tabW, itemH) / 2,
+      sx: f.pillScaleX, sy: f.pillScaleY,
+    };
+  }
+  function pillPath(g) {
+    const hw = g.hw * g.sx, hh = g.hh * g.sy;
+    const rx = Math.min(g.r * g.sx, hw), ry = Math.min(g.r * g.sy, hh);
+    const l = g.cx - hw, r = g.cx + hw, t = g.cy - hh, b = g.cy + hh;
+    const p = new Path2D();
+    p.moveTo(l + rx, t);
+    p.lineTo(r - rx, t);
+    p.ellipse(r - rx, t + ry, rx, ry, 0, -Math.PI / 2, 0);
+    p.lineTo(r, b - ry);
+    p.ellipse(r - rx, b - ry, rx, ry, 0, 0, Math.PI / 2);
+    p.lineTo(l + rx, b);
+    p.ellipse(l + rx, b - ry, rx, ry, 0, Math.PI / 2, Math.PI);
+    p.lineTo(l, t + ry);
+    p.ellipse(l + rx, t + ry, rx, ry, 0, Math.PI, Math.PI * 1.5);
+    p.closePath();
+    return p;
+  }
 
-    if (p > 0.01 && mc < 0.5) {
-      const stretch = clamp(Math.abs(pos.velocity) * 0.025, 0, 0.22);
-      const lw = (tabW + PILL_GROW) * (1 + LENS_GROW_W * p) * (1 + stretch);
-      const lh = (ROW_H + LENS_GROW_H * p) * (1 - stretch * 0.5);
-      const rowLeft = left + INSET, rowTop = TB_H - bottom - h + INSET;
-      const cx = rowLeft + x * step + tabW / 2, cy = rowTop + ROW_H / 2;
-      const lx = cx - lw / 2, ly = cy - lh / 2;
-      lens.style.display = 'block';
-      lens.style.left = `${lx}px`;
-      lens.style.top = `${ly}px`;
-      lens.style.width = `${lw}px`;
-      lens.style.height = `${lh}px`;
-      lens.style.opacity = clamp(p * 2.5, 0, 1);
-      // Magnified copy of the tab row, aligned with the real one under the lens
-      lensRow.style.left = `${rowLeft - lx}px`;
-      lensRow.style.top = `${rowTop - ly}px`;
-      lensRow.style.transformOrigin = `${cx - rowLeft}px ${ROW_H / 2}px`;
-      lensRow.style.transform = `scale(${1 + MAG * pc})`;
-      const hover = clamp(Math.round(x), 0, N - 1);
-      lensItems.forEach((el, i) => el.classList.toggle('on', i === hover));
+  /* ---------------- Tab rows (jelly/JellyTabs.kt JellyTabRow) ---------------- */
+  const MUTED = '#969CA3';
+  function drawRow(ctx, f, active) {
+    const tabW = (W - 8) / N, iconSize = 28, colH = iconSize + 16 * lf;
+    const top = H / 2 - colH / 2;
+    TABS.forEach((tab, i) => {
+      const cx = 4 + (i + 0.5) * tabW;
+      ctx.save();
+      if (active) {
+        ctx.translate(cx, H / 2);
+        ctx.scale(f.contentScale, f.contentScale);
+        ctx.translate(-cx, -H / 2);
+      }
+      if (tab.icon) {
+        const ic = ICONS[tab.icon];
+        ctx.save();
+        ctx.translate(cx - iconSize / 2, top + 2 * lf);
+        ctx.scale(iconSize / ic.vb, iconSize / ic.vb);
+        if (active && theme.grad.length > 1) {
+          const g = ctx.createLinearGradient(0, 0, ic.vb, ic.vb);
+          theme.grad.forEach((c, k) => g.addColorStop(k / (theme.grad.length - 1), c));
+          ctx.fillStyle = g;
+        } else {
+          ctx.fillStyle = active ? `rgb(${theme.accent.join(',')})` : MUTED;
+        }
+        ic.paths.forEach(([p, rule]) => ctx.fill(p, rule));
+        ctx.restore();
+      }
+      if (lf > 0.01) {
+        ctx.globalAlpha = lf;
+        ctx.fillStyle = active ? `rgb(${theme.accent.join(',')})` : MUTED;
+        ctx.font = `${active ? 700 : 400} 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tab.label, cx, top + iconSize + 8 * lf, tabW - 8);
+      }
+      ctx.restore();
+    });
+  }
+
+  // The icon source the lens refracts: inactive row with the pill cut out, active row inside the pill.
+  function drawIcons(ctx, f, g, clearOnly) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, iconCanvas.width, iconCanvas.height);
+    if (clearOnly) return;
+    ctx.setTransform(dpr, 0, 0, dpr, MX * dpr, MY * dpr);
+    const pill = pillPath(g);
+    const outside = new Path2D();
+    outside.rect(-MX, -MY, W + MX * 2, H + MY * 2);
+    outside.addPath(pill);
+    ctx.save(); ctx.clip(outside, 'evenodd'); drawRow(ctx, f, false); ctx.restore();
+    ctx.save(); ctx.clip(pill); drawRow(ctx, f, true); ctx.restore();
+  }
+
+  /* ---------------- WebGL: Kyant lens + Nuvio selection highlight ---------------- */
+  const FRAG = `
+precision highp float;
+uniform vec2 uRes; uniform float uDpr; uniform vec2 uMargin; uniform vec2 uTrack;
+uniform vec2 uPillC; uniform vec2 uPillHalf; uniform vec2 uPillScale; uniform float uPillR;
+uniform float uPress; uniform float uRefract; uniform vec3 uAccent; uniform vec3 uSurface; uniform vec3 uBarFill;
+uniform vec3 uGlow; uniform vec2 uLens; uniform float uDepth;
+uniform sampler2D uIcons;
+
+float sdRR(vec2 p, vec2 h, float r) { vec2 q = abs(p) - (h - vec2(r)); return length(max(q, 0.0)) - r + min(max(q.x, q.y), 0.0); }
+vec2 sgn(vec2 p) { return vec2(p.x >= 0.0 ? 1.0 : -1.0, p.y >= 0.0 ? 1.0 : -1.0); }
+vec2 gradRR(vec2 p, vec2 h, float r) {
+  vec2 q = abs(p) - (h - vec2(r));
+  if (q.x >= 0.0 || q.y >= 0.0) return sgn(p) * normalize(max(q, 0.0) + 1e-6);
+  float gx = step(q.y, q.x);
+  return sgn(p) * vec2(gx, 1.0 - gx);
+}
+float circleMap(float x) { return 1.0 - sqrt(1.0 - x * x); }
+vec4 over(vec4 dst, vec4 src) { return src + dst * (1.0 - src.a); }
+vec4 icons(vec2 p) {
+  vec2 uv = (p + uMargin) * uDpr / uRes;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec4(0.0);
+  return texture2D(uIcons, uv);
+}
+// LiquidGlassFrostedBar front: 0.75dp rim (white .27 -> .02) and Highlight.Default (0.5dp, white .5, 45deg, Plus)
+vec4 barEdges(vec2 p) {
+  vec2 h = uTrack * 0.5; vec2 c = p - h; float r = h.y;
+  float sd = sdRR(c, h, r);
+  vec4 col = vec4(0.0);
+  float rim = clamp(0.5 - sd, 0.0, 1.0) * clamp(sd + 1.25, 0.0, 1.0) * 0.75;
+  float ra = mix(0.27, 0.02, clamp(p.y / uTrack.y, 0.0, 1.0)) * rim;
+  col = over(col, vec4(vec3(ra), ra));
+  float hl = clamp(0.5 - sd, 0.0, 1.0) * clamp(sd + 1.0, 0.0, 1.0) * 0.5;
+  float inten = abs(dot(gradRR(c, h, min(r * 1.5, min(h.x, h.y))), vec2(0.70710678)));
+  float ha = 0.5 * inten * hl;
+  col = over(col, vec4(vec3(ha), ha));
+  return col;
+}
+float barInside(vec2 p) { vec2 h = uTrack * 0.5; return clamp(0.5 - sdRR(p - h, h, h.y), 0.0, 1.0); }
+
+void main() {
+  vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uDpr - uMargin;
+  float s = min(uPillScale.x, uPillScale.y);
+  vec2 lc = (p - uPillC) / uPillScale;
+  float lsd = sdRR(lc, uPillHalf, uPillR);
+  float pillCov = clamp(0.5 - lsd * s, 0.0, 1.0);
+  float inBar = barInside(p);
+
+  // ---- outside the lens: bar glow + edges, inactive icons, lens shadow
+  vec4 outCol = vec4(0.0);
+  if (uGlow.z > 0.0) {
+    float t = length(p - uGlow.xy) / 300.0;
+    float g = uGlow.z * (t < 0.45 ? mix(1.0, 0.43, t / 0.45) : mix(0.43, 0.0, clamp((t - 0.45) / 0.55, 0.0, 1.0)));
+    outCol = over(outCol, vec4(uAccent * g, g) * inBar);
+  }
+  outCol = over(outCol, barEdges(p));
+  outCol = over(outCol, icons(p));
+  if (uPress > 0.0) {
+    float sds = sdRR((p - vec2(0.0, 4.0) - uPillC) / uPillScale, uPillHalf, uPillR) * s;
+    float sh = 0.1 * uPress * pow(clamp(1.0 - max(sds, 0.0) / 24.0, 0.0, 1.0), 2.0);
+    outCol = over(outCol, vec4(0.0, 0.0, 0.0, sh));
+  }
+
+  // ---- inside the lens: Kyant RoundedRectRefraction (refractionHeight 12, amount 20, depthEffect)
+  vec2 rl = lc;
+  if (-lsd < uLens.x) {
+    float sdc = min(lsd, 0.0);
+    float d = circleMap(1.0 - (-sdc) / uLens.x) * -uLens.y;
+    float gr = min(uPillR * 1.5, min(uPillHalf.x, uPillHalf.y));
+    vec2 g = normalize(gradRR(lc, uPillHalf, gr) + uDepth * normalize(lc + 1e-6));
+    rl = lc + d * g;
+  }
+  vec2 src = uPillC + rl * uPillScale;
+
+  vec4 inCol = vec4(0.0);
+  // Combined backdrop (screen + floating bar capture). The bar fill only needs painting where
+  // the lens hangs past the real bar; inside it the CSS glass underneath already shows it.
+  float fillA = barInside(src) * (1.0 - inBar) * 0.92;
+  inCol = over(inCol, vec4(uBarFill * fillA, fillA));
+  inCol = over(inCol, barEdges(src));
+  // InnerShadow(radius = 8dp * press, offset = radius), surface black 3% * press
+  if (uPress > 0.0) {
+    float rr = 8.0 * uPress;
+    float sdi = sdRR((p - vec2(0.0, rr) - uPillC) / uPillScale, uPillHalf, uPillR) * s;
+    float ia = 0.15 * uPress * smoothstep(-rr, rr, sdi);
+    inCol = over(inCol, vec4(0.0, 0.0, 0.0, ia));
+    inCol = over(inCol, vec4(0.0, 0.0, 0.0, 0.03 * uPress));
+    // Highlight.Default with alpha = press
+    float hl = clamp(lsd * s + 1.0, 0.0, 1.0);
+    float inten = abs(dot(gradRR(lc, uPillHalf, min(uPillR * 1.5, min(uPillHalf.x, uPillHalf.y))), vec2(0.70710678)));
+    float ha = 0.5 * uPress * inten * hl;
+    inCol = over(inCol, vec4(vec3(ha), ha));
+  }
+  // Selection highlight: surface 52%, accent 20%, 1dp accent rim (60% -> 15%), faded by half when pressed
+  float e = 1.0 - 0.5 * uPress;
+  inCol = over(inCol, vec4(uSurface * 0.52 * e, 0.52 * e));
+  inCol = over(inCol, vec4(uAccent * 0.2 * e, 0.2 * e));
+  float rim = clamp(lsd * s + 1.5, 0.0, 1.0);
+  float rimA = mix(0.6, 0.15, clamp(p.y / uTrack.y, 0.0, 1.0)) * rim * e;
+  inCol = over(inCol, vec4(uAccent * rimA, rimA));
+  // Tab icons: refracted while the lens is dragged sideways, crisp otherwise
+  inCol = over(inCol, icons(uRefract > 0.5 ? src : p));
+
+  gl_FragColor = mix(outCol, inCol, pillCov);
+}`;
+
+  function initGL() {
+    let gl = null;
+    try { gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false }); } catch {}
+    if (!gl) return null;
+    const sh = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    try {
+      const prog = gl.createProgram();
+      gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 a; void main() { gl_Position = vec4(a, 0.0, 1.0); }'));
+      gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+      gl.useProgram(prog);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, 'a');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const u = {};
+      ['uRes', 'uDpr', 'uMargin', 'uTrack', 'uPillC', 'uPillHalf', 'uPillScale', 'uPillR', 'uPress', 'uRefract',
+        'uAccent', 'uSurface', 'uBarFill', 'uGlow', 'uLens', 'uDepth', 'uIcons'].forEach((n) => { u[n] = gl.getUniformLocation(prog, n); });
+      return { gl, u };
+    } catch (err) {
+      console.warn('Nav bar WebGL unavailable, using the flat pill', err);
+      return null;
+    }
+  }
+  const GL = initGL();
+  const ctx2d = GL ? null : canvas.getContext('2d');
+
+  function drawFrame() {
+    if (!W) return;
+    const f = motion.frame, g = pillGeometry(f);
+    const press = clamp((f.contentScale - 1) / 0.2, 0, 1);
+    const rgb = (c) => c.map((v) => v / 255);
+    if (GL) {
+      drawIcons(ictx, f, g, false);
+      const { gl, u } = GL;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, iconCanvas);
+      gl.uniform2f(u.uRes, canvas.width, canvas.height);
+      gl.uniform1f(u.uDpr, canvas.width / (W + MX * 2));
+      gl.uniform2f(u.uMargin, MX, MY);
+      gl.uniform2f(u.uTrack, W, H);
+      gl.uniform2f(u.uPillC, g.cx, g.cy);
+      gl.uniform2f(u.uPillHalf, g.hw, g.hh);
+      gl.uniform2f(u.uPillScale, g.sx, g.sy);
+      gl.uniform1f(u.uPillR, g.r);
+      gl.uniform1f(u.uPress, press);
+      gl.uniform1f(u.uRefract, motion.tabIconRefractionActive ? 1 : 0);
+      gl.uniform3fv(u.uAccent, rgb(theme.accent));
+      gl.uniform3fv(u.uSurface, rgb(theme.surface));
+      gl.uniform3fv(u.uBarFill, rgb(theme.surface.map((c, k) => c * 0.4 + theme.bg[k] * 0.6)));
+      gl.uniform3f(u.uGlow, f.originX, f.glowY, 0.15 * f.glowOpacity);
+      gl.uniform2f(u.uLens, LENS.height, LENS.amount);
+      gl.uniform1f(u.uDepth, LENS.depth);
+      gl.uniform1i(u.uIcons, 0);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     } else {
-      lens.style.display = 'none';
+      // No WebGL: the solid jelly pill of FloatingNavigationBar (SolidSelectionPillFill / Edge)
+      ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+      ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+      ctx2d.setTransform(dpr, 0, 0, dpr, MX * dpr, MY * dpr);
+      const pill = pillPath(g);
+      ctx2d.fillStyle = 'rgba(0,0,0,0.34)';
+      ctx2d.fill(pill);
+      ctx2d.strokeStyle = 'rgba(255,255,255,0.28)';
+      ctx2d.lineWidth = 1;
+      ctx2d.stroke(pill);
+      const outside = new Path2D();
+      outside.rect(-MX, -MY, W + MX * 2, H + MY * 2);
+      outside.addPath(pill);
+      ctx2d.save(); ctx2d.clip(outside, 'evenodd'); drawRow(ctx2d, f, false); ctx2d.restore();
+      ctx2d.save(); ctx2d.clip(pill); drawRow(ctx2d, f, true); ctx2d.restore();
     }
   }
 
+  function render() {
+    const f = motion.frame;
+    pressEl.style.transform = `scale(${f.trackScale})`;
+    distortEl.style.transformOrigin = `${f.originX}px 50%`;
+    distortEl.style.transform = `translateY(${f.trackOffsetY}px) scaleX(${f.trackScaleX})`;
+    panelEl.style.transform = `translateX(${f.panelOffset}px)`;
+    // Profile avatar scales with the pill's coverage (JellyTabTargets)
+    avatars.forEach((el, i) => {
+      if (!el) return;
+      const coverage = clamp(1 - Math.abs(f.position - i), 0, 1);
+      el.style.transform = `translateY(${2 * lf}px) scale(${1 + (f.contentScale - 1) * coverage})`;
+    });
+    drawFrame();
+  }
+
+  /* ---------------- Bar refraction map (Chromium backdrop filter) ---------------- */
+  const isChromium = !!(navigator.userAgentData && navigator.userAgentData.brands &&
+    navigator.userAgentData.brands.some((b) => /Chromium/.test(b.brand)));
+  const barMap = document.getElementById('nbBarMap');
+  let mapKey = '', mapTimer = 0;
+  function sdRR(px, py, hx, hy, r) {
+    const qx = Math.abs(px) - (hx - r), qy = Math.abs(py) - (hy - r);
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - r + Math.min(Math.max(qx, qy), 0);
+  }
+  function gradRR(px, py, hx, hy, r) {
+    const qx = Math.abs(px) - (hx - r), qy = Math.abs(py) - (hy - r);
+    const sx = px >= 0 ? 1 : -1, sy = py >= 0 ? 1 : -1;
+    if (qx >= 0 || qy >= 0) {
+      const mx = Math.max(qx, 0), my = Math.max(qy, 0), l = Math.hypot(mx, my) || 1;
+      return [sx * mx / l, sy * my / l];
+    }
+    return qx >= qy ? [sx, 0] : [0, sy];
+  }
+  function buildBarMap(w, h) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    const img = cx.createImageData(w, h);
+    const hx = w / 2, hy = h / 2, r = hy, gr = Math.min(r * 1.5, Math.min(hx, hy)), scale = 48;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const px = x + 0.5 - hx, py = y + 0.5 - hy;
+        let dx = 0, dy = 0;
+        const sd = sdRR(px, py, hx, hy, r);
+        if (-sd < BAR.refraction) {
+          const t = 1 - -Math.min(sd, 0) / BAR.refraction;
+          const d = (1 - Math.sqrt(Math.max(0, 1 - t * t))) * -BAR.amount;
+          const [gx, gy] = gradRR(px, py, hx, hy, gr);
+          dx = d * gx; dy = d * gy;
+        }
+        const o = (y * w + x) * 4;
+        img.data[o] = Math.round(clamp(0.5 + dx / scale, 0, 1) * 255);
+        img.data[o + 1] = Math.round(clamp(0.5 + dy / scale, 0, 1) * 255);
+        img.data[o + 2] = 128;
+        img.data[o + 3] = 255;
+      }
+    }
+    cx.putImageData(img, 0, 0);
+    barMap.setAttribute('href', c.toDataURL());
+  }
+  function updateBarMap() {
+    if (!isChromium) return;
+    const w = Math.round(W), h = Math.round(H);
+    barMap.setAttribute('width', w);
+    barMap.setAttribute('height', h);
+    const key = `${w}x${h}`;
+    if (key === mapKey) return;
+    clearTimeout(mapTimer);
+    mapTimer = setTimeout(() => { mapKey = key; buildBarMap(w, h); }, mapKey ? 150 : 0);
+  }
+  if (isChromium) track.classList.add('nb-refract');
+
+  /* ---------------- Frame loop ---------------- */
   let raf = 0, lastTs = 0;
   function kick() { if (!raf) raf = requestAnimationFrame(tick); }
   function tick(now) {
     raf = 0;
-    const dt = lastTs ? Math.min((now - lastTs) / 1000, 0.064) : 0;
+    const dt = lastTs ? (now - lastTs) / 1000 : 0;
     lastTs = now;
-    if (reduceMotion) { pos.snapTo(posTarget); press.snapTo(pressTarget); mini.snapTo(miniTarget); }
-    else { pos.advance(posTarget, dt); press.advance(pressTarget, dt); mini.advance(miniTarget, dt); }
+    let busy = false;
+    if (lf !== lfTo) {
+      const t = reduceMotion ? 1 : clamp((now - lfStart) / 300, 0, 1);
+      lf = t >= 1 ? lfTo : lfFrom + (lfTo - lfFrom) * (1 - Math.pow(1 - t, 3));
+      layout();
+      busy = lf !== lfTo;
+    }
+    if (motion.running) { motion.advance(dt); busy = busy || motion.running; }
     render();
-    if (pressing || !pos.isAtRest(posTarget) || !press.isAtRest(pressTarget) || !mini.isAtRest(miniTarget)) raf = requestAnimationFrame(tick);
-    else lastTs = 0;
+    if (busy) raf = requestAnimationFrame(tick); else lastTs = 0;
+  }
+  function setLabels(visible) {
+    if (NAV_STYLE === 'compact') return;
+    const to = visible ? 1 : 0;
+    if (to === lfTo) return;
+    lfFrom = lf; lfTo = to; lfStart = performance.now();
+    kick();
   }
 
   /* ---------------- Selection ---------------- */
   function applySelection(i) {
     selected = i;
-    buttons.forEach((b, j) => {
-      b.classList.toggle('on', j === i);
-      b.setAttribute('aria-selected', String(j === i));
-      b.tabIndex = j === i && !miniTarget ? 0 : -1;
-    });
-    compact.setAttribute('aria-label', `${TABS[i].label}. Show all tabs`);
-  }
-  function setMini(on) {
-    const t = on ? 1 : 0;
-    if (t === miniTarget) return;
-    miniTarget = t;
-    compact.style.pointerEvents = on ? 'auto' : 'none';
-    compact.tabIndex = on ? 0 : -1;
-    row.toggleAttribute('inert', on);
-    applySelection(selected);
-    kick();
+    targets.forEach((t, j) => { t.setAttribute('aria-selected', String(j === i)); t.tabIndex = j === i ? 0 : -1; });
   }
   let spyLockUntil = 0;
   function scrollToSection(i) {
@@ -781,8 +1205,9 @@
   }
   function goTo(i, scroll = true) {
     applySelection(i);
-    pos.set(...SLIDE);
-    posTarget = i;
+    // A drag commit lands without a second slide (FloatingNavigationBar SideEffect + motion.snap)
+    if (motion.lastDragCommit === i) motion.snap(i); else motion.select(i);
+    motion.lastDragCommit = null;
     kick();
     if (scroll) scrollToSection(i);
   }
@@ -791,44 +1216,44 @@
     goTo(Number(el.dataset.nav));
   }));
 
-  /* ---------------- Press, lens and scrub ---------------- */
-  let pid = null, hover = -1;
-  const fingerPos = (clientX) => clamp((clientX - tb.getBoundingClientRect().left - glassX - INSET - tabW / 2) / step, -0.25, N - 0.75);
-  bar.addEventListener('pointerdown', (e) => {
-    if (pid !== null || e.button !== 0 || miniTarget) return;
-    pid = e.pointerId;
-    bar.setPointerCapture(pid);
-    pressing = true;
-    pos.set(...FOLLOW);
-    posTarget = fingerPos(e.clientX);
-    pressTarget = 1;
-    hover = clamp(Math.round(posTarget), 0, N - 1);
+  /* ---------------- Gestures (detectJellyTabGestures) ---------------- */
+  let activePointer = null, downX = 0, downY = 0;
+  track.addEventListener('pointerdown', (e) => {
+    if (activePointer !== null) { motion.cancel(selected); activePointer = null; kick(); return; }
+    if (e.button !== 0) return;
+    activePointer = e.pointerId;
+    const r = track.getBoundingClientRect();
+    downX = e.clientX; downY = e.clientY;
+    motion.begin((e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height);
+    track.setPointerCapture(e.pointerId);
     kick();
   });
-  bar.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== pid) return;
-    posTarget = fingerPos(e.clientX);
-    const h = clamp(Math.round(posTarget), 0, N - 1);
-    if (h !== hover) { hover = h; if (navigator.vibrate) navigator.vibrate(6); }
+  track.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== activePointer || !motion.dragging) return;
+    motion.drag(e.clientX - downX, e.clientY - downY);
     kick();
   });
-  function release(e, commit) {
-    if (e.pointerId !== pid) return;
-    pid = null;
-    pressing = false;
-    pressTarget = 0;
-    const i = commit ? clamp(Math.round(fingerPos(e.clientX)), 0, N - 1) : selected;
-    goTo(i, commit);
-  }
-  bar.addEventListener('pointerup', (e) => release(e, true));
-  bar.addEventListener('pointercancel', (e) => release(e, false));
-  bar.addEventListener('lostpointercapture', (e) => release(e, false));
-  compact.addEventListener('click', () => { setMini(false); buttons[selected].focus({ preventScroll: true }); });
+  track.addEventListener('pointerup', (e) => {
+    if (e.pointerId !== activePointer) return;
+    activePointer = null;
+    motion.drag(e.clientX - downX, e.clientY - downY);
+    const index = motion.finish();
+    goTo(index);
+    targets[index].focus({ preventScroll: true });
+  });
+  const cancelPointer = (e) => {
+    if (e.pointerId !== activePointer) return;
+    activePointer = null;
+    motion.cancel(selected);
+    kick();
+  };
+  track.addEventListener('pointercancel', cancelPointer);
+  track.addEventListener('lostpointercapture', cancelPointer);
 
   // Keyboard: clicks with detail === 0 come from Enter/Space, pointer taps are handled above
-  buttons.forEach((b, i) => b.addEventListener('click', (e) => { if (e.detail === 0) goTo(i); }));
-  row.addEventListener('keydown', (e) => {
-    const cur = buttons.indexOf(document.activeElement);
+  targets.forEach((t, i) => t.addEventListener('click', (e) => { if (e.detail === 0) goTo(i); }));
+  targetsEl.addEventListener('keydown', (e) => {
+    const cur = targets.indexOf(document.activeElement);
     if (cur < 0) return;
     let next = -1;
     if (e.key === 'ArrowRight') next = (cur + 1) % N;
@@ -837,26 +1262,26 @@
     else if (e.key === 'End') next = N - 1;
     if (next < 0) return;
     e.preventDefault();
+    targets[next].focus();
     goTo(next);
-    buttons[next].focus();
   });
 
-  /* ---------------- Scroll: minimize on scroll down + section spy ---------------- */
-  const MINI_THRESHOLD = 40;
+  /* ---------------- Scroll: label collapse (auto style) + section spy ---------------- */
+  const SCROLL_THRESHOLD = 60;
   let lastY = scrollY, acc = 0, scrollQueued = false;
   function onScroll() {
     scrollQueued = false;
-    const y = scrollY, d = y - lastY;
+    const y = scrollY;
+    const delta = lastY - y;
     lastY = y;
-    const locked = performance.now() < spyLockUntil;
-    if (y < 40) { acc = 0; setMini(false); }
-    else if (d && !locked && !pressing) {
-      if (Math.sign(d) !== Math.sign(acc)) acc = 0;
-      acc += d;
-      if (acc > MINI_THRESHOLD) { setMini(true); acc = 0; }
-      else if (acc < -MINI_THRESHOLD) { setMini(false); acc = 0; }
+    if (y <= 4) { acc = 0; setLabels(true); }
+    else if (delta !== 0) {
+      if ((delta < 0 && acc > 0) || (delta > 0 && acc < 0)) acc = 0;
+      acc += delta;
+      if (acc < -SCROLL_THRESHOLD) { setLabels(false); acc = 0; }
+      else if (acc > SCROLL_THRESHOLD) { setLabels(true); acc = 0; }
     }
-    if (locked || pressing) return;
+    if (performance.now() < spyLockUntil || motion.dragging) return;
     const probe = innerHeight * 0.4;
     let idx = 0;
     sections.forEach((s, i) => { if (s.getBoundingClientRect().top <= probe) idx = i; });
@@ -865,21 +1290,6 @@
   }
   addEventListener('scroll', () => { if (!scrollQueued) { scrollQueued = true; requestAnimationFrame(onScroll); } }, { passive: true });
   addEventListener('scrollend', () => { spyLockUntil = 0; });
-
-  /* ---------------- Liquid Glass slider (iOS 27 Settings > Appearance) ----------------
-     t = 1 ultra clear ... 0 fully tinted; opacity and blur scale as in the kit-derived model */
-  const glassAmt = $('#glassAmt');
-  function applyGlass(v) {
-    const t = 1 - clamp(v, 0, 100) / 100;
-    const opacityScale = 1.6 - 1.1 * t, blurScale = 0.5 + 0.8 * t;
-    const root = document.documentElement.style;
-    root.setProperty('--glass-a', clamp(0.5 * opacityScale, 0, 0.92).toFixed(3));
-    root.setProperty('--glass-blur', `${(14 * blurScale).toFixed(1)}px`);
-    try { localStorage.setItem('nv-glass', String(v)); } catch {}
-  }
-  glassAmt.addEventListener('input', () => applyGlass(Number(glassAmt.value)));
-  try { const saved = localStorage.getItem('nv-glass'); if (saved !== null) glassAmt.value = saved; } catch {}
-  applyGlass(Number(glassAmt.value));
 
   /* ---------------- Themes ---------------- */
   const profilesEl = $('#profiles');
@@ -890,10 +1300,10 @@
     root.setProperty('--acc-rgb', hexRgb(th.acc).join(' '));
     root.setProperty('--on-acc', th.on);
     root.setProperty('--bg', th.bg);
-    root.setProperty('--tab-tint', th.nat);
+    setNavTheme(th);
     document.querySelector('meta[name="theme-color"]').setAttribute('content', th.bg);
     profilesEl.querySelectorAll('.profile').forEach((p, j) => p.setAttribute('aria-pressed', String(j === i)));
-    try { localStorage.setItem('nv-theme', String(i)); } catch {}
+    try { localStorage.setItem('nv-theme-v2', String(i)); } catch {}
   }
   THEMES.forEach((th, i) => {
     const b = document.createElement('button');
@@ -904,7 +1314,7 @@
     profilesEl.appendChild(b);
   });
   let savedTheme = 0;
-  try { savedTheme = clamp(parseInt(localStorage.getItem('nv-theme') || '0', 10) || 0, 0, THEMES.length - 1); } catch {}
+  try { savedTheme = clamp(parseInt(localStorage.getItem('nv-theme-v2') || '0', 10) || 0, 0, THEMES.length - 1); } catch {}
   applyTheme(savedTheme);
 
   /* ---------------- Init ---------------- */
