@@ -262,6 +262,35 @@ private class AndroidDexCloudStreamProvider(
 ) : CloudStreamProvider {
     private val log = Logger.withTag("CloudStreamProvider")
 
+    /** Addresses shipped with the extension, kept to undo the user's changes. */
+    private val defaultUrls: Map<MainAPI, String> = providers.associateWith { it.mainUrl }
+
+    override val sites: List<CloudStreamSite>
+        get() = providers.map { api ->
+            CloudStreamSite(name = api.name, url = api.mainUrl, defaultUrl = defaultUrls[api] ?: api.mainUrl)
+        }
+
+    override fun setSiteUrl(siteName: String, url: String?) {
+        providers.filter { it.name == siteName }.forEach { api ->
+            val target = url ?: defaultUrls[api] ?: return@forEach
+            if (api.mainUrl != target) {
+                log.i { "CloudStream site address api=${api.name} url=$target" }
+                api.mainUrl = target
+            }
+        }
+    }
+
+    /**
+     * Links built from the shipped address (main page sections, titles saved before the address
+     * changed) are pointed at the address the site uses now.
+     */
+    private fun MainAPI.withCurrentSiteUrl(value: String): String {
+        val defaultUrl = defaultUrls[this]?.trimEnd('/') ?: return value
+        val currentUrl = mainUrl.trimEnd('/')
+        if (defaultUrl == currentUrl || defaultUrl.isEmpty()) return value
+        return value.replace(defaultUrl, currentUrl)
+    }
+
     override suspend fun getMainPage(
         page: Int,
     ): List<Pair<String, List<CloudStreamSearchItem>>> = withContext(Dispatchers.IO) {
@@ -278,7 +307,7 @@ private class AndroidDexCloudStreamProvider(
                     withTimeout(stageTimeout(api.getMainPageTimeoutMs, DEFAULT_DISCOVERY_TIMEOUT_MS)) {
                         api.getMainPage(
                             page.coerceAtLeast(1),
-                            MainPageRequest(data.name, data.data, data.horizontalImages),
+                            MainPageRequest(data.name, api.withCurrentSiteUrl(data.data), data.horizontalImages),
                         )
                     }
                 }.onSuccess { response ->
@@ -357,7 +386,7 @@ private class AndroidDexCloudStreamProvider(
         val route = decodeAndroidDexRoute(data)
         val api = findProvider(route.providerClassName)
         val response = withTimeout(stageTimeout(api.loadTimeoutMs, DEFAULT_LOAD_TIMEOUT_MS)) {
-            api.load(route.data)
+            api.load(api.withCurrentSiteUrl(route.data))
         } ?: error("CloudStream provider returned no details")
         response.toNuvioLoadItem(api)
     }
@@ -369,7 +398,7 @@ private class AndroidDexCloudStreamProvider(
         val links = Collections.synchronizedList(mutableListOf<ExtractorLink>())
         val completed = withTimeout(stageTimeout(api.loadLinksTimeoutMs, DEFAULT_LINK_TIMEOUT_MS)) {
             api.loadLinks(
-                route.data,
+                api.withCurrentSiteUrl(route.data),
                 false,
                 { subtitle ->
                     subtitles += CloudStreamSubtitle(

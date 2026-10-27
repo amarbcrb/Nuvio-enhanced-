@@ -17,6 +17,8 @@ data class CloudStreamPluginItem(
     val verified: Boolean = false,
     val isInstalling: Boolean = false,
     val errorMessage: String? = null,
+    /** Site addresses chosen by the user, by site name, replacing the ones shipped with the extension. */
+    val siteUrlOverrides: Map<String, String> = emptyMap(),
 ) {
     val isInstalled: Boolean
         get() = installedVersion != null
@@ -82,6 +84,9 @@ expect object CloudStreamRepository {
     suspend fun loadByExternalId(providerId: String, externalId: String): Result<CloudStreamLoadItem?>
     suspend fun load(providerId: String, data: String): Result<CloudStreamLoadItem>
     suspend fun loadLinks(providerId: String, data: String): Result<List<CloudStreamPlaybackSource>>
+
+    suspend fun sites(pluginId: String): Result<List<CloudStreamSite>>
+    fun setSiteUrl(pluginId: String, siteName: String, url: String?)
 }
 
 internal expect object CloudStreamPlatformStorage {

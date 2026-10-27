@@ -245,6 +245,7 @@ internal data class StoredCloudStreamPlugin(
     val enabled: Boolean = false,
     val verified: Boolean = false,
     val installedAtEpochMs: Long = 0L,
+    val siteUrlOverrides: Map<String, String> = emptyMap(),
 )
 
 @Serializable

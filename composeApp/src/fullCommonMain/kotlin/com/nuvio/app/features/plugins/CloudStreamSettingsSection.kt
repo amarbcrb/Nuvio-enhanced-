@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
@@ -57,6 +58,8 @@ import com.nuvio.app.features.cloudstream.CloudStreamInstallResult
 import com.nuvio.app.features.cloudstream.CloudStreamPlatformSupport
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.CloudStreamSite
+import com.nuvio.app.features.cloudstream.normalizeCloudStreamSiteUrl
 import com.nuvio.app.features.settings.AppLanguage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.streams.PinnedStreamSourcesRepository
@@ -386,6 +389,7 @@ private fun CloudStreamPluginCard(
     val scope = rememberCoroutineScope()
     val sourceId = remember(plugin.metadata.id.value) { cloudStreamAddonId(plugin.metadata.id.value) }
     val isPinnedSource = sourceId in pinnedSourceIds
+    var showSites by rememberSaveable(plugin.metadata.id.value) { mutableStateOf(false) }
     NuvioSurfaceCard {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -404,6 +408,18 @@ private fun CloudStreamPluginCard(
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (plugin.isRunnable) {
+                    NuvioIconActionButton(
+                        icon = Icons.Rounded.Link,
+                        contentDescription = copy.siteAddressTitle,
+                        tint = if (showSites || plugin.siteUrlOverrides.isNotEmpty()) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        onClick = { showSites = !showSites },
+                    )
+                }
                 if (plugin.isInstalled) {
                     NuvioIconActionButton(
                         icon = Icons.Rounded.Delete,
@@ -472,6 +488,9 @@ private fun CloudStreamPluginCard(
             Spacer(Modifier.height(6.dp))
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
+        if (showSites && plugin.isRunnable) {
+            CloudStreamSiteUrlEditor(plugin = plugin, copy = copy, onMessage = onMessage)
+        }
         Spacer(Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
@@ -514,9 +533,169 @@ private fun CloudStreamPluginCard(
     }
 }
 
+/** Lets the user point an extension at the new address of a site that moved. */
+@Composable
+private fun CloudStreamSiteUrlEditor(
+    plugin: CloudStreamPluginItem,
+    copy: CloudStreamSettingsCopy,
+    onMessage: (String) -> Unit,
+) {
+    val pluginId = plugin.metadata.id.value
+    var sites by remember(pluginId) { mutableStateOf<List<CloudStreamSite>?>(null) }
+    var loadError by remember(pluginId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(pluginId, plugin.siteUrlOverrides) {
+        CloudStreamRepository.sites(pluginId)
+            .onSuccess {
+                sites = it
+                loadError = null
+            }
+            .onFailure { loadError = it.message ?: copy.siteLoadFailed }
+    }
+    Spacer(Modifier.height(12.dp))
+    Text(copy.siteAddressTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    Text(
+        copy.siteAddressDescription,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+    val loadedSites = sites
+    when {
+        loadError != null -> Text(
+            loadError.orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+        loadedSites == null -> Text(copy.siteLoading, style = MaterialTheme.typography.bodySmall)
+        loadedSites.isEmpty() -> Text(copy.noSites, style = MaterialTheme.typography.bodySmall)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            loadedSites.forEach { site ->
+                CloudStreamSiteUrlRow(pluginId = pluginId, site = site, copy = copy, onMessage = onMessage)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CloudStreamSiteUrlRow(
+    pluginId: String,
+    site: CloudStreamSite,
+    copy: CloudStreamSettingsCopy,
+    onMessage: (String) -> Unit,
+) {
+    var input by remember(site.name, site.url) { mutableStateOf(site.url) }
+    val isChanged = site.url.trimEnd('/') != site.defaultUrl.trimEnd('/')
+    Column {
+        Text(site.name, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        if (isChanged) {
+            Text(
+                copy.originalSiteUrl(site.defaultUrl),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        NuvioInputField(
+            value = input,
+            onValueChange = { input = it },
+            placeholder = site.defaultUrl,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                modifier = Modifier.weight(1f),
+                enabled = input.trim().trimEnd('/') != site.url.trimEnd('/'),
+                onClick = {
+                    val normalized = normalizeCloudStreamSiteUrl(input)
+                    if (normalized == null) {
+                        onMessage(copy.invalidSiteUrl)
+                    } else {
+                        val override = normalized.takeIf { it != site.defaultUrl.trimEnd('/') }
+                        CloudStreamRepository.setSiteUrl(pluginId, site.name, override)
+                        onMessage(copy.siteUrlSaved(site.name))
+                    }
+                },
+            ) {
+                Text(copy.saveSiteUrl)
+            }
+            if (isChanged) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        CloudStreamRepository.setSiteUrl(pluginId, site.name, null)
+                        onMessage(copy.siteUrlRestored(site.name))
+                    },
+                ) {
+                    Text(copy.restoreSiteUrl)
+                }
+            }
+        }
+    }
+}
+
 private class CloudStreamSettingsCopy private constructor(
     private val turkish: Boolean,
+    private val french: Boolean,
 ) {
+    private fun text(english: String, french: String, turkish: String): String = when {
+        this.turkish -> turkish
+        this.french -> french
+        else -> english
+    }
+
+    val siteAddressTitle: String = text(
+        english = "Site address",
+        french = "Adresse du site",
+        turkish = "Site adresi",
+    )
+    val siteAddressDescription: String = text(
+        english = "If the site moved to a new address, enter it here. Restore the original address when the extension is updated.",
+        french = "Si le site a changé d'adresse, saisis la nouvelle ici. Remets l'adresse d'origine quand l'extension est mise à jour.",
+        turkish = "Site yeni bir adrese taşındıysa buraya girin. Eklenti güncellendiğinde orijinal adresi geri yükleyin.",
+    )
+    val siteLoading: String = text(
+        english = "Loading the extension...",
+        french = "Chargement de l'extension...",
+        turkish = "Eklenti yükleniyor...",
+    )
+    val siteLoadFailed: String = text(
+        english = "The extension could not be loaded.",
+        french = "L'extension n'a pas pu être chargée.",
+        turkish = "Eklenti yüklenemedi.",
+    )
+    val noSites: String = text(
+        english = "This extension does not expose a site address.",
+        french = "Cette extension n'indique pas d'adresse de site.",
+        turkish = "Bu eklenti bir site adresi sunmuyor.",
+    )
+    val invalidSiteUrl: String = text(
+        english = "Enter a web address such as https://example.com",
+        french = "Saisis une adresse web, par exemple https://exemple.com",
+        turkish = "https://ornek.com gibi bir web adresi girin",
+    )
+    val saveSiteUrl: String = text(english = "Save", french = "Enregistrer", turkish = "Kaydet")
+    val restoreSiteUrl: String = text(english = "Restore original", french = "Adresse d'origine", turkish = "Orijinale dön")
+
+    fun originalSiteUrl(url: String): String = text(
+        english = "Original: $url",
+        french = "D'origine : $url",
+        turkish = "Orijinal: $url",
+    )
+
+    fun siteUrlSaved(name: String): String = text(
+        english = "$name now uses the new address.",
+        french = "$name utilise maintenant la nouvelle adresse.",
+        turkish = "$name artık yeni adresi kullanıyor.",
+    )
+
+    fun siteUrlRestored(name: String): String = text(
+        english = "$name uses its original address again.",
+        french = "$name utilise de nouveau son adresse d'origine.",
+        turkish = "$name yeniden orijinal adresini kullanıyor.",
+    )
+
     val sectionTitle: String =
         if (turkish) "CloudStream / CS3" else "CloudStream / CS3"
     val repositoriesSectionTitle: String =
@@ -704,7 +883,10 @@ private class CloudStreamSettingsCopy private constructor(
 
     companion object {
         fun forLanguage(language: AppLanguage): CloudStreamSettingsCopy =
-            CloudStreamSettingsCopy(turkish = language == AppLanguage.TURKISH)
+            CloudStreamSettingsCopy(
+                turkish = language == AppLanguage.TURKISH,
+                french = language == AppLanguage.FRENCH,
+            )
     }
 }
 

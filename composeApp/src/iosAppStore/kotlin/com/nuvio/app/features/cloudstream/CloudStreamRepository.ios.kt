@@ -37,4 +37,6 @@ actual object CloudStreamRepository {
     actual suspend fun loadByExternalId(providerId: String, externalId: String) = Result.failure<CloudStreamLoadItem?>(UnsupportedOperationException())
     actual suspend fun load(providerId: String, data: String) = Result.failure<CloudStreamLoadItem>(UnsupportedOperationException())
     actual suspend fun loadLinks(providerId: String, data: String) = Result.failure<List<CloudStreamPlaybackSource>>(UnsupportedOperationException())
+    actual suspend fun sites(pluginId: String) = Result.failure<List<CloudStreamSite>>(UnsupportedOperationException())
+    actual fun setSiteUrl(pluginId: String, siteName: String, url: String?) = Unit
 }

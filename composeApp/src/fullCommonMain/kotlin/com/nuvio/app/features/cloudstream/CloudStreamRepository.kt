@@ -286,6 +286,7 @@ actual object CloudStreamRepository {
                             enabled = false,
                             verified = false,
                             errorMessage = null,
+                            siteUrlOverrides = emptyMap(),
                         )
                     } else item
                 },
@@ -323,6 +324,30 @@ actual object CloudStreamRepository {
 
     actual suspend fun loadLinks(providerId: String, data: String): Result<List<CloudStreamPlaybackSource>> =
         providerResult(providerId) { loadLinks(data) }
+
+    actual suspend fun sites(pluginId: String): Result<List<CloudStreamSite>> =
+        providerResult(pluginId) { sites }
+
+    actual fun setSiteUrl(pluginId: String, siteName: String, url: String?) {
+        initialize()
+        val normalized = url?.let(::normalizeCloudStreamSiteUrl)
+        if (url != null && normalized == null) return
+        _uiState.update { current ->
+            current.copy(
+                plugins = current.plugins.map { item ->
+                    if (item.metadata.id.value != pluginId) return@map item
+                    val overrides = if (normalized == null) {
+                        item.siteUrlOverrides - siteName
+                    } else {
+                        item.siteUrlOverrides + (siteName to normalized)
+                    }
+                    item.copy(siteUrlOverrides = overrides)
+                },
+                registryRevision = current.registryRevision + 1,
+            )
+        }
+        persist()
+    }
 
     private suspend fun installOrUpdate(pluginId: String): CloudStreamInstallResult {
         initialize()
@@ -491,6 +516,7 @@ actual object CloudStreamRepository {
                 installedAtEpochMs = plugin.installedAtEpochMs.takeIf { packageExists } ?: 0L,
                 enabled = plugin.enabled && packageExists && plugin.verified && compatibility.isRunnable && metadata.status.canInstall,
                 verified = plugin.verified && packageExists,
+                siteUrlOverrides = plugin.siteUrlOverrides.takeIf { packageExists }.orEmpty(),
             )
         }
         return CloudStreamUiState(
@@ -540,6 +566,7 @@ actual object CloudStreamRepository {
         enabled = enabled,
         verified = verified,
         installedAtEpochMs = installedAtEpochMs.takeIf { installedVersion != null } ?: 0L,
+        siteUrlOverrides = siteUrlOverrides,
     )
 
     private fun StoredCloudStreamPlugin.toMetadata(): CloudStreamPluginMetadata {
@@ -590,6 +617,7 @@ actual object CloudStreamRepository {
             val provider = CloudStreamProviderRegistry.find(providerId)
                 ?: CloudStreamPlatformRuntime.provider(plugin)
                 ?: error("CloudStream provider adapter was not found")
+            provider.applySiteUrlOverrides(plugin.siteUrlOverrides)
             provider.block()
         }
             .onFailure { log.w(it) { "CloudStream provider request failed id=$providerId" } }
