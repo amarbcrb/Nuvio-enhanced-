@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-data class NuvioDropdownOption(
+data class NuvioSelectOption(
     val key: String,
     val label: String,
 )
@@ -43,9 +43,9 @@ data class NuvioDropdownOption(
 @Composable
 fun NuvioDropdownField(
     valueLabel: String,
-    options: List<NuvioDropdownOption>,
+    options: List<NuvioSelectOption>,
     selectedKeys: Set<String>,
-    onSelect: (NuvioDropdownOption) -> Unit,
+    onSelect: (NuvioSelectOption) -> Unit,
     modifier: Modifier = Modifier,
     label: String? = null,
     multiSelect: Boolean = false,

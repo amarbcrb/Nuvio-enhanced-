@@ -6,7 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.NuvioDropdownField
-import com.nuvio.app.core.ui.NuvioDropdownOption
+import com.nuvio.app.core.ui.NuvioSelectOption
 import com.nuvio.app.features.home.CatalogSourceRepository
 import com.nuvio.app.features.search.SearchHistoryRepository
 import nuvio.composeapp.generated.resources.Res
@@ -60,8 +60,8 @@ internal fun LazyListScope.contentDiscoveryContent(
                 ) {
                     NuvioDropdownField(
                         valueLabel = selectedSource?.name ?: allLabel,
-                        options = listOf(NuvioDropdownOption(key = "", label = allLabel)) +
-                            sources.map { NuvioDropdownOption(key = it.id, label = it.name) },
+                        options = listOf(NuvioSelectOption(key = "", label = allLabel)) +
+                            sources.map { NuvioSelectOption(key = it.id, label = it.name) },
                         selectedKeys = setOf(selectedSource?.id.orEmpty()),
                         onSelect = { option ->
                             CatalogSourceRepository.select(sources.firstOrNull { it.id == option.key })

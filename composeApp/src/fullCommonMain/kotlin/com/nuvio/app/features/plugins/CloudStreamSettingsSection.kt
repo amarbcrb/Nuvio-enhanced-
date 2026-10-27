@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioDropdownField
-import com.nuvio.app.core.ui.NuvioDropdownOption
+import com.nuvio.app.core.ui.NuvioSelectOption
 import com.nuvio.app.core.ui.NuvioIconActionButton
 import com.nuvio.app.core.ui.NuvioInfoBadge
 import com.nuvio.app.core.ui.NuvioInputField
@@ -424,7 +424,7 @@ internal fun CloudStreamSettingsSection() {
             NuvioDropdownField(
                 label = copy.installationLabel,
                 valueLabel = copy.installFilterLabel(installFilter),
-                options = CloudStreamInstallFilter.entries.map { NuvioDropdownOption(it.name, copy.installFilterLabel(it)) },
+                options = CloudStreamInstallFilter.entries.map { NuvioSelectOption(it.name, copy.installFilterLabel(it)) },
                 selectedKeys = setOf(installFilter.name),
                 onSelect = { option -> installFilter = CloudStreamInstallFilter.valueOf(option.key) },
             )
@@ -432,9 +432,9 @@ internal fun CloudStreamSettingsSection() {
             NuvioDropdownField(
                 label = copy.languageLabel,
                 valueLabel = selectedLanguage?.let(::streamLanguageDisplayName) ?: copy.allLanguages,
-                options = listOf(NuvioDropdownOption("", copy.allLanguages)) +
+                options = listOf(NuvioSelectOption("", copy.allLanguages)) +
                     languages
-                        .map { NuvioDropdownOption(it, streamLanguageDisplayName(it)) }
+                        .map { NuvioSelectOption(it, streamLanguageDisplayName(it)) }
                         .sortedBy { it.label.lowercase() },
                 selectedKeys = setOf(selectedLanguage.orEmpty()),
                 onSelect = { option -> selectedLanguage = option.key.ifEmpty { null } },
@@ -444,8 +444,8 @@ internal fun CloudStreamSettingsSection() {
                 NuvioDropdownField(
                     label = copy.typeLabel,
                     valueLabel = selectedType ?: copy.allTypes,
-                    options = listOf(NuvioDropdownOption("", copy.allTypes)) +
-                        types.map { NuvioDropdownOption(it, it) },
+                    options = listOf(NuvioSelectOption("", copy.allTypes)) +
+                        types.map { NuvioSelectOption(it, it) },
                     selectedKeys = setOf(selectedType.orEmpty()),
                     onSelect = { option -> selectedType = option.key.ifEmpty { null } },
                 )

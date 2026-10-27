@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.Chip
 import com.nuvio.app.core.ui.NuvioDropdownField
-import com.nuvio.app.core.ui.NuvioDropdownOption
+import com.nuvio.app.core.ui.NuvioSelectOption
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.streams.StreamDubMode
 import com.nuvio.app.features.streams.StreamLanguageChoices
@@ -155,9 +155,9 @@ private fun LanguageChipRow(
 ) {
     val anyLabel = stringResource(Res.string.settings_language_any)
     val options = remember(languages, anyLabel) {
-        listOf(NuvioDropdownOption(key = "", label = anyLabel)) +
+        listOf(NuvioSelectOption(key = "", label = anyLabel)) +
             languages
-                .map { code -> NuvioDropdownOption(key = code, label = streamLanguageDisplayName(code)) }
+                .map { code -> NuvioSelectOption(key = code, label = streamLanguageDisplayName(code)) }
                 .sortedBy { it.label.lowercase() }
     }
     SettingsDropdownRow(title = title, description = description, isTablet = isTablet) {
