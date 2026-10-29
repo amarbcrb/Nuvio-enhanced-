@@ -2956,4 +2956,6 @@
     <string name="settings_playback_toolbar_note">Buttons that do not apply to the current video, such as Next Episode on a movie, are skipped.</string>
     <string name="player_toolbar_button_resize">Resize</string>
     <string name="player_toolbar_button_quality">Quality</string>
+    <string name="streams_sources_menu">Sources</string>
+    <string name="streams_languages_menu">Languages: %1$s</string>
 </resources>

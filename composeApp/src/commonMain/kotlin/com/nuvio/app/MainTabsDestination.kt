@@ -2,7 +2,11 @@ package com.nuvio.app
 
 import androidx.compose.runtime.collectAsState
 import com.nuvio.app.core.ui.NativeTabBridge
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -108,6 +112,9 @@ internal fun MainTabsDestination(
         // The backdrop source is only consumed by the custom floating bar, not native or CLASSIC navigation.
         val floatingBarVisible = tabsRouteActive && !useNativeBottomTabs && navBarStyleSetting != NavBarStyle.CLASSIC
         val navBarBackdrop = if (floatingBarVisible) rememberNuvioBackdrop() else null
+        // On phones the bar is laid out like Apple Music: Home and Library in one pill, Search as a
+        // separate round button on its right, and the profile at the top right of the screen.
+        val splitPhoneBar = !isTabletLayout && !floatingBarOnTop
         val floatingNavigationItems = mainFloatingNavigationItems(
             highlightedTab = highlightedTab,
             showLiveTv = showLiveTvInNavigation,
@@ -116,7 +123,19 @@ internal fun MainTabsDestination(
             onAddProfileRequested = onAddProfileRequested,
             backdrop = navBarBackdrop,
             defaultIconColorOverride = navBarDefaultIconColorOverride,
+            includeSearchAndProfile = !splitPhoneBar,
         )
+        val searchNavigationItem = if (splitPhoneBar) {
+            FloatingNavigationItem(
+                selected = highlightedTab == AppScreenTab.Search,
+                onClick = { onTabSelected(AppScreenTab.Search) },
+                drawable = Res.drawable.sidebar_search,
+                label = stringResource(Res.string.compose_nav_search),
+                iconOnly = true,
+            )
+        } else {
+            null
+        }
 
         Scaffold(
             modifier = Modifier
@@ -199,11 +218,29 @@ internal fun MainTabsDestination(
                             floatingNavigationBarPadding()
                         },
                         items = floatingNavigationItems,
+                        trailingItem = searchNavigationItem,
                         glowEnabled = navBarGlowEnabled,
                         inlineLabels = isTabletLayout,
                         glassStyle = navBarGlass,
                         defaultIconColorOverride = navBarDefaultIconColorOverride,
                     )
+                    if (splitPhoneBar) {
+                        ProfileSwitcherTab(
+                            selected = highlightedTab == AppScreenTab.Settings,
+                            onClick = { onTabSelected(AppScreenTab.Settings) },
+                            onProfileSelected = onProfileSelected,
+                            onAddProfileRequested = onAddProfileRequested,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(
+                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                    end = 16.dp,
+                                ),
+                            backdrop = navBarBackdrop,
+                            popupBelowAnchor = true,
+                            defaultIconColorOverride = navBarDefaultIconColorOverride,
+                        )
+                    }
                 }
             }
         }
@@ -221,6 +258,7 @@ private fun MainFloatingNavigationBar(
     backdrop: Backdrop?,
     contentPadding: PaddingValues,
     items: List<FloatingNavigationItem>,
+    trailingItem: FloatingNavigationItem? = null,
     glowEnabled: Boolean,
     inlineLabels: Boolean,
     glassStyle: LiquidGlassStyle,
@@ -229,19 +267,62 @@ private fun MainFloatingNavigationBar(
     val liquidGlassBarEffects by ThemeSettingsRepository.navBarLiquidGlassBarEffects.collectAsStateWithLifecycle()
     val liquidGlassSelectionEffects by ThemeSettingsRepository.navBarLiquidGlassSelectionEffects.collectAsStateWithLifecycle()
 
-    FloatingNavigationBar(
-        items = items,
-        modifier = modifier,
-        scrollState = scrollState,
-        backdrop = backdrop,
-        glassStyle = glassStyle,
-        contentPadding = contentPadding,
-        glowEnabled = glowEnabled,
-        liquidGlassBarEffects = liquidGlassBarEffects,
-        liquidGlassSelectionEffects = liquidGlassSelectionEffects,
-        inlineLabels = inlineLabels,
-        defaultIconColorOverride = defaultIconColorOverride,
-    )
+    if (trailingItem == null) {
+        FloatingNavigationBar(
+            items = items,
+            modifier = modifier,
+            scrollState = scrollState,
+            backdrop = backdrop,
+            glassStyle = glassStyle,
+            contentPadding = contentPadding,
+            glowEnabled = glowEnabled,
+            liquidGlassBarEffects = liquidGlassBarEffects,
+            liquidGlassSelectionEffects = liquidGlassSelectionEffects,
+            inlineLabels = inlineLabels,
+            defaultIconColorOverride = defaultIconColorOverride,
+        )
+        return
+    }
+
+    // Main pill on the left, then the trailing item alone in a round pill as tall as the bar.
+    val roundSize = 48.dp + 16.dp * (scrollState?.labelVisibility ?: 1f)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        FloatingNavigationBar(
+            items = items,
+            modifier = Modifier.weight(1f),
+            scrollState = scrollState,
+            backdrop = backdrop,
+            glassStyle = glassStyle,
+            contentPadding = PaddingValues(0.dp),
+            glowEnabled = glowEnabled,
+            liquidGlassBarEffects = liquidGlassBarEffects,
+            liquidGlassSelectionEffects = liquidGlassSelectionEffects,
+            inlineLabels = inlineLabels,
+            defaultIconColorOverride = defaultIconColorOverride,
+            horizontalPaddingOverride = 0.dp,
+        )
+        FloatingNavigationBar(
+            items = listOf(trailingItem),
+            modifier = Modifier.width(roundSize),
+            scrollState = scrollState,
+            backdrop = backdrop,
+            glassStyle = glassStyle,
+            contentPadding = PaddingValues(0.dp),
+            glowEnabled = glowEnabled,
+            liquidGlassBarEffects = liquidGlassBarEffects,
+            liquidGlassSelectionEffects = liquidGlassSelectionEffects,
+            inlineLabels = false,
+            defaultIconColorOverride = defaultIconColorOverride,
+            horizontalPaddingOverride = 0.dp,
+        )
+    }
 }
 
 @Composable
@@ -253,6 +334,8 @@ internal fun mainFloatingNavigationItems(
     onAddProfileRequested: () -> Unit,
     backdrop: Backdrop?,
     defaultIconColorOverride: Color? = null,
+    /** False when Search and the profile are shown outside the pill (phone layout). */
+    includeSearchAndProfile: Boolean = true,
 ): List<FloatingNavigationItem> = buildList {
     add(
         FloatingNavigationItem(
@@ -280,6 +363,7 @@ internal fun mainFloatingNavigationItems(
             ),
         )
     }
+    if (!includeSearchAndProfile) return@buildList
     add(
         FloatingNavigationItem(
             selected = highlightedTab == AppScreenTab.Settings,

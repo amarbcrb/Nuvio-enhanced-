@@ -65,8 +65,9 @@ class ProviderFilterRowTest {
             }
         }
 
-        // Sources are picked from a drop-down list opened from the "All" chip.
-        compose.onNodeWithText("All").performClick()
+        // Sources are picked from a drop-down menu opened from the sources chip.
+        val menuChip = if (inPlayer) "All" else "Sources"
+        compose.onNodeWithText(menuChip).performClick()
         compose.onNodeWithText("Ready (1)").assertIsDisplayed()
         compose.onNodeWithText("Empty", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Failed", substring = true).assertDoesNotExist()
@@ -90,7 +91,7 @@ class ProviderFilterRowTest {
         }
         compose.onNodeWithText("Pending").assertDoesNotExist()
         compose.runOnIdle { assertNull(state.value.selectedFilter) }
-        compose.onNodeWithText("All").performClick()
+        compose.onNodeWithText(menuChip).performClick()
         compose.onNodeWithText("Ready (1)").performClick()
         compose.runOnIdle {
             assertEquals("ready", state.value.selectedFilter)

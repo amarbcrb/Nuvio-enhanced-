@@ -974,22 +974,11 @@ private fun LazyListScope.streamSection(
 
     sortedSources.forEachIndexed { sourceIndex, sourceName ->
         val sourceStreams = streamsBySource[sourceName].orEmpty()
-        if (showSourceHeaders) {
+        // A source with a single link needs no header: its card already shows the name. The
+        // favorite star is only on the group header, for the whole source.
+        if (showSourceHeaders && sourceStreams.size > 1) {
             item(key = "source_${sectionKey}_$sourceIndex") {
-                StreamSourceHeader(
-                    sourceName = sourceName,
-                    pinTarget = PinTarget(
-                        key = PinnedStreamSourcesRepository.sourceKeyFor(
-                            addonId = group.addonId,
-                            sourceName = sourceStreams.firstOrNull()?.sourceName,
-                        ),
-                        label = sourceName,
-                    ).takeIf {
-                        sourceStreams.none { stream ->
-                            stream.isAddonDebridCandidate && stream.isDirectDebridStream
-                        }
-                    },
-                )
+                StreamSourceHeader(sourceName = sourceName)
             }
         }
 
@@ -1054,9 +1043,9 @@ internal fun splitPinnedSources(
     val remaining = mutableListOf<AddonStreamGroup>()
 
     groups.forEach { group ->
-        // CloudStream providers are pinned as a whole from the CloudStream settings page.
+        // A favorite source (its star, or the CloudStream settings pin) lifts the whole group.
         val providerRank = pinnedRank[group.addonId]
-        if (providerRank != null && group.addonId.startsWith("cloudstream:")) {
+        if (providerRank != null) {
             pinned += providerRank to group
             return@forEach
         }
@@ -1173,7 +1162,7 @@ private fun StreamSectionHeader(
                 )
             }
             if (pinTarget != null) {
-                FavoriteSourceStar(target = pinTarget, isFavorite = isPinned, size = 18.dp)
+                FavoriteSourceStar(target = pinTarget, isFavorite = isPinned, size = 26.dp)
             }
         }
     }
@@ -1187,20 +1176,11 @@ private fun StreamSectionHeader(
 @Composable
 private fun StreamSourceHeader(
     sourceName: String,
-    pinTarget: PinTarget? = null,
     modifier: Modifier = Modifier,
 ) {
-    val pinnedSourceIds by rememberPinnedStreamSourceIds()
-    val isPinned = pinTarget?.key in pinnedSourceIds
-    var pinSheetVisible by remember { mutableStateOf(false) }
-
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = {},
-                onLongClick = { if (pinTarget != null) pinSheetVisible = true },
-            )
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1215,15 +1195,7 @@ private fun StreamSourceHeader(
             ),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (pinTarget != null) {
-            FavoriteSourceStar(target = pinTarget, isFavorite = isPinned, size = 16.dp)
-        }
     }
-
-    StreamSourcePinSheet(
-        target = pinTarget?.takeIf { pinSheetVisible },
-        onDismiss = { pinSheetVisible = false },
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1283,7 +1255,7 @@ private fun StreamActionsSheet(
 
             if (stream.addonId.isNotBlank() && !stream.isDirectDebridStream) {
                 val pinnedSourceIds by rememberPinnedStreamSourceIds()
-                val sourceKey = PinnedStreamSourcesRepository.sourceKeyFor(stream)
+                val sourceKey = stream.addonId
                 val isPinned = sourceKey in pinnedSourceIds
                 NuvioBottomSheetDivider()
                 NuvioBottomSheetActionRow(

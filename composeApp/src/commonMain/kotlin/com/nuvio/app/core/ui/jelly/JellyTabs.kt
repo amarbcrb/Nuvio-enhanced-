@@ -91,6 +91,15 @@ internal fun JellyTabRow(
                     }
                     return@Box
                 }
+                if (item.iconOnly) {
+                    Box(Modifier.size(iconSize)) {
+                        when {
+                            item.icon != null -> Icon(item.icon, null, iconModifier, tint = iconTint)
+                            item.drawable != null -> Icon(painterResource(item.drawable), null, iconModifier, tint = iconTint)
+                        }
+                    }
+                    return@Box
+                }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(iconSize).graphicsLayer { translationY = 2.dp.toPx() * labelFraction }) {
                         when {

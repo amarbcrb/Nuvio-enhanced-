@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.glass.LiquidGlassStyle
 import com.nuvio.app.core.ui.glass.SolidGlassBar
@@ -82,6 +83,8 @@ internal class FloatingNavigationItem(
     val icon: ImageVector? = null,
     val drawable: DrawableResource? = null,
     val content: (@Composable (onClick: () -> Unit, defaultIconColorOverride: Color?) -> Unit)? = null,
+    /** Shows the icon alone, centered, like the round search button; [label] stays for accessibility. */
+    val iconOnly: Boolean = false,
 )
 
 /**
@@ -116,6 +119,8 @@ internal fun FloatingNavigationBar(
     defaultIconColorOverride: Color? = null,
     scrollBounceTrigger: Int = 0,
     scrollBounceDirection: Float = 0f,
+    /** Side margin of the pill; null keeps the default that shrinks as the labels hide. */
+    horizontalPaddingOverride: Dp? = null,
 ) {
     if (items.isEmpty()) return
     val showGlow = !floatingNavigationGlowSupported || glowEnabled
@@ -212,7 +217,7 @@ internal fun FloatingNavigationBar(
     val density = LocalDensity.current
     val trackHeight = if (inlineLabels) 48.dp + 4.dp * labelFraction
     else 48.dp + (if (compactSize) 8.dp else 16.dp) * labelFraction
-    val horizontalPadding = 58.dp - 30.dp * labelFraction
+    val horizontalPadding = horizontalPaddingOverride ?: (58.dp - 30.dp * labelFraction)
     // Inline (tablet) pill: expanded fits icon + label per tab, compact shrinks to icon-only
     // slots instead of keeping most of the expanded width.
     val inlineMaxWidth = run {

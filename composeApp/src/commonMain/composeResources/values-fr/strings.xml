@@ -2024,4 +2024,6 @@
     <string name="streams_pin_source">Ajouter aux sources favorites</string>
     <string name="streams_unpin_source">Retirer des sources favorites</string>
     <string name="streams_pinned_source">Source favorite</string>
+    <string name="streams_sources_menu">Sources</string>
+    <string name="streams_languages_menu">Langues : %1$s</string>
 </resources>

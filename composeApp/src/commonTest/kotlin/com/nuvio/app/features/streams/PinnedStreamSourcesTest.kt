@@ -96,9 +96,14 @@ class PinnedStreamSourcesTest {
     }
 
     @Test
-    fun `the star on an addon group favorites its single source`() {
+    fun `the star on any group favorites the whole source`() {
         assertEquals("addon:usenet", group("addon:usenet", "Usenet Streamer", null).favoriteTarget()?.key)
-        assertEquals(null, group("plugin-repo:d3adly", "D3adlyRocket", "NetMirror", "Zoechip").favoriteTarget())
+        val repo = group("plugin-repo:d3adly", "D3adlyRocket", "NetMirror", "Zoechip")
+        assertEquals("plugin-repo:d3adly", repo.favoriteTarget()?.key)
+
+        val split = splitPinnedSources(listOf(group("addon:a", "A", null), repo), listOf("plugin-repo:d3adly"))
+        assertEquals(listOf("D3adlyRocket"), split.pinnedGroups.map { it.addonName })
+        assertEquals(listOf("A"), split.remainingGroups.map { it.addonName })
     }
 
     private fun group(addonId: String, addonName: String, vararg sources: String?) = AddonStreamGroup(

@@ -31,9 +31,8 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Translate
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -76,6 +75,8 @@ import nuvio.composeapp.generated.resources.streams_language_filter_title
 import nuvio.composeapp.generated.resources.streams_search_scope_all
 import nuvio.composeapp.generated.resources.streams_search_scope_title
 import nuvio.composeapp.generated.resources.streams_search_scope_unavailable
+import nuvio.composeapp.generated.resources.streams_sources_menu
+import nuvio.composeapp.generated.resources.streams_languages_menu
 import nuvio.composeapp.generated.resources.streams_unpin_source
 import org.jetbrains.compose.resources.stringResource
 import com.nuvio.app.core.ui.glass.ambientLiquidGlass
@@ -129,41 +130,17 @@ internal fun ProviderFilterRow(
         if (onRefresh != null) {
             refreshChip(isRefreshing, onRefresh)
         }
-        if (showSearchScopeChip) {
-            val scopedName = sourceOptions.firstOrNull { it.id == searchScopeId }?.name
-            FilterChip(
-                label = scopedName ?: stringResource(Res.string.streams_search_scope_all),
-                icon = Icons.Rounded.Tune,
-                contentDescription = stringResource(Res.string.streams_search_scope_title),
-                isSelected = scopedName != null,
-                onClick = { showSearchScopeSheet = true },
-            )
-        }
-        if (onRefresh != null && languagePreferences.linkLanguages.isNotEmpty()) {
-            FilterChip(
-                label = if (languageFilterPaused) {
-                    stringResource(Res.string.streams_language_filter_all)
-                } else {
-                    languagePreferences.linkLanguages.sorted().joinToString(", ") { it.uppercase() }
-                },
-                icon = Icons.Rounded.Translate,
-                contentDescription = stringResource(Res.string.streams_language_filter_title),
-                isSelected = !languageFilterPaused,
-                onClick = {
-                    StreamLanguagePreferencesRepository.setLinkFilterPaused(!languageFilterPaused)
-                    onRefresh()
-                },
-            )
-        }
-        // One drop-down list of sources instead of a chip per source.
+        // One drop-down menu holds the source shown, where to search and the language filter,
+        // instead of a row of chips side by side.
         val selectedGroup = addonGroups.firstOrNull { it.addonId == selectedFilter }
+        val showLanguageToggle = onRefresh != null && languagePreferences.linkLanguages.isNotEmpty()
         var sourceMenuExpanded by remember { mutableStateOf(false) }
         Box {
             if (filterChip != null) {
                 filterChip(selectedGroup, selectedGroup != null) { sourceMenuExpanded = true }
             } else {
                 FilterChip(
-                    label = selectedGroup?.addonName ?: stringResource(Res.string.collections_tab_all),
+                    label = selectedGroup?.addonName ?: stringResource(Res.string.streams_sources_menu),
                     isSelected = selectedGroup != null,
                     isPinned = selectedGroup != null && selectedGroup.favoriteTarget()?.key in pinnedSourceIds,
                     trailingIcon = Icons.Rounded.KeyboardArrowDown,
@@ -193,6 +170,38 @@ internal fun ProviderFilterRow(
                         onClick = {
                             sourceMenuExpanded = false
                             onFilterSelected(group.addonId)
+                        },
+                    )
+                }
+                if (showSearchScopeChip || showLanguageToggle) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                }
+                if (showSearchScopeChip) {
+                    val scopedName = sourceOptions.firstOrNull { it.id == searchScopeId }?.name
+                    MenuItem(
+                        text = stringResource(Res.string.streams_search_scope_title) + " : " +
+                            (scopedName ?: stringResource(Res.string.streams_search_scope_all)),
+                        onClick = {
+                            sourceMenuExpanded = false
+                            showSearchScopeSheet = true
+                        },
+                    )
+                }
+                if (showLanguageToggle && onRefresh != null) {
+                    MenuItem(
+                        text = if (languageFilterPaused) {
+                            stringResource(Res.string.streams_language_filter_all)
+                        } else {
+                            stringResource(
+                                Res.string.streams_languages_menu,
+                                languagePreferences.linkLanguages.sorted().joinToString(", ") { it.uppercase() },
+                            )
+                        },
+                        selected = !languageFilterPaused,
+                        onClick = {
+                            sourceMenuExpanded = false
+                            StreamLanguagePreferencesRepository.setLinkFilterPaused(!languageFilterPaused)
+                            onRefresh()
                         },
                     )
                 }
@@ -312,14 +321,14 @@ internal fun sourceMenuLabel(group: AddonStreamGroup, isFavorite: Boolean): Stri
 }
 
 /**
- * The favorite (pinned) source a group header's star stands for: the whole extension for
- * CloudStream, as on the CloudStream settings page, otherwise the group's single source.
+ * The favorite (pinned) source a group header's star stands for: the whole source (addon,
+ * extension or plugin group), the same key as the pin on the CloudStream settings page.
  */
 internal fun AddonStreamGroup.favoriteTarget(): PinTarget? = when {
     // Headers that stand for no source, like the stream shared in a watch party.
     streams.isEmpty() && !isLoading -> null
-    addonId.startsWith("cloudstream:") -> PinTarget(key = addonId, label = addonName)
-    else -> soleSourcePin()
+    addonId.startsWith("debrid:") -> null
+    else -> PinTarget(key = addonId, label = addonName)
 }
 
 /** Star button that adds [target] to or removes it from the favorite sources. */
