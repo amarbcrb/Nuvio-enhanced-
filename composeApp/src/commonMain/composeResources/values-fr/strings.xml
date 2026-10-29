@@ -2026,4 +2026,6 @@
     <string name="streams_pinned_source">Source favorite</string>
     <string name="streams_sources_menu">Sources</string>
     <string name="streams_languages_menu">Langues : %1$s</string>
+    <string name="compose_nav_settings">Réglages</string>
+    <string name="streams_choose_other_source">Choisir une autre source</string>
 </resources>

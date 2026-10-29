@@ -2958,4 +2958,6 @@
     <string name="player_toolbar_button_quality">Quality</string>
     <string name="streams_sources_menu">Sources</string>
     <string name="streams_languages_menu">Languages: %1$s</string>
+    <string name="compose_nav_settings">Settings</string>
+    <string name="streams_choose_other_source">Choose another source</string>
 </resources>

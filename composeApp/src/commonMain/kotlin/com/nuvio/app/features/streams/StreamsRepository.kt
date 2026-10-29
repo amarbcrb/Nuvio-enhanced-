@@ -43,6 +43,8 @@ object StreamsRepository {
 
     private var activeJob: Job? = null
     private var activeRequestKey: String? = null
+    /** Request whose automatic pick the user cancelled to choose the source themselves. */
+    private var dismissedAutoPlayToken: String? = null
 
     fun requestToken(
         type: String,
@@ -160,6 +162,7 @@ object StreamsRepository {
         }
 
         activeRequestKey = requestKey
+        dismissedAutoPlayToken = null
         activeJob?.cancel()
         _uiState.value = StreamsUiState(requestToken = requestToken)
 
@@ -396,6 +399,8 @@ object StreamsRepository {
             fun settleAutoPlay(evaluation: StreamAutoPlayEvaluation) {
                 if (autoSelectTriggered) return
                 autoSelectTriggered = true
+                // The user asked for the stream list: never pick a link for them on this request.
+                if (dismissedAutoPlayToken == requestToken) return
                 _uiState.update { current ->
                     if (evaluation.stream == null) {
                         current.copy(
@@ -913,6 +918,20 @@ object StreamsRepository {
         }
     }
 
+    /** Stops the automatic pick of the current request and shows the stream list instead. */
+    fun showStreamListInstead() {
+        dismissedAutoPlayToken = _uiState.value.requestToken
+        _uiState.update {
+            it.copy(
+                autoPlayStream = null,
+                autoPlayCandidates = emptyList(),
+                isDirectAutoPlayFlow = false,
+                showDirectAutoPlayOverlay = false,
+                overlayMessage = null,
+            )
+        }
+    }
+
     fun skipAutoPlayStream(stream: StreamItem): Boolean {
         var hasNext = false
         _uiState.update { current ->
@@ -972,4 +991,4 @@ object StreamsRepository {
 }
 
 private const val CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY = 18
-private const val REMEMBERED_SOURCE_WAIT_MS = 30_000L
+private const val REMEMBERED_SOURCE_WAIT_MS = 15_000L

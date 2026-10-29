@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -55,6 +56,7 @@ import nuvio.composeapp.generated.resources.compose_nav_library
 import nuvio.composeapp.generated.resources.compose_nav_live_tv
 import nuvio.composeapp.generated.resources.compose_nav_profile
 import nuvio.composeapp.generated.resources.compose_nav_search
+import nuvio.composeapp.generated.resources.compose_nav_settings
 import nuvio.composeapp.generated.resources.sidebar_library
 import nuvio.composeapp.generated.resources.sidebar_search
 import org.jetbrains.compose.resources.stringResource
@@ -112,8 +114,8 @@ internal fun MainTabsDestination(
         // The backdrop source is only consumed by the custom floating bar, not native or CLASSIC navigation.
         val floatingBarVisible = tabsRouteActive && !useNativeBottomTabs && navBarStyleSetting != NavBarStyle.CLASSIC
         val navBarBackdrop = if (floatingBarVisible) rememberNuvioBackdrop() else null
-        // On phones the bar is laid out like Apple Music: Home and Library in one pill, Search as a
-        // separate round button on its right, and the profile at the top right of the screen.
+        // On phones the bar is laid out like Apple Music: Home, Library and Settings in one pill,
+        // and Search as a separate round button on its right.
         val splitPhoneBar = !isTabletLayout && !floatingBarOnTop
         val floatingNavigationItems = mainFloatingNavigationItems(
             highlightedTab = highlightedTab,
@@ -224,23 +226,6 @@ internal fun MainTabsDestination(
                         glassStyle = navBarGlass,
                         defaultIconColorOverride = navBarDefaultIconColorOverride,
                     )
-                    if (splitPhoneBar) {
-                        ProfileSwitcherTab(
-                            selected = highlightedTab == AppScreenTab.Settings,
-                            onClick = { onTabSelected(AppScreenTab.Settings) },
-                            onProfileSelected = onProfileSelected,
-                            onAddProfileRequested = onAddProfileRequested,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(
-                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
-                                    end = 16.dp,
-                                ),
-                            backdrop = navBarBackdrop,
-                            popupBelowAnchor = true,
-                            defaultIconColorOverride = navBarDefaultIconColorOverride,
-                        )
-                    }
                 }
             }
         }
@@ -334,7 +319,7 @@ internal fun mainFloatingNavigationItems(
     onAddProfileRequested: () -> Unit,
     backdrop: Backdrop?,
     defaultIconColorOverride: Color? = null,
-    /** False when Search and the profile are shown outside the pill (phone layout). */
+    /** False on phones: Settings (gear) replaces the profile and Search gets its own round button. */
     includeSearchAndProfile: Boolean = true,
 ): List<FloatingNavigationItem> = buildList {
     add(
@@ -363,7 +348,17 @@ internal fun mainFloatingNavigationItems(
             ),
         )
     }
-    if (!includeSearchAndProfile) return@buildList
+    if (!includeSearchAndProfile) {
+        add(
+            FloatingNavigationItem(
+                selected = highlightedTab == AppScreenTab.Settings,
+                onClick = { onTabSelected(AppScreenTab.Settings) },
+                icon = Icons.Filled.Settings,
+                label = stringResource(Res.string.compose_nav_settings),
+            ),
+        )
+        return@buildList
+    }
     add(
         FloatingNavigationItem(
             selected = highlightedTab == AppScreenTab.Settings,

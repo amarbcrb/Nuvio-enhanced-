@@ -853,6 +853,10 @@ internal fun StreamDestination(
             )
         }
         if (showLoadingScreen) {
+            val searchingAutomatically = !autoPlayNavigationStarted && !resolvingDebridStream &&
+                !resolvingYouTubeStream && !preparingServerStream &&
+                streamsUiState.requestToken == expectedStreamsRequestToken &&
+                streamsUiState.autoPlayStream == null
             StreamLoadingScreen(
                 launch = launch,
                 state = streamsUiState.takeIf { it.requestToken == expectedStreamsRequestToken } ?: StreamsUiState(),
@@ -861,6 +865,7 @@ internal fun StreamDestination(
                 resolvingYouTubeStream = resolvingYouTubeStream,
                 onBack = onBack,
                 preparingPlayback = preparingServerStream,
+                onChooseSource = if (searchingAutomatically) StreamsRepository::showStreamListInstead else null,
             )
         }
     }

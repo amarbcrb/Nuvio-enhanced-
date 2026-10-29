@@ -80,8 +80,12 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
     }
 
     // Once an episode actually plays, its source becomes the one the series plays from next time.
+    // A link that does not play is not remembered: the next episode opens the stream list again.
     LaunchedEffect(initialLoadCompleted, errorMessage, activeProviderAddonId, activeStream, parentMetaId) {
-        if (initialLoadCompleted && errorMessage == null && isSeries) {
+        if (!isSeries) return@LaunchedEffect
+        if (errorMessage != null) {
+            SeriesSourceMemoryRepository.forget(parentMetaId)
+        } else if (initialLoadCompleted) {
             SeriesSourceMemoryRepository.save(parentMetaId, activeProviderAddonId, activeStream?.sourceName)
         }
     }
