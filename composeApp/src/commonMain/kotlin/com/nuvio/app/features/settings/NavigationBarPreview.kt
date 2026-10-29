@@ -71,9 +71,9 @@ internal fun NavigationBarPreview(
     var selectedIndex by remember { mutableIntStateOf(0) }
     val items = listOf(
         FloatingNavigationItem(stringResource(Res.string.compose_nav_home), selectedIndex == 0, { selectedIndex = 0 }, icon = Icons.Default.Home),
-        FloatingNavigationItem(stringResource(Res.string.compose_nav_search), selectedIndex == 1, { selectedIndex = 1 }, drawable = Res.drawable.sidebar_search),
-        FloatingNavigationItem(stringResource(Res.string.compose_nav_library), selectedIndex == 2, { selectedIndex = 2 }, drawable = Res.drawable.sidebar_library),
-        FloatingNavigationItem(stringResource(Res.string.compose_nav_profile), selectedIndex == 3, { selectedIndex = 3 }, icon = Icons.Default.Person),
+        FloatingNavigationItem(stringResource(Res.string.compose_nav_library), selectedIndex == 1, { selectedIndex = 1 }, drawable = Res.drawable.sidebar_library),
+        FloatingNavigationItem(stringResource(Res.string.compose_nav_profile), selectedIndex == 2, { selectedIndex = 2 }, icon = Icons.Default.Person),
+        FloatingNavigationItem(stringResource(Res.string.compose_nav_search), selectedIndex == 3, { selectedIndex = 3 }, drawable = Res.drawable.sidebar_search),
     )
     Column(Modifier.padding(horizontal = 16.dp)) {
         Box(
@@ -109,7 +109,7 @@ internal fun NavigationBarPreview(
                 }
             }
             if (tabletClassic) {
-                val previewTabs = listOf(AppScreenTab.Home, AppScreenTab.Search, AppScreenTab.Library, AppScreenTab.Settings)
+                val previewTabs = listOf(AppScreenTab.Home, AppScreenTab.Library, AppScreenTab.Settings, AppScreenTab.Search)
                 TabletFloatingTopBar(
                     selectedTab = previewTabs[selectedIndex],
                     showLiveTv = false,

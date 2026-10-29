@@ -30,6 +30,7 @@ import com.nuvio.app.features.player.skip.intervalsAtSeekPositions
 import com.nuvio.app.features.servers.ServerPlayback
 import com.nuvio.app.features.servers.ServerStreams
 import com.nuvio.app.features.streams.BingeGroupCacheRepository
+import com.nuvio.app.features.streams.SeriesSourceMemoryRepository
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.hasLikelyExpiringPlaybackCredentials
@@ -75,6 +76,13 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         val bg = currentStreamBingeGroup
         if (bg != null && parentMetaId.isNotBlank()) {
             BingeGroupCacheRepository.save(parentMetaId, bg, currentStreamFilename, currentStreamInfoHash)
+        }
+    }
+
+    // Once an episode actually plays, its source becomes the one the series plays from next time.
+    LaunchedEffect(initialLoadCompleted, errorMessage, activeProviderAddonId, activeStream, parentMetaId) {
+        if (initialLoadCompleted && errorMessage == null && isSeries) {
+            SeriesSourceMemoryRepository.save(parentMetaId, activeProviderAddonId, activeStream?.sourceName)
         }
     }
 

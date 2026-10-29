@@ -327,23 +327,6 @@ internal fun TabletFloatingTopBar(
                     },
                 )
                 TabletTopPillItem(
-                    label = stringResource(Res.string.compose_nav_search),
-                    selected = selectedTab == AppScreenTab.Search,
-                    onClick = { onTabSelected(AppScreenTab.Search) },
-                    icon = {
-                        Icon(
-                            painter = painterResource(Res.drawable.sidebar_search),
-                            contentDescription = stringResource(Res.string.compose_nav_search),
-                            modifier = Modifier.size(NuvioTokens.Space.s18),
-                            tint = if (selectedTab == AppScreenTab.Search) {
-                                tokens.colors.textPrimary
-                            } else {
-                                tokens.colors.textMuted
-                            },
-                        )
-                    },
-                )
-                TabletTopPillItem(
                     label = stringResource(Res.string.compose_nav_library),
                     selected = selectedTab == AppScreenTab.Library,
                     onClick = { onTabSelected(AppScreenTab.Library) },
@@ -410,6 +393,23 @@ internal fun TabletFloatingTopBar(
                         )
                     }
                 }
+                TabletTopPillItem(
+                    label = stringResource(Res.string.compose_nav_search),
+                    selected = selectedTab == AppScreenTab.Search,
+                    onClick = { onTabSelected(AppScreenTab.Search) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(Res.drawable.sidebar_search),
+                            contentDescription = stringResource(Res.string.compose_nav_search),
+                            modifier = Modifier.size(NuvioTokens.Space.s18),
+                            tint = if (selectedTab == AppScreenTab.Search) {
+                                tokens.colors.textPrimary
+                            } else {
+                                tokens.colors.textMuted
+                            },
+                        )
+                    },
+                )
             }
         }
     }

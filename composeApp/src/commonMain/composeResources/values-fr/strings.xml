@@ -1349,9 +1349,9 @@
     <string name="settings_stream_language_unknown_title">Masquer les liens sans langue détectée</string>
     <string name="settings_stream_language_unknown_description">La langue est lue dans le nom du lien et du fichier (VF, VOSTFR, MULTI, DUB, SUB, drapeaux).</string>
     <string name="settings_language_any">Toutes</string>
-    <string name="settings_catalog_source_section">CATALOGUE DE L\'ACCUEIL ET DE LA RECHERCHE</string>
+    <string name="settings_catalog_source_section">CATALOGUE DE L\'ACCUEIL</string>
     <string name="settings_catalog_source_title">Source du catalogue</string>
-    <string name="settings_catalog_source_description">L\'Accueil et la Recherche n\'affichent que les films et séries de cette source. La recherche de liens utilise toujours toutes les sources.</string>
+    <string name="settings_catalog_source_description">L\'Accueil n\'affiche que les films et séries de cette source. La recherche et la recherche de liens utilisent toujours toutes les sources.</string>
     <string name="settings_catalog_source_all">Toutes les sources</string>
     <string name="settings_stream_dub_title">Versions doublées</string>
     <string name="settings_stream_dub_description">Les liens doublés et MULTI passent en premier. \"Doublé uniquement\" masque les liens seulement sous-titrés (VOSTFR, SUB) et charge l\'épisode doublé quand une extension CloudStream propose les deux.</string>
@@ -2021,4 +2021,7 @@
     <string name="stream_info_subtitle_source_addon">Addon</string>
     <string name="stream_info_subtitle_source_embedded">Intégré</string>
     <string name="stream_info_player_engine">Moteur du lecteur</string>
+    <string name="streams_pin_source">Ajouter aux sources favorites</string>
+    <string name="streams_unpin_source">Retirer des sources favorites</string>
+    <string name="streams_pinned_source">Source favorite</string>
 </resources>

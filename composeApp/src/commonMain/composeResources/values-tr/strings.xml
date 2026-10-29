@@ -1481,9 +1481,9 @@
     <string name="settings_stream_language_unknown_title">Dili bilinmeyen bağlantıları gizle</string>
     <string name="settings_stream_language_unknown_description">Dil, bağlantı ve dosya adlarından okunur (VF, VOSTFR, MULTI, DUB, SUB, bayraklar).</string>
     <string name="settings_language_any">Tümü</string>
-    <string name="settings_catalog_source_section">ANA SAYFA VE ARAMA KATALOĞU</string>
+    <string name="settings_catalog_source_section">ANA SAYFA KATALOĞU</string>
     <string name="settings_catalog_source_title">Katalog kaynağı</string>
-    <string name="settings_catalog_source_description">Ana sayfa ve Arama yalnızca bu kaynağın film ve dizilerini gösterir. Bağlantı aramaları yine tüm kaynakları kullanır.</string>
+    <string name="settings_catalog_source_description">Ana sayfa yalnızca bu kaynağın film ve dizilerini gösterir. Arama ve bağlantı aramaları her zaman tüm kaynakları kullanır.</string>
     <string name="settings_catalog_source_all">Tüm kaynaklar</string>
     <string name="settings_stream_dub_title">Dublajlı sürümler</string>
     <string name="settings_stream_dub_description">Dublajlı ve çok dilli bağlantılar önce gelir. \"Yalnızca dublaj\" yalnızca altyazılı bağlantıları (VOSTFR, SUB) gizler ve bir CloudStream eklentisi ikisini de sunduğunda dublajlı bölümü yükler.</string>

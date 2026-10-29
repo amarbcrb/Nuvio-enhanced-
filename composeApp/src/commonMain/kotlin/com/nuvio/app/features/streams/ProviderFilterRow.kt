@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,9 +24,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
@@ -111,9 +114,9 @@ internal fun ProviderFilterRow(
             FilterChip(
                 label = group?.addonName ?: stringResource(Res.string.collections_tab_all),
                 isSelected = isSelected,
-                isPinned = group != null && group.soleSourcePin()?.key in pinnedSourceIds,
+                isPinned = group != null && group.favoriteTarget()?.key in pinnedSourceIds,
                 onClick = onClick,
-                onLongClick = group?.let { pinnedGroup -> { pinSheetTarget = pinnedGroup.soleSourcePin() } },
+                onLongClick = group?.let { pinnedGroup -> { pinSheetTarget = pinnedGroup.favoriteTarget() } },
             )
         }
     LaunchedEffect(addonGroups, selectedFilter) {
@@ -269,6 +272,38 @@ internal fun AddonStreamGroup.soleSourcePin(): PinTarget? {
 
 internal data class PinTarget(val key: String, val label: String)
 
+/**
+ * The favorite (pinned) source a group header's star stands for: the whole extension for
+ * CloudStream, as on the CloudStream settings page, otherwise the group's single source.
+ */
+internal fun AddonStreamGroup.favoriteTarget(): PinTarget? = when {
+    // Headers that stand for no source, like the stream shared in a watch party.
+    streams.isEmpty() && !isLoading -> null
+    addonId.startsWith("cloudstream:") -> PinTarget(key = addonId, label = addonName)
+    else -> soleSourcePin()
+}
+
+/** Star button that adds [target] to or removes it from the favorite sources. */
+@Composable
+internal fun FavoriteSourceStar(
+    target: PinTarget,
+    isFavorite: Boolean,
+    size: Dp,
+) {
+    Icon(
+        imageVector = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+        contentDescription = stringResource(
+            if (isFavorite) Res.string.streams_unpin_source else Res.string.streams_pin_source,
+        ),
+        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .clip(CircleShape)
+            .clickable { PinnedStreamSourcesRepository.setPinned(target.key, !isFavorite) }
+            .padding(6.dp)
+            .size(size),
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun StreamSourcePinSheet(
@@ -306,7 +341,7 @@ internal fun StreamSourcePinSheet(
             )
             NuvioBottomSheetDivider()
             NuvioBottomSheetActionRow(
-                icon = Icons.Rounded.PushPin,
+                icon = Icons.Rounded.Star,
                 title = stringResource(
                     if (isPinned) Res.string.streams_unpin_source else Res.string.streams_pin_source,
                 ),
@@ -436,7 +471,7 @@ private fun FilterChip(
             }
             if (isPinned) {
                 Icon(
-                    imageVector = Icons.Rounded.PushPin,
+                    imageVector = Icons.Rounded.Star,
                     contentDescription = stringResource(Res.string.streams_pinned_source),
                     tint = contentColor,
                     modifier = Modifier.size(14.dp),

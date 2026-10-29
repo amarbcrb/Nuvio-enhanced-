@@ -34,7 +34,7 @@ import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -827,8 +827,10 @@ internal fun StreamList(
         StreamBadgeSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
-    val pinnedFirst = remember(filteredGroups, pinnedSourceIds) {
-        splitPinnedSources(filteredGroups, pinnedSourceIds)
+    val dubMode = remember { StreamLanguagePreferencesRepository.preferences }
+        .collectAsStateWithLifecycle().value.dubMode
+    val pinnedFirst = remember(filteredGroups, pinnedSourceIds, dubMode) {
+        splitPinnedSources(filteredGroups.sortedByDubPreference(), pinnedSourceIds)
     }
 
     CompositionLocalProvider(LocalStreamSizeLabelFormat provides formatStreamSize) {
@@ -961,7 +963,13 @@ private fun LazyListScope.streamSection(
     val streamsBySource = group.streams.groupBy { stream ->
         stream.sourceName?.takeIf { it.isNotBlank() } ?: stream.addonName
     }
-    val sortedSources = streamsBySource.keys.sortedBy { it.lowercase() }
+    val dubFirst = StreamLanguagePreferencesRepository.snapshot().dubMode != StreamDubMode.Any
+    val providerLanguages = if (dubFirst) cloudStreamProviderLanguages() else emptyMap()
+    val sortedSources = streamsBySource.keys.sortedWith(
+        compareBy<String> { source ->
+            if (dubFirst) streamsBySource.getValue(source).bestDubRank(providerLanguages) else 0
+        }.thenBy { it.lowercase() },
+    )
     val showSourceHeaders = sortedSources.size > 1
 
     sortedSources.forEachIndexed { sourceIndex, sourceName ->
@@ -1131,7 +1139,7 @@ private fun StreamSectionHeader(
 ) {
     val isLoading = group.isLoading
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
-    val pinTarget = remember(group) { group.soleSourcePin() }
+    val pinTarget = remember(group) { group.favoriteTarget() }
     val isPinned = pinTarget?.key in pinnedSourceIds
     var pinSheetVisible by remember { mutableStateOf(false) }
 
@@ -1142,38 +1150,31 @@ private fun StreamSectionHeader(
                 onClick = {},
                 onLongClick = { if (pinTarget != null) pinSheetVisible = true },
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            if (isPinned) {
-                Icon(
-                    imageVector = Icons.Rounded.PushPin,
-                    contentDescription = stringResource(Res.string.streams_pinned_source),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(14.dp),
+        Text(
+            text = group.addonName,
+            modifier = Modifier.weight(1f, fill = false),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AnimatedVisibility(visible = isLoading, enter = fadeIn(), exit = fadeOut()) {
+                Text(
+                    text = fetchingText,
+                    modifier = Modifier.shimmer(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
-            Text(
-                text = group.addonName,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f),
-            )
-        }
-        AnimatedVisibility(visible = isLoading, enter = fadeIn(), exit = fadeOut()) {
-            Text(
-                text = fetchingText,
-                modifier = Modifier.shimmer(),
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
-                color = MaterialTheme.colorScheme.primary,
-            )
+            if (pinTarget != null) {
+                FavoriteSourceStar(target = pinTarget, isFavorite = isPinned, size = 18.dp)
+            }
         }
     }
 
@@ -1204,16 +1205,9 @@ private fun StreamSourceHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        if (isPinned) {
-            Icon(
-                imageVector = Icons.Rounded.PushPin,
-                contentDescription = stringResource(Res.string.streams_pinned_source),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(12.dp),
-            )
-        }
         Text(
             text = sourceName,
+            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.labelLarge.copy(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -1221,6 +1215,9 @@ private fun StreamSourceHeader(
             ),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (pinTarget != null) {
+            FavoriteSourceStar(target = pinTarget, isFavorite = isPinned, size = 16.dp)
+        }
     }
 
     StreamSourcePinSheet(
@@ -1290,7 +1287,7 @@ private fun StreamActionsSheet(
                 val isPinned = sourceKey in pinnedSourceIds
                 NuvioBottomSheetDivider()
                 NuvioBottomSheetActionRow(
-                    icon = Icons.Rounded.PushPin,
+                    icon = Icons.Rounded.Star,
                     title = stringResource(
                         if (isPinned) Res.string.streams_unpin_source else Res.string.streams_pin_source,
                     ),

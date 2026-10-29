@@ -196,7 +196,13 @@ object StreamsRepository {
         val bingeGroupDirectFlow = !manualSelection &&
             persistedBingeGroup != null &&
             autoPlayMode == StreamAutoPlayMode.MANUAL
-        val isDirectAutoPlayFlow = isAutoPlayEnabled || bingeGroupDirectFlow
+        // A series episode plays straight from the source the series was last played from.
+        val rememberedSource = if (!manualSelection && season != null && !parentMetaId.isNullOrBlank()) {
+            SeriesSourceMemoryRepository.get(parentMetaId)
+        } else {
+            null
+        }
+        val isDirectAutoPlayFlow = isAutoPlayEnabled || bingeGroupDirectFlow || rememberedSource != null
 
         if (isDirectAutoPlayFlow) {
             _uiState.value = StreamsUiState(
@@ -370,9 +376,10 @@ object StreamsRepository {
             val debridAvailabilityJobs = mutableListOf<Job>()
             var autoSelectTriggered = false
             var timeoutElapsed = false
+            var rememberedSourceGaveUp = false
             fun evaluateAutoPlay(bingeGroupOnly: Boolean = false): StreamAutoPlayEvaluation =
                 StreamAutoPlaySelector.evaluateAutoPlayStream(
-                    streams = _uiState.value.groups.flatMap { it.streams },
+                    streams = _uiState.value.groups.favoriteSourcesFirst { it.addonId }.flatMap { it.streams },
                     mode = autoPlayMode,
                     regexPattern = playerSettings.streamAutoPlayRegex,
                     source = playerSettings.streamAutoPlaySource,
@@ -406,8 +413,30 @@ object StreamsRepository {
                 }
             }
 
+            fun isWaitingForRememberedSource(): Boolean =
+                rememberedSource != null && !rememberedSourceGaveUp &&
+                    _uiState.value.groups.any { it.addonId == rememberedSource.addonId && it.isLoading }
+
             fun updateAutoPlayAfterStreamsChanged() {
                 if (!isDirectAutoPlayFlow || autoSelectTriggered) return
+
+                if (rememberedSource != null && !rememberedSourceGaveUp) {
+                    val candidates = rememberedSource.candidateStreams(
+                        streams = _uiState.value.groups.flatMap { it.streams },
+                        debridEnabled = debridSettings.canResolvePlayableLinks,
+                    )
+                    if (candidates.isNotEmpty()) {
+                        settleAutoPlay(StreamAutoPlayEvaluation(candidates.first(), candidates))
+                        return
+                    }
+                    if (isWaitingForRememberedSource()) return
+                    // The remembered source has nothing for this episode: back to the usual behaviour.
+                    rememberedSourceGaveUp = true
+                    if (!isAutoPlayEnabled && !bingeGroupDirectFlow) {
+                        settleAutoPlay(StreamAutoPlayEvaluation())
+                        return
+                    }
+                }
 
                 // Try binge group + filename first (most precise), then infoHash
                 if (persistedBingeGroup != null && !timeoutElapsed) {
@@ -561,7 +590,7 @@ object StreamsRepository {
                     launch {
                         delay(timeoutSeconds * 1_000L)
                         timeoutElapsed = true
-                        if (!autoSelectTriggered) {
+                        if (!autoSelectTriggered && !isWaitingForRememberedSource()) {
                             val allStreams = _uiState.value.groups.flatMap { it.streams }
                             if (allStreams.isNotEmpty()) {
                                 val evaluation = evaluateAutoPlay()
@@ -576,7 +605,20 @@ object StreamsRepository {
                 null
             }
 
-            streamAddons.forEach { addon ->
+            // Do not wait forever on a remembered source that does not answer.
+            val rememberedSourceTimeoutJob = if (rememberedSource != null) {
+                launch {
+                    delay(REMEMBERED_SOURCE_WAIT_MS)
+                    if (!autoSelectTriggered && isWaitingForRememberedSource()) {
+                        rememberedSourceGaveUp = true
+                        updateAutoPlayAfterStreamsChanged()
+                    }
+                }
+            } else {
+                null
+            }
+
+            streamAddons.favoriteSourcesFirst { it.addonId }.forEach { addon ->
                 launch {
                     val url = buildAddonResourceUrl(
                         manifestUrl = addon.manifest.transportUrl,
@@ -629,11 +671,12 @@ object StreamsRepository {
                 }
             }
 
-            serverSources.forEach { source ->
+            serverSources.favoriteSourcesFirst { it.addonId }.forEach { source ->
                 launch { publishCompletion(StreamLoadCompletion.Addon(source.load())) }
             }
 
-            cloudStreamProviderGroups.forEach { providerGroup ->
+            // Favorite sources start first, so they also get the first CloudStream permits.
+            cloudStreamProviderGroups.favoriteSourcesFirst { it.addonId }.forEach { providerGroup ->
                 launch {
                     val group = cloudStreamPermits.withPermit {
                         resolveCloudStreamProviderStreams(
@@ -645,7 +688,7 @@ object StreamsRepository {
                 }
             }
 
-            pluginProviderGroups.forEach { providerGroup ->
+            pluginProviderGroups.favoriteSourcesFirst { it.addonId }.forEach { providerGroup ->
                 val includeScraperNameInSubtitle = false
                 providerGroup.scrapers.forEach { scraper ->
                     launch {
@@ -788,6 +831,7 @@ object StreamsRepository {
                 "Finished loading streams type=$type id=$videoId groups=${_uiState.value.groups.size} streams=${_uiState.value.groups.sumOf { it.streams.size }}",
             )
             timeoutJob?.cancel()
+            rememberedSourceTimeoutJob?.cancel()
         }
     }
 
@@ -928,3 +972,4 @@ object StreamsRepository {
 }
 
 private const val CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY = 18
+private const val REMEMBERED_SOURCE_WAIT_MS = 30_000L

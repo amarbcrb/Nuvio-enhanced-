@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** An addon or CloudStream extension whose catalogs can fill the Home and Search tabs. */
+/** An addon or CloudStream extension whose catalogs can fill the Home tab. */
 data class CatalogSourceOption(
     val id: String,
     val name: String,
@@ -17,8 +17,8 @@ data class CatalogSourceOption(
 internal fun addonCatalogSourceId(manifestUrl: String): String = "addon:$manifestUrl"
 
 /**
- * Remembers the sources the Home and Search tabs show catalogs from. An empty choice shows every
- * source. Stream searches are not affected. Sources that are no longer installed are ignored, and
+ * Remembers the sources the Home tab shows catalogs from. An empty choice shows every
+ * source. Search and stream searches are not affected. Sources that are no longer installed are ignored, and
  * when none of the chosen sources is left every source is shown again.
  */
 object CatalogSourceRepository {

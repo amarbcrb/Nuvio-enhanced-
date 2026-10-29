@@ -71,4 +71,21 @@ class StreamLanguageDetectorTest {
         assertTrue(detect("SUB · Server 1").isSubtitledOnly)
         assertFalse(detect("VF + VOSTFR").isSubtitledOnly)
     }
+
+    @Test
+    fun dubbedFirstIsTheDefaultIncludingOldSavedAny() {
+        assertEquals(StreamDubMode.PreferDubbed, StreamLanguagePreferences().dubMode)
+        assertEquals(StreamDubMode.PreferDubbed, StreamLanguagePreferences.decode("dub=0").dubMode)
+        assertEquals(StreamDubMode.PreferDubbed, StreamLanguagePreferences.decode(null).dubMode)
+        val any = StreamLanguagePreferences(dubMode = StreamDubMode.Any)
+        assertEquals(any, StreamLanguagePreferences.decode(any.encode()))
+    }
+
+    @Test
+    fun bestDubRankUsesTheMostDubbedLink() {
+        fun link(name: String) = StreamItem(name = name, addonName = "Test", addonId = "test")
+        assertEquals(0, listOf(link("Episode 3 VOSTFR"), link("Episode 3 VF")).bestDubRank(emptyMap()))
+        assertEquals(2, listOf(link("Episode 3 VOSTFR")).bestDubRank(emptyMap()))
+        assertEquals(1, emptyList<StreamItem>().bestDubRank(emptyMap()))
+    }
 }

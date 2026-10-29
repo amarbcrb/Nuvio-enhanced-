@@ -99,7 +99,7 @@ data class PlayerSettingsUiState(
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
     val nextEpisodeThresholdPercent: Float = 99f,
     val nextEpisodeThresholdMinutesBeforeEnd: Float = 2f,
-    val preloadNextEpisodeSources: Boolean = false,
+    val preloadNextEpisodeSources: Boolean = true,
     val miniPlayerEnabled: Boolean = true,
     val privateViewingEnabled: Boolean = false,
     val useLibmpvAss: Boolean = false,
@@ -194,7 +194,7 @@ object PlayerSettingsRepository {
     private var nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
     private var nextEpisodeThresholdPercent = 99f
     private var nextEpisodeThresholdMinutesBeforeEnd = 2f
-    private var preloadNextEpisodeSources = false
+    private var preloadNextEpisodeSources = true
     private var miniPlayerEnabled = true
     private var privateViewingEnabled = false
     private var useLibmpvAss = false
@@ -294,7 +294,7 @@ object PlayerSettingsRepository {
         nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
         nextEpisodeThresholdPercent = 99f
         nextEpisodeThresholdMinutesBeforeEnd = 2f
-        preloadNextEpisodeSources = false
+        preloadNextEpisodeSources = true
         miniPlayerEnabled = true
         privateViewingEnabled = false
         useLibmpvAss = false
@@ -457,7 +457,7 @@ object PlayerSettingsRepository {
             ?: NextEpisodeThresholdMode.PERCENTAGE
         nextEpisodeThresholdPercent = PlayerSettingsStorage.loadNextEpisodeThresholdPercent() ?: 99f
         nextEpisodeThresholdMinutesBeforeEnd = PlayerSettingsStorage.loadNextEpisodeThresholdMinutesBeforeEnd() ?: 2f
-        preloadNextEpisodeSources = PlayerSettingsStorage.loadPreloadNextEpisodeSources() ?: false
+        preloadNextEpisodeSources = PlayerSettingsStorage.loadPreloadNextEpisodeSources() ?: true
         miniPlayerEnabled = PlayerSettingsStorage.loadMiniPlayerEnabled() ?: true
         privateViewingEnabled = PlayerSettingsStorage.loadPrivateViewingEnabled() ?: false
         useLibmpvAss = PlayerSettingsStorage.loadUseLibmpvAss() ?: false

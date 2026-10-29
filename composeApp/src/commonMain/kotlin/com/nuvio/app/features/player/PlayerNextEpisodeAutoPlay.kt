@@ -33,8 +33,10 @@ internal fun PlayerScreenRuntime.isAtNextEpisodeThreshold(): Boolean {
     ) return false
     // Preload: trigger source fetch before the button appears
     if (playerSettingsUiState.preloadNextEpisodeSources && !nextEpisodePreloadTriggered && nextEpisodeInfo != null) {
-        val preloadLeadMs = maxOf(playerSettingsUiState.streamAutoPlayTimeoutSeconds.toLong() * 1_000L, 10_000L)
-            .coerceAtMost(30_000L)
+        val preloadLeadMs = maxOf(
+            playerSettingsUiState.streamAutoPlayTimeoutSeconds.toLong() * 1_000L,
+            NEXT_EPISODE_PRELOAD_LEAD_MS,
+        )
         val shouldPreloadByCard = PlayerNextEpisodeRules.shouldShowNextEpisodeCard(
             positionMs = playbackSnapshot.positionMs + preloadLeadMs,
             durationMs = playbackSnapshot.durationMs,
@@ -380,13 +382,16 @@ internal fun PlayerScreenRuntime.preloadNextEpisodeSources() {
     nextEpisodePreloadTriggered = true
     nextEpisodePreloadJob?.cancel()
     nextEpisodePreloadJob = scope.launch {
+        // Same request as the next-episode lookup on the current source, so that lookup finds
+        // the links already loaded when the episode ends.
         PlayerStreamsRepository.loadEpisodeStreams(
             type = type,
             videoId = nextEp.videoId,
             parentMetaId = parentMetaId,
             parentMetaType = parentMetaType,
             season = nextEp.season,
-            episode = nextEp.episode
+            episode = nextEp.episode,
+            onlySourceId = activeProviderAddonId?.takeIf { it.isNotBlank() },
         )
     }
 }
@@ -443,3 +448,6 @@ private suspend fun findNextEpisodeStreamOnSameSource(
 }
 
 private const val NEXT_EPISODE_SAME_SOURCE_TIMEOUT_MS = 45_000L
+
+/** How long before the next-episode card (or the end) its links start loading. */
+private const val NEXT_EPISODE_PRELOAD_LEAD_MS = 120_000L

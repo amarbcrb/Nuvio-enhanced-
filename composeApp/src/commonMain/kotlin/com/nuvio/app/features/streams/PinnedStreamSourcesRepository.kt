@@ -50,6 +50,13 @@ object PinnedStreamSourcesRepository {
         setPinned(sourceKey, !isPinned(sourceKey))
     }
 
+    /** Whether the source group [addonId], or one of its sources, is a favorite. */
+    fun isFavoriteGroup(addonId: String): Boolean {
+        ensureLoaded()
+        val prefix = "$addonId|"
+        return _pinnedSourceIds.value.any { key -> key == addonId || key.startsWith(prefix) }
+    }
+
     private fun loadFromDisk() {
         hasLoaded = true
         _pinnedSourceIds.value = StreamBadgeSettingsStorage.loadPinnedStreamSources()
@@ -64,3 +71,7 @@ object PinnedStreamSourcesRepository {
         StreamBadgeSettingsStorage.savePinnedStreamSources(ids.joinToString(SEPARATOR))
     }
 }
+
+/** Favorite sources first, the order being otherwise kept, so they are queried and picked first. */
+internal fun <T> List<T>.favoriteSourcesFirst(addonIdOf: (T) -> String): List<T> =
+    sortedBy { item -> if (PinnedStreamSourcesRepository.isFavoriteGroup(addonIdOf(item))) 0 else 1 }

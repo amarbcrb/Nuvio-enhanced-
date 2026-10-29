@@ -1086,9 +1086,9 @@
     <string name="streams_search_placeholder">Filter streams</string>
     <string name="streams_search_clear">Clear filter</string>
     <string name="streams_search_no_results">No streams match your filter.</string>
-    <string name="streams_pin_source">Pin to top</string>
-    <string name="streams_unpin_source">Unpin from top</string>
-    <string name="streams_pinned_source">Pinned source</string>
+    <string name="streams_pin_source">Add to favorite sources</string>
+    <string name="streams_unpin_source">Remove from favorite sources</string>
+    <string name="streams_pinned_source">Favorite source</string>
     <string name="settings_stream_background_title">Background</string>
     <string name="settings_stream_background_description">Choose the background for the streams screen.</string>
     <string name="settings_stream_badge_position_title">Badge position</string>
@@ -1331,7 +1331,7 @@
     <string name="settings_playback_reuse_binge_group">Reuse Binge Group</string>
     <string name="settings_playback_reuse_binge_group_description">Remember and reuse the last binge group across sessions (Continue Watching, Details, etc.).</string>
     <string name="settings_playback_preload_next_episode">Preload Next Episode Sources</string>
-    <string name="settings_playback_preload_next_episode_description">Start searching for sources in the background before the next episode button appears.</string>
+    <string name="settings_playback_preload_next_episode_description">Load the next episode\'s links in the background about two minutes before the end, from the source the current episode plays from.</string>
     <string name="settings_playback_mini_player">Mini Player</string>
     <string name="settings_playback_mini_player_description">Shows the mini player button in the player so you can keep watching in a floating window while you browse. Picture in Picture when leaving the app works either way.</string>
     <string name="settings_playback_private_viewing">Private Viewing</string>
@@ -1958,9 +1958,9 @@
     <string name="settings_stream_language_unknown_title">Hide links with unknown language</string>
     <string name="settings_stream_language_unknown_description">The language is read from the link and file names (VF, VOSTFR, MULTI, DUB, SUB, flags).</string>
     <string name="settings_language_any">All</string>
-    <string name="settings_catalog_source_section">HOME AND SEARCH CATALOG</string>
+    <string name="settings_catalog_source_section">HOME CATALOG</string>
     <string name="settings_catalog_source_title">Catalog source</string>
-    <string name="settings_catalog_source_description">Home and Search show the films and series of this source only. Link searches still use every source.</string>
+    <string name="settings_catalog_source_description">Home shows the films and series of this source only. Search and link searches always use every source.</string>
     <string name="settings_catalog_source_all">All sources</string>
     <string name="settings_stream_dub_title">Dubbed versions</string>
     <string name="settings_stream_dub_description">Dubbed and multi-language links come first. \"Dubbed only\" hides links that are only subtitled (VOSTFR, SUB) and loads the dubbed episode when a CloudStream extension offers both.</string>

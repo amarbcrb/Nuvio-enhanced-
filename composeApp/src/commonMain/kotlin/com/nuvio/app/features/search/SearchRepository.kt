@@ -24,12 +24,8 @@ import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.CloudStreamSearchRouteIndex
 import com.nuvio.app.features.cloudstream.toMetaPreview
-import com.nuvio.app.features.streams.cloudStreamAddonId
 import com.nuvio.app.features.streams.isAllowedByLanguagePreferences
-import com.nuvio.app.features.home.CatalogSourceRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
-import com.nuvio.app.features.home.addonCatalogSourceId
-import com.nuvio.app.features.home.buildCatalogSourceOptions
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.filterReleasedItems
@@ -107,18 +103,10 @@ object SearchRepository {
         val runnableCloudPlugins = CloudStreamRepository.uiState.value.plugins
             .filter(CloudStreamPluginItem::isRunnable)
             .filter { it.isAllowedByLanguagePreferences() }
-        // Like the Home, only the catalog source chosen in the settings is searched, when there is one.
-        val catalogSourceIds = CatalogSourceRepository.resolveSelectedIds(
-            buildCatalogSourceOptions(enabledAddons, runnableCloudPlugins),
-        )
-        val activeAddons = enabledAddons.filter { addon ->
-            addon.manifest != null &&
-                (catalogSourceIds == null || addonCatalogSourceId(addon.manifestUrl) in catalogSourceIds)
-        }
+        // Search always covers every source; the Home catalog source choice does not apply here.
+        val activeAddons = enabledAddons.filter { addon -> addon.manifest != null }
         val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
-            runnableCloudPlugins.filter { plugin ->
-                catalogSourceIds == null || cloudStreamAddonId(plugin.metadata.id.value) in catalogSourceIds
-            }
+            runnableCloudPlugins
         } else {
             emptyList()
         }

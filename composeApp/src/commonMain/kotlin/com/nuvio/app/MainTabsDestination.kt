@@ -264,14 +264,6 @@ internal fun mainFloatingNavigationItems(
     )
     add(
         FloatingNavigationItem(
-            selected = highlightedTab == AppScreenTab.Search,
-            onClick = { onTabSelected(AppScreenTab.Search) },
-            drawable = Res.drawable.sidebar_search,
-            label = stringResource(Res.string.compose_nav_search),
-        ),
-    )
-    add(
-        FloatingNavigationItem(
             selected = highlightedTab == AppScreenTab.Library,
             onClick = { onTabSelected(AppScreenTab.Library) },
             drawable = Res.drawable.sidebar_library,
@@ -306,6 +298,15 @@ internal fun mainFloatingNavigationItems(
             },
         ),
     )
+    // Search sits at the right end of the bar.
+    add(
+        FloatingNavigationItem(
+            selected = highlightedTab == AppScreenTab.Search,
+            onClick = { onTabSelected(AppScreenTab.Search) },
+            drawable = Res.drawable.sidebar_search,
+            label = stringResource(Res.string.compose_nav_search),
+        ),
+    )
 }
 
 @Composable
@@ -323,12 +324,6 @@ internal fun MainClassicNavigationBar(
             onClick = { onTabSelected(AppScreenTab.Home) },
             icon = Icons.Filled.Home,
             contentDescription = stringResource(Res.string.compose_nav_home),
-        )
-        NavItem(
-            selected = highlightedTab == AppScreenTab.Search,
-            onClick = { onTabSelected(AppScreenTab.Search) },
-            icon = Res.drawable.sidebar_search,
-            contentDescription = stringResource(Res.string.compose_nav_search),
         )
         NavItem(
             selected = highlightedTab == AppScreenTab.Library,
@@ -355,6 +350,12 @@ internal fun MainClassicNavigationBar(
                 onAddProfileRequested = onAddProfileRequested,
             )
         }
+        NavItem(
+            selected = highlightedTab == AppScreenTab.Search,
+            onClick = { onTabSelected(AppScreenTab.Search) },
+            icon = Res.drawable.sidebar_search,
+            contentDescription = stringResource(Res.string.compose_nav_search),
+        )
     }
 }
 

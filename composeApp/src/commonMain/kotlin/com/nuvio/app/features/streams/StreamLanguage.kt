@@ -51,7 +51,7 @@ data class StreamLanguageInfo(
 /** How dubbed versions are favoured over subtitled ones in link lists. */
 enum class StreamDubMode(internal val wireValue: String) {
     /** Links keep the order of their source. */
-    Any("0"),
+    Any("3"),
     /** Dubbed and multi-language links come first, subtitled-only links last. */
     PreferDubbed("1"),
     /** Subtitled-only links are hidden. */
@@ -59,7 +59,9 @@ enum class StreamDubMode(internal val wireValue: String) {
     ;
 
     companion object {
-        fun fromWire(value: String?): StreamDubMode = entries.firstOrNull { it.wireValue == value } ?: Any
+        // Dubbed first is the default. Older versions stored "Any" as "0", which was the default
+        // then, so it is read as dubbed first too; "Any" chosen from now on is stored as "3".
+        fun fromWire(value: String?): StreamDubMode = entries.firstOrNull { it.wireValue == value } ?: PreferDubbed
     }
 }
 
@@ -225,7 +227,7 @@ data class StreamLanguagePreferences(
     val hideUnknown: Boolean = false,
     /** CloudStream extension languages to use; empty uses every extension. */
     val extensionLanguages: Set<String> = emptySet(),
-    val dubMode: StreamDubMode = StreamDubMode.Any,
+    val dubMode: StreamDubMode = StreamDubMode.PreferDubbed,
 ) {
     fun encode(): String = listOf(
         "links=${linkLanguages.sorted().joinToString(",")}",
@@ -362,8 +364,24 @@ internal fun AddonStreamGroup.filteredByLinkLanguage(
     kept = when (preferences.dubMode) {
         StreamDubMode.Any -> kept
         StreamDubMode.PreferDubbed -> kept.sortedBy { (_, info) -> info.dubRank() }
-        StreamDubMode.DubbedOnly -> kept.filterNot { (_, info) -> info.isSubtitledOnly }
+        StreamDubMode.DubbedOnly -> kept
+            .filterNot { (_, info) -> info.isSubtitledOnly }
+            .sortedBy { (_, info) -> info.dubRank() }
     }
     val result = kept.map { (stream, _) -> stream }
     return if (result == streams) this else copy(streams = result)
+}
+
+/** Best [StreamLanguageInfo.dubRank] among these links, 1 when there are none. */
+internal fun List<StreamItem>.bestDubRank(providerLanguages: Map<String, String>): Int =
+    minOfOrNull { stream -> StreamLanguageDetector.detect(stream, providerLanguages[stream.addonId]).dubRank() } ?: 1
+
+/**
+ * Puts sources with a dubbed or multi-language link before the others, and sources with only
+ * subtitled links last, unless the dubbed-version preference is "Any". The order is otherwise kept.
+ */
+internal fun List<AddonStreamGroup>.sortedByDubPreference(): List<AddonStreamGroup> {
+    if (size < 2 || StreamLanguagePreferencesRepository.snapshot().dubMode == StreamDubMode.Any) return this
+    val providerLanguages = cloudStreamProviderLanguages()
+    return sortedBy { group -> group.streams.bestDubRank(providerLanguages) }
 }
