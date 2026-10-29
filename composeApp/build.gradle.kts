@@ -502,6 +502,8 @@ kotlin {
                     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1")
                     implementation("org.jsoup:jsoup:1.22.1")
                     implementation("com.github.Blatzar:NiceHttp:0.4.18")
+                    // DNS over HTTPS for extensions, as CloudStream offers (see CloudStreamPlatformRuntime).
+                    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0")
                     implementation("me.xdrop:fuzzywuzzy:1.4.0")
                     implementation("org.mozilla:rhino:1.8.1")
                     implementation("com.uwetrottmann.tmdb2:tmdb-java:2.13.0")

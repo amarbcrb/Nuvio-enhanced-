@@ -41,7 +41,11 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import java.net.InetAddress
 import okhttp3.Cache
+import okhttp3.Dns
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.dnsoverhttps.DnsOverHttps
 import java.lang.ref.WeakReference
 import java.util.Collections
 import java.util.zip.ZipFile
@@ -81,11 +85,25 @@ internal actual object CloudStreamPlatformRuntime {
      * redirects, keeps an HTTP cache and accepts the invalid certificates many video hosts use.
      * Without it, extensions that work in CloudStream fail here on those hosts. Only the
      * extensions' client is changed, not the app's own requests.
+     *
+     * Names are resolved over DNS over HTTPS (Cloudflare) first, like CloudStream's DNS setting,
+     * because some internet providers block streaming sites at the DNS level; the system DNS is
+     * used when that lookup fails.
      */
     private fun prepareExtensionNetwork(context: Context) {
         if (extensionNetworkPrepared) return
         extensionNetworkPrepared = true
         runCatching {
+            val dnsOverHttps = DnsOverHttps.Builder()
+                .client(app.baseClient)
+                .url("https://cloudflare-dns.com/dns-query".toHttpUrl())
+                .bootstrapDnsHosts(InetAddress.getByName("1.1.1.1"), InetAddress.getByName("1.0.0.1"))
+                .build()
+            val extensionDns = object : Dns {
+                override fun lookup(hostname: String): List<InetAddress> =
+                    runCatching { dnsOverHttps.lookup(hostname) }.getOrNull()?.takeIf { it.isNotEmpty() }
+                        ?: Dns.SYSTEM.lookup(hostname)
+            }
             val trustAll = object : X509TrustManager {
                 override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit
                 override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit
@@ -100,6 +118,7 @@ internal actual object CloudStreamPlatformRuntime {
                 .sslSocketFactory(sslContext.socketFactory, trustAll)
                 .hostnameVerifier { _, _ -> true }
                 .cache(Cache(File(context.cacheDir, "cloudstream_http_cache"), EXTENSION_HTTP_CACHE_BYTES))
+                .dns(extensionDns)
                 .build()
         }.onFailure { error -> log.w(error) { "Could not prepare the CloudStream extension HTTP client" } }
     }
