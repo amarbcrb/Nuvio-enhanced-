@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
@@ -56,6 +57,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.app.core.ui.Menu
+import com.nuvio.app.core.ui.MenuItem
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
@@ -109,16 +112,6 @@ internal fun ProviderFilterRow(
     val languageFilterPaused by StreamLanguagePreferencesRepository.linkFilterPaused.collectAsStateWithLifecycle()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
     var pinSheetTarget by remember { mutableStateOf<PinTarget?>(null) }
-    val chip: @Composable (AddonStreamGroup?, Boolean, () -> Unit) -> Unit =
-        filterChip ?: { group, isSelected, onClick ->
-            FilterChip(
-                label = group?.addonName ?: stringResource(Res.string.collections_tab_all),
-                isSelected = isSelected,
-                isPinned = group != null && group.favoriteTarget()?.key in pinnedSourceIds,
-                onClick = onClick,
-                onLongClick = group?.let { pinnedGroup -> { pinSheetTarget = pinnedGroup.favoriteTarget() } },
-            )
-        }
     LaunchedEffect(addonGroups, selectedFilter) {
         if (selectedFilter != null && addonGroups.none { it.addonId == selectedFilter }) {
             onFilterSelected(null)
@@ -162,9 +155,48 @@ internal fun ProviderFilterRow(
                 },
             )
         }
-        chip(null, selectedFilter == null) { onFilterSelected(null) }
-        addonGroups.forEach { group ->
-            chip(group, selectedFilter == group.addonId) { onFilterSelected(group.addonId) }
+        // One drop-down list of sources instead of a chip per source.
+        val selectedGroup = addonGroups.firstOrNull { it.addonId == selectedFilter }
+        var sourceMenuExpanded by remember { mutableStateOf(false) }
+        Box {
+            if (filterChip != null) {
+                filterChip(selectedGroup, selectedGroup != null) { sourceMenuExpanded = true }
+            } else {
+                FilterChip(
+                    label = selectedGroup?.addonName ?: stringResource(Res.string.collections_tab_all),
+                    isSelected = selectedGroup != null,
+                    isPinned = selectedGroup != null && selectedGroup.favoriteTarget()?.key in pinnedSourceIds,
+                    trailingIcon = Icons.Rounded.KeyboardArrowDown,
+                    onClick = { sourceMenuExpanded = true },
+                    onLongClick = selectedGroup?.let { group -> { pinSheetTarget = group.favoriteTarget() } },
+                )
+            }
+            Menu(
+                expanded = sourceMenuExpanded,
+                onDismissRequest = { sourceMenuExpanded = false },
+            ) {
+                MenuItem(
+                    text = stringResource(Res.string.collections_tab_all),
+                    selected = selectedFilter == null,
+                    onClick = {
+                        sourceMenuExpanded = false
+                        onFilterSelected(null)
+                    },
+                )
+                addonGroups.forEach { group ->
+                    MenuItem(
+                        text = sourceMenuLabel(
+                            group = group,
+                            isFavorite = group.favoriteTarget()?.key in pinnedSourceIds,
+                        ),
+                        selected = selectedFilter == group.addonId,
+                        onClick = {
+                            sourceMenuExpanded = false
+                            onFilterSelected(group.addonId)
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -271,6 +303,13 @@ internal fun AddonStreamGroup.soleSourcePin(): PinTarget? {
 }
 
 internal data class PinTarget(val key: String, val label: String)
+
+/** "★ Name (12)" for a source of the drop-down list, with "…" while it is still searching. */
+internal fun sourceMenuLabel(group: AddonStreamGroup, isFavorite: Boolean): String = buildString {
+    if (isFavorite) append("★ ")
+    append(group.addonName)
+    if (group.isLoading) append(" …") else append(" (${group.streams.size})")
+}
 
 /**
  * The favorite (pinned) source a group header's star stands for: the whole extension for
@@ -405,6 +444,7 @@ private fun FilterChip(
     iconModifier: Modifier = Modifier,
     isSelected: Boolean,
     isPinned: Boolean = false,
+    trailingIcon: ImageVector? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {
@@ -487,6 +527,14 @@ private fun FilterChip(
                     ),
                     color = contentColor,
                     maxLines = 1,
+                )
+            }
+            if (trailingIcon != null) {
+                Icon(
+                    imageVector = trailingIcon,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }

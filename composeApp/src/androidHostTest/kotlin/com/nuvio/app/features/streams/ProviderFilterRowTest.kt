@@ -65,10 +65,12 @@ class ProviderFilterRowTest {
             }
         }
 
-        compose.onNodeWithText("Ready").assertIsDisplayed()
-        compose.onNodeWithText("Empty").assertDoesNotExist()
-        compose.onNodeWithText("Failed").assertDoesNotExist()
-        compose.onNodeWithText("Pending").performClick()
+        // Sources are picked from a drop-down list opened from the "All" chip.
+        compose.onNodeWithText("All").performClick()
+        compose.onNodeWithText("Ready (1)").assertIsDisplayed()
+        compose.onNodeWithText("Empty", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Failed", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Pending …").performClick()
         compose.runOnIdle {
             assertEquals("pending", state.value.selectedFilter)
             state.value = state.value.copy(
@@ -88,7 +90,8 @@ class ProviderFilterRowTest {
         }
         compose.onNodeWithText("Pending").assertDoesNotExist()
         compose.runOnIdle { assertNull(state.value.selectedFilter) }
-        compose.onNodeWithText("Ready").performClick()
+        compose.onNodeWithText("All").performClick()
+        compose.onNodeWithText("Ready (1)").performClick()
         compose.runOnIdle {
             assertEquals("ready", state.value.selectedFilter)
             state.value = state.value.copy(groups = emptyList())

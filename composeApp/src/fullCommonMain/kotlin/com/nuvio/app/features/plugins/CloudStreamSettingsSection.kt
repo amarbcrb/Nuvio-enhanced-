@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -44,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,7 +55,6 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioDropdownField
 import com.nuvio.app.core.ui.NuvioSelectOption
 import com.nuvio.app.core.ui.NuvioIconActionButton
-import com.nuvio.app.core.ui.NuvioInfoBadge
 import com.nuvio.app.core.ui.NuvioInputField
 import com.nuvio.app.core.ui.NuvioPrimaryButton
 import com.nuvio.app.core.ui.NuvioSectionLabel
@@ -68,6 +70,7 @@ import com.nuvio.app.features.cloudstream.CloudStreamSite
 import com.nuvio.app.features.cloudstream.normalizeCloudStreamSiteUrl
 import com.nuvio.app.features.settings.AppLanguage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
+import com.nuvio.app.features.streams.BingeGroupCacheStorage
 import com.nuvio.app.features.streams.PinnedStreamSourcesRepository
 import com.nuvio.app.features.streams.cloudStreamAddonId
 import com.nuvio.app.features.streams.streamLanguageDisplayName
@@ -105,6 +108,40 @@ internal object CloudStreamSettingsListState {
     var expandedRepositories by mutableStateOf<Set<String>>(emptySet())
         private set
 
+    /** Extensions not installed that the user removed from the list. */
+    var hiddenPluginIds by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    /** Extensions listed on the page: installed ones, and the others unless they were removed. */
+    val shownPlugins: List<CloudStreamPluginItem> by derivedStateOf {
+        plugins.filter { it.isInstalled || it.metadata.id.value !in hiddenPluginIds }
+    }
+
+    /** Removes every extension not installed from the list; returns how many were removed. */
+    fun hideNotInstalled(): Int {
+        val ids = shownPlugins.filterNot { it.isInstalled }.map { it.metadata.id.value }
+        if (ids.isEmpty()) return 0
+        hiddenPluginIds = hiddenPluginIds + ids
+        persistHidden()
+        return ids.size
+    }
+
+    fun showHidden() {
+        hiddenPluginIds = emptySet()
+        persistHidden()
+    }
+
+    private fun persistHidden() {
+        if (hiddenPluginIds.isEmpty()) {
+            BingeGroupCacheStorage.remove(HIDDEN_PLUGINS_KEY)
+        } else {
+            BingeGroupCacheStorage.save(HIDDEN_PLUGINS_KEY, hiddenPluginIds.joinToString(HIDDEN_PLUGINS_SEPARATOR))
+        }
+    }
+
+    private const val HIDDEN_PLUGINS_KEY = "cloudstream_hidden_plugins"
+    private const val HIDDEN_PLUGINS_SEPARATOR = "\n"
+
     private val hasActiveFilter: Boolean
         get() = query.isNotBlank() || selectedLanguage != null || selectedType != null ||
             installFilter != CloudStreamInstallFilter.All
@@ -115,7 +152,7 @@ internal object CloudStreamSettingsListState {
      */
     val pluginGroups: List<CloudStreamPluginGroup> by derivedStateOf {
         val visibleByRepository = visiblePlugins.groupBy { it.metadata.repositoryManifestUrl }
-        val allByRepository = plugins.groupBy { it.metadata.repositoryManifestUrl }
+        val allByRepository = shownPlugins.groupBy { it.metadata.repositoryManifestUrl }
         val known = repositories.map { repository ->
             val url = repository.manifest.sourceUrl
             CloudStreamPluginGroup(
@@ -144,7 +181,7 @@ internal object CloudStreamSettingsListState {
 
     val visiblePlugins: List<CloudStreamPluginItem> by derivedStateOf {
         val normalizedQuery = query.trim().lowercase()
-        plugins.filter { item ->
+        shownPlugins.filter { item ->
             (normalizedQuery.isBlank() || listOf(
                 item.metadata.name,
                 item.metadata.internalName,
@@ -235,6 +272,12 @@ internal object CloudStreamSettingsListState {
     fun ensureCollecting() {
         if (collecting) return
         collecting = true
+        hiddenPluginIds = BingeGroupCacheStorage.load(HIDDEN_PLUGINS_KEY)
+            ?.split(HIDDEN_PLUGINS_SEPARATOR)
+            ?.map(String::trim)
+            ?.filter(String::isNotEmpty)
+            ?.toSet()
+            .orEmpty()
         CloudStreamRepository.initialize()
         scope.launch {
             CloudStreamRepository.uiState.collect { state ->
@@ -319,20 +362,11 @@ internal fun CloudStreamSettingsSection() {
 
     NuvioSectionLabel(copy.sectionTitle)
     NuvioSurfaceCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            NuvioInfoBadge(text = copy.repositoryCount(state.repositories.size))
-            NuvioInfoBadge(text = copy.installedCount(state.plugins.count { it.isInstalled }))
-            NuvioInfoBadge(text = copy.enabledProviderCount(state.plugins.count { it.isRunnable }))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            CloudStreamStat(state.repositories.size, copy.statRepositories, Modifier.weight(1f))
+            CloudStreamStat(state.plugins.count { it.isInstalled }, copy.statInstalled, Modifier.weight(1f))
+            CloudStreamStat(state.plugins.count { it.isRunnable }, copy.statEnabled, Modifier.weight(1f))
         }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = copy.sectionDescription,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 
     if (!state.securityWarningAccepted) {
@@ -489,11 +523,46 @@ internal fun CloudStreamSettingsSection() {
                 Spacer(Modifier.height(10.dp))
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            val notInstalledCount = CloudStreamSettingsListState.shownPlugins.count { !it.isInstalled }
+            if (notInstalledCount > 0) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { message = copy.notInstalledHidden(CloudStreamSettingsListState.hideNotInstalled()) },
+                ) {
+                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(8.dp))
+                    Text(copy.hideNotInstalled(notInstalledCount), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            val hiddenCount = CloudStreamSettingsListState.hiddenPluginIds.size
+            if (hiddenCount > 0) {
+                TextButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = CloudStreamSettingsListState::showHidden,
+                ) {
+                    Text(copy.restoreHidden(hiddenCount), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
         }
         CloudStreamHealthCard(
             enabledCount = state.plugins.count { it.isRunnable },
             copy = copy,
             onMessage = { message = it },
+        )
+    }
+}
+
+@Composable
+private fun CloudStreamStat(value: Int, label: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -658,156 +727,132 @@ private fun CloudStreamPluginCard(
     onMessage: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
     val sourceId = remember(plugin.metadata.id.value) { cloudStreamAddonId(plugin.metadata.id.value) }
     val isPinnedSource = sourceId in pinnedSourceIds
     var showSites by rememberSaveable(plugin.metadata.id.value) { mutableStateOf(false) }
+    val canInstall = securityWarningAccepted && !plugin.isInstalling
+    fun installOrUpdate() {
+        if (!canInstall) return
+        scope.launch {
+            val result = if (plugin.hasUpdate) {
+                CloudStreamRepository.updatePlugin(plugin.metadata.id.value)
+            } else {
+                CloudStreamRepository.installPlugin(plugin.metadata.id.value)
+            }
+            onMessage(
+                when (result) {
+                    is CloudStreamInstallResult.Success -> copy.pluginInstalled(result.plugin.metadata.name)
+                    is CloudStreamInstallResult.Error -> result.message.localizedCloudStreamFailure(copy)
+                },
+            )
+        }
+    }
+    // Name and language, then the actions: copy link, pin, install or update, remove, on/off.
     NuvioSurfaceCard {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
                 model = plugin.metadata.iconUrl,
                 contentDescription = null,
-                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)),
+                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)),
                 contentScale = ContentScale.Crop,
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(plugin.metadata.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    plugin.metadata.authors.joinToString().ifBlank { copy.unknownAuthor },
+                    plugin.metadata.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    plugin.metadata.language?.let(::streamLanguageDisplayName) ?: copy.unknownLanguage,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (plugin.isRunnable) {
-                    NuvioIconActionButton(
-                        icon = Icons.Rounded.Link,
-                        contentDescription = copy.siteAddressTitle,
-                        tint = if (showSites || plugin.siteUrlOverrides.isNotEmpty()) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        onClick = { showSites = !showSites },
-                    )
-                }
-                if (plugin.isInstalled) {
-                    NuvioIconActionButton(
-                        icon = Icons.Rounded.Delete,
-                        contentDescription = copy.remove,
-                        tint = MaterialTheme.colorScheme.error,
-                        onClick = {
-                            CloudStreamRepository.removePlugin(plugin.metadata.id.value)
-                            onMessage(copy.pluginRemoved(plugin.metadata.name))
-                        },
-                    )
-                }
+            Switch(
+                checked = plugin.enabled,
+                enabled = plugin.isInstalled && plugin.verified && plugin.compatibility.isRunnable,
+                onCheckedChange = { CloudStreamRepository.setPluginEnabled(plugin.metadata.id.value, it) },
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NuvioIconActionButton(
+                icon = Icons.Rounded.ContentCopy,
+                contentDescription = copy.copyLink,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(plugin.metadata.packageUrl))
+                    onMessage(copy.linkCopied(plugin.metadata.name))
+                },
+            )
+            if (plugin.isRunnable) {
                 NuvioIconActionButton(
-                    icon = Icons.Rounded.PushPin,
-                    contentDescription = if (isPinnedSource) copy.unpinSource else copy.pinSource,
-                    tint = if (isPinnedSource) {
+                    icon = Icons.Rounded.Link,
+                    contentDescription = copy.siteAddressTitle,
+                    tint = if (showSites || plugin.siteUrlOverrides.isNotEmpty()) {
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
+                    onClick = { showSites = !showSites },
+                )
+            }
+            NuvioIconActionButton(
+                icon = Icons.Rounded.PushPin,
+                contentDescription = if (isPinnedSource) copy.unpinSource else copy.pinSource,
+                tint = if (isPinnedSource) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                onClick = {
+                    PinnedStreamSourcesRepository.setPinned(sourceId, !isPinnedSource)
+                },
+            )
+            if (!plugin.isInstalled || plugin.hasUpdate) {
+                NuvioIconActionButton(
+                    icon = if (plugin.hasUpdate) Icons.Rounded.Refresh else Icons.Rounded.CloudDownload,
+                    contentDescription = when {
+                        plugin.isInstalling -> copy.downloading
+                        plugin.hasUpdate -> copy.update
+                        else -> copy.install
+                    },
+                    tint = if (canInstall) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    },
+                    onClick = { installOrUpdate() },
+                )
+            }
+            if (plugin.isInstalled) {
+                NuvioIconActionButton(
+                    icon = Icons.Rounded.Delete,
+                    contentDescription = copy.remove,
+                    tint = MaterialTheme.colorScheme.error,
                     onClick = {
-                        PinnedStreamSourcesRepository.setPinned(sourceId, !isPinnedSource)
+                        CloudStreamRepository.removePlugin(plugin.metadata.id.value)
+                        onMessage(copy.pluginRemoved(plugin.metadata.name))
                     },
                 )
-                Switch(
-                    checked = plugin.enabled,
-                    enabled = plugin.isInstalled && plugin.verified && plugin.compatibility.isRunnable,
-                    onCheckedChange = { CloudStreamRepository.setPluginEnabled(plugin.metadata.id.value, it) },
-                )
             }
         }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            plugin.metadata.description ?: copy.noDescription,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(10.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            when (val health = CloudStreamSettingsListState.health[plugin.metadata.id.value]) {
-                CloudStreamHealth.Checking -> NuvioInfoBadge(text = copy.healthBadgeChecking)
-                CloudStreamHealth.Working -> NuvioInfoBadge(text = copy.healthBadgeWorking)
-                is CloudStreamHealth.Failing -> NuvioInfoBadge(
-                    text = listOfNotNull(copy.healthBadgeFailing, health.reason?.take(40)).joinToString(" · "),
-                )
-                null -> Unit
-            }
-            NuvioInfoBadge(text = copy.currentVersion(plugin.metadata.version))
-            plugin.installedVersion?.let { NuvioInfoBadge(text = copy.installedVersion(it)) }
-            plugin.metadata.language?.let { NuvioInfoBadge(text = it.uppercase()) }
-            plugin.metadata.rawTvTypes.forEach { NuvioInfoBadge(text = it) }
-            NuvioInfoBadge(
-                text = when {
-                    plugin.metadata.fileHash != null && plugin.verified -> copy.sha256Verified
-                    plugin.metadata.fileHash != null -> copy.hashUnverified
-                    plugin.verified -> copy.packageChecked
-                    else -> copy.packageUnchecked
-                },
-            )
-            NuvioInfoBadge(
-                text = when (plugin.compatibility.platformSupport) {
-                    CloudStreamPlatformSupport.AndroidAndIos -> copy.androidAndIosCompatible
-                    CloudStreamPlatformSupport.AndroidOnly -> copy.androidCompatible
-                    CloudStreamPlatformSupport.Unsupported -> copy.runtimeIncompatible
-                },
-            )
+        if (CloudStreamSettingsListState.health[plugin.metadata.id.value] is CloudStreamHealth.Failing) {
+            Text(copy.healthBadgeFailing, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = copy.compatibilityReason(plugin.compatibility.platformSupport),
-            style = MaterialTheme.typography.bodySmall,
-            color = if (plugin.compatibility.isRunnable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-        )
         plugin.errorMessage?.let {
-            Spacer(Modifier.height(6.dp))
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
         if (showSites && plugin.isRunnable) {
             CloudStreamSiteUrlEditor(plugin = plugin, copy = copy, onMessage = onMessage)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                modifier = Modifier.weight(1f),
-                enabled = securityWarningAccepted && !plugin.isInstalling,
-                onClick = {
-                    scope.launch {
-                        val result = if (plugin.hasUpdate) {
-                            CloudStreamRepository.updatePlugin(plugin.metadata.id.value)
-                        } else {
-                            CloudStreamRepository.installPlugin(plugin.metadata.id.value)
-                        }
-                        onMessage(
-                            when (result) {
-                                is CloudStreamInstallResult.Success -> copy.pluginInstalled(result.plugin.metadata.name)
-                                is CloudStreamInstallResult.Error -> result.message.localizedCloudStreamFailure(copy)
-                            },
-                        )
-                    }
-                },
-            ) {
-                Text(
-                    when {
-                        plugin.isInstalling -> copy.downloading
-                        plugin.hasUpdate -> copy.update
-                        plugin.isInstalled -> copy.reinstall
-                        else -> copy.install
-                    },
-                )
-            }
-            if (plugin.isInstalled) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { CloudStreamRepository.removePlugin(plugin.metadata.id.value) },
-                ) {
-                    Text(copy.remove)
-                }
-            }
         }
     }
 }
@@ -950,6 +995,35 @@ private class CloudStreamSettingsCopy private constructor(
     val healthBadgeChecking: String = text(english = "Checking...", french = "Test en cours...", turkish = "Kontrol ediliyor...")
     val healthBadgeWorking: String = text(english = "Works", french = "Fonctionne", turkish = "Çalışıyor")
     val healthBadgeFailing: String = text(english = "Not responding", french = "Ne répond pas", turkish = "Yanıt vermiyor")
+    val copyLink: String = text(english = "Copy extension link", french = "Copier le lien de l'extension", turkish = "Eklenti bağlantısını kopyala")
+    val unknownLanguage: String = text(english = "Language not specified", french = "Langue non indiquée", turkish = "Dil belirtilmemiş")
+    val statRepositories: String = text(english = "Repositories", french = "Dépôts", turkish = "Depolar")
+    val statInstalled: String = text(english = "Installed", french = "Installées", turkish = "Kurulu")
+    val statEnabled: String = text(english = "Enabled", french = "Activées", turkish = "Etkin")
+
+    fun linkCopied(name: String): String = text(
+        english = "Link of $name copied.",
+        french = "Lien de $name copié.",
+        turkish = "$name bağlantısı kopyalandı.",
+    )
+
+    fun hideNotInstalled(count: Int): String = text(
+        english = "Remove the $count extensions not installed",
+        french = "Supprimer les $count extensions non installées",
+        turkish = "Kurulu olmayan $count eklentiyi kaldır",
+    )
+
+    fun notInstalledHidden(count: Int): String = text(
+        english = "$count extensions not installed removed from the list.",
+        french = "$count extensions non installées retirées de la liste.",
+        turkish = "Kurulu olmayan $count eklenti listeden kaldırıldı.",
+    )
+
+    fun restoreHidden(count: Int): String = text(
+        english = "Show the $count removed extensions again",
+        french = "Réafficher les $count extensions retirées",
+        turkish = "Kaldırılan $count eklentiyi yeniden göster",
+    )
 
     fun healthCheck(count: Int): String = text(
         english = "Check the $count enabled extensions",
