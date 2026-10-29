@@ -131,6 +131,27 @@ internal object CloudStreamSettingsListState {
         persistHidden()
     }
 
+    /**
+     * Lists again the removed extensions of the repository [repositoryUrl] and returns the ids of
+     * its extensions to install or switch back on (not installed, outdated or disabled).
+     */
+    fun restoreRepository(repositoryUrl: String): List<String> {
+        val repositoryPlugins = plugins.filter { it.metadata.repositoryManifestUrl == repositoryUrl }
+        val ids = repositoryPlugins.map { it.metadata.id.value }.toSet()
+        if (hiddenPluginIds.any { it in ids }) {
+            hiddenPluginIds = hiddenPluginIds - ids
+            persistHidden()
+        }
+        return repositoryPlugins
+            .filter { item ->
+                !item.isInstalling &&
+                    item.metadata.status.canInstall &&
+                    item.compatibility.isRunnable &&
+                    (!item.isRunnable || item.hasUpdate || !item.isInstalled)
+            }
+            .map { it.metadata.id.value }
+    }
+
     private fun persistHidden() {
         if (hiddenPluginIds.isEmpty()) {
             BingeGroupCacheStorage.remove(HIDDEN_PLUGINS_KEY)
@@ -575,6 +596,10 @@ internal fun CloudStreamRepositoryGroupCard(group: CloudStreamPluginGroup) {
     val listState = CloudStreamSettingsListState
     val expanded = listState.isExpanded(group.key)
     val repository = group.repository
+    val scope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
+    var isRestoring by remember(group.key) { mutableStateOf(false) }
+    var repositoryMessage by remember(group.key) { mutableStateOf<String?>(null) }
     NuvioSurfaceCard(modifier = Modifier.clickable { listState.toggleExpanded(group.key) }) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
@@ -602,16 +627,48 @@ internal fun CloudStreamRepositoryGroupCard(group: CloudStreamPluginGroup) {
             )
         }
         if (repository != null && expanded) {
+            val repositoryUrl = repository.manifest.sourceUrl
             Spacer(Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    repository.manifest.sourceUrl,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Text(
+                repositoryUrl,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = {
+                        clipboardManager.setText(AnnotatedString(repositoryUrl))
+                        repositoryMessage = copy.repositoryLinkCopied
+                    },
+                ) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = copy.copyRepositoryLink)
+                }
+                IconButton(
+                    enabled = !isRestoring,
+                    onClick = {
+                        val ids = listState.restoreRepository(repositoryUrl)
+                        if (ids.isEmpty()) {
+                            repositoryMessage = copy.repositoryRestored
+                        } else {
+                            isRestoring = true
+                            repositoryMessage = copy.repositoryRestoring
+                            scope.launch {
+                                repositoryMessage = runCatching {
+                                    CloudStreamRepository.installAndEnablePlugins(ids).toUserMessage(copy)
+                                }.getOrElse { error -> error.message ?: copy.bulkInstallFailed }
+                                isRestoring = false
+                            }
+                        }
+                    },
+                ) {
+                    Icon(Icons.Rounded.CloudDownload, contentDescription = copy.restoreRepository)
+                }
                 IconButton(
                     onClick = {
                         listState.repositoryUrl = repository.manifest.sourceUrl
@@ -630,6 +687,9 @@ internal fun CloudStreamRepositoryGroupCard(group: CloudStreamPluginGroup) {
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
+            }
+            repositoryMessage?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -996,6 +1056,19 @@ private class CloudStreamSettingsCopy private constructor(
     val healthBadgeWorking: String = text(english = "Works", french = "Fonctionne", turkish = "Çalışıyor")
     val healthBadgeFailing: String = text(english = "Not responding", french = "Ne répond pas", turkish = "Yanıt vermiyor")
     val copyLink: String = text(english = "Copy extension link", french = "Copier le lien de l'extension", turkish = "Eklenti bağlantısını kopyala")
+    val copyRepositoryLink: String = text(english = "Copy repository link", french = "Copier le lien du dépôt", turkish = "Depo bağlantısını kopyala")
+    val repositoryLinkCopied: String = text(english = "Repository link copied.", french = "Lien du dépôt copié.", turkish = "Depo bağlantısı kopyalandı.")
+    val restoreRepository: String = text(
+        english = "Reinstall every extension of this repository",
+        french = "Réinstaller toutes les extensions du dépôt",
+        turkish = "Bu deponun tüm eklentilerini yeniden kur",
+    )
+    val repositoryRestoring: String = text(english = "Reinstalling...", french = "Réinstallation...", turkish = "Yeniden kuruluyor...")
+    val repositoryRestored: String = text(
+        english = "Every extension of this repository is listed, installed and enabled.",
+        french = "Toutes les extensions du dépôt sont affichées, installées et activées.",
+        turkish = "Bu deponun tüm eklentileri listelendi, kuruldu ve etkin.",
+    )
     val unknownLanguage: String = text(english = "Language not specified", french = "Langue non indiquée", turkish = "Dil belirtilmemiş")
     val statRepositories: String = text(english = "Repositories", french = "Dépôts", turkish = "Depolar")
     val statInstalled: String = text(english = "Installed", french = "Installées", turkish = "Kurulu")

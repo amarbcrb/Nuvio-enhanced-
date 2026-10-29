@@ -452,8 +452,6 @@ internal fun BoxScope.SettingsRouteNavigationBar(
     val glowEnabled by ThemeSettingsRepository.navBarGlowEnabled.collectAsStateWithLifecycle()
     val position by ThemeSettingsRepository.navBarPosition.collectAsStateWithLifecycle()
     val glass by ThemeSettingsRepository.navBarGlass.collectAsStateWithLifecycle()
-    val liquidGlassBarEffects by ThemeSettingsRepository.navBarLiquidGlassBarEffects.collectAsStateWithLifecycle()
-    val liquidGlassSelectionEffects by ThemeSettingsRepository.navBarLiquidGlassSelectionEffects.collectAsStateWithLifecycle()
     val defaultIconColorEnabled by ThemeSettingsRepository.navBarDefaultIconColorEnabled.collectAsStateWithLifecycle()
     val defaultIconColor by ThemeSettingsRepository.navBarDefaultIconColor.collectAsStateWithLifecycle()
     val defaultIconColorOverride = if (defaultIconColorEnabled) {
@@ -494,16 +492,9 @@ internal fun BoxScope.SettingsRouteNavigationBar(
         else -> {
             val onTop = position == NavBarPosition.TOP
             SideEffect { onBottomOverlayChanged(if (onTop) 0.dp else 72.dp) }
-            FloatingNavigationBar(
-                items = mainFloatingNavigationItems(
-                    highlightedTab = highlightedTab,
-                    showLiveTv = showLiveTv,
-                    onTabSelected = onTabSelected,
-                    onProfileSelected = onProfileSelected,
-                    onAddProfileRequested = onAddProfileRequested,
-                    backdrop = backdrop,
-                    defaultIconColorOverride = defaultIconColorOverride,
-                ),
+            // Same layout as the main tabs: on phones Settings sits in the pill and Search is round.
+            val splitPhoneBar = !isTabletLayout && !onTop
+            MainFloatingNavigationBar(
                 modifier = Modifier.align(if (onTop) Alignment.TopCenter else Alignment.BottomCenter),
                 scrollState = if (style == NavBarStyle.COMPACT) {
                     remember { com.nuvio.app.core.ui.NuvioNavBarScrollState().apply { collapse() } }
@@ -519,11 +510,30 @@ internal fun BoxScope.SettingsRouteNavigationBar(
                 } else {
                     floatingNavigationBarPadding()
                 },
+                items = mainFloatingNavigationItems(
+                    highlightedTab = highlightedTab,
+                    showLiveTv = showLiveTv,
+                    onTabSelected = onTabSelected,
+                    onProfileSelected = onProfileSelected,
+                    onAddProfileRequested = onAddProfileRequested,
+                    backdrop = backdrop,
+                    defaultIconColorOverride = defaultIconColorOverride,
+                    includeSearchAndProfile = !splitPhoneBar,
+                ),
+                trailingItem = if (splitPhoneBar) {
+                    FloatingNavigationItem(
+                        selected = false,
+                        onClick = { onTabSelected(AppScreenTab.Search) },
+                        drawable = Res.drawable.sidebar_search,
+                        label = stringResource(Res.string.compose_nav_search),
+                        iconOnly = true,
+                    )
+                } else {
+                    null
+                },
                 glowEnabled = glowEnabled,
                 inlineLabels = isTabletLayout,
                 glassStyle = glass,
-                liquidGlassBarEffects = liquidGlassBarEffects,
-                liquidGlassSelectionEffects = liquidGlassSelectionEffects,
                 defaultIconColorOverride = defaultIconColorOverride,
             )
         }
