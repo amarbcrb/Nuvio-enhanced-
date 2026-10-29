@@ -16,6 +16,7 @@ import com.nuvio.app.features.streams.StreamAutoPlayMode
 import com.nuvio.app.features.streams.StreamAutoPlaySelector
 import com.nuvio.app.features.streams.StreamAutoPlaySource
 import com.nuvio.app.features.streams.StreamItem
+import com.nuvio.app.features.streams.playingSourceFirst
 import com.nuvio.app.features.streams.sameServerFirst
 import com.nuvio.app.features.watching.domain.isShortPlaceholderDuration
 import kotlinx.coroutines.CompletableDeferred
@@ -258,9 +259,10 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
             settleAutoSelect()
         }
 
+        // Every source is searched here, but the source and server playing now still come first.
         fun trySelectStream(streams: List<StreamItem>): StreamItem? =
             StreamAutoPlaySelector.selectAutoPlayStream(
-                streams = streams,
+                streams = streams.playingSourceFirst(currentSourceAddonId, currentServer),
                 mode = effectiveMode,
                 regexPattern = effectiveRegex,
                 source = effectiveSource,

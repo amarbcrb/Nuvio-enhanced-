@@ -65,6 +65,16 @@ internal fun StreamItem.serverKey(): String? =
         ?.lowercase()
         ?.takeIf { it.isNotEmpty() }
 
+/**
+ * Links of the source [addonId] first, its server [server] leading, then every other link; the
+ * order is otherwise kept. Without [addonId] only the server is put first.
+ */
+internal fun List<StreamItem>.playingSourceFirst(addonId: String?, server: String?): List<StreamItem> {
+    if (addonId.isNullOrBlank()) return sameServerFirst(server)
+    val (sameSource, others) = partition { stream -> stream.addonId == addonId }
+    return sameSource.sameServerFirst(server) + others
+}
+
 /** Links of the server [server] (a [serverKey] or source name) first, the order being otherwise kept. */
 internal fun List<StreamItem>.sameServerFirst(server: String?): List<StreamItem> {
     val wanted = server?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return this

@@ -49,4 +49,18 @@ class SeriesSourceMemoryTest {
         assertEquals(listOf("Uqload", "Uqload · 360p", "Upvid"), streams.sameServerFirst(playing.serverKey()).map { it.name })
         assertEquals(streams, streams.sameServerFirst(null))
     }
+
+    @Test
+    fun `the playing source and server lead when every source was searched`() {
+        val streams = listOf(
+            link("addon:other", null, "Other"),
+            link("cloudstream:movix", "Upvid", "Upvid"),
+            link("cloudstream:movix", "Uqload", "Uqload"),
+        )
+
+        assertEquals(
+            listOf("Uqload", "Upvid", "Other"),
+            streams.playingSourceFirst("cloudstream:movix", "uqload").map { it.name },
+        )
+    }
 }
