@@ -143,7 +143,19 @@ internal actual object CloudStreamPlatformRuntime {
         val providersBefore = APIHolder.allProviders.toSet()
         val extractorsBefore = extractorApis.toSet()
         try {
-            if (instance is Plugin) instance.load(identityContext) else instance.load()
+            try {
+                if (instance is Plugin) instance.load(identityContext) else instance.load()
+            } catch (cast: ClassCastException) {
+                // Some extensions cast the load context to an AppCompatActivity, as CloudStream passes
+                // its activity. Load them again with the app's activity, after undoing what the first
+                // attempt registered.
+                val activity = activityReference?.get()?.takeUnless { it.isFinishing || it.isDestroyed }
+                if (instance !is Plugin || activity == null) throw cast
+                APIHolder.allProviders.removeAll { it !in providersBefore && it.sourcePlugin == file.absolutePath }
+                extractorApis.removeAll { it !in extractorsBefore && it.sourcePlugin == file.absolutePath }
+                log.i { "${item.metadata.internalName} needs an activity to load: ${cast.message}" }
+                instance.load(activity)
+            }
             val providers = APIHolder.allProviders
                 .filter { it !in providersBefore || it.sourcePlugin == file.absolutePath }
                 .distinct()
