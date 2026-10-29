@@ -33,8 +33,15 @@ import com.lagradost.cloudstream3.syncproviders.SyncIdName
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.extractorApis
+import com.lagradost.cloudstream3.app
 import dalvik.system.PathClassLoader
 import java.io.File
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
+import okhttp3.Cache
 import java.lang.ref.WeakReference
 import java.util.Collections
 import java.util.zip.ZipFile
@@ -64,6 +71,37 @@ internal actual object CloudStreamPlatformRuntime {
         val androidContext = context as? Context ?: return
         appContext = androidContext.applicationContext
         activityReference = (androidContext as? Activity)?.let(::WeakReference)
+        prepareExtensionNetwork(androidContext.applicationContext)
+    }
+
+    private var extensionNetworkPrepared = false
+
+    /**
+     * CloudStream replaces the extensions' shared HTTP client when it starts: it follows
+     * redirects, keeps an HTTP cache and accepts the invalid certificates many video hosts use.
+     * Without it, extensions that work in CloudStream fail here on those hosts. Only the
+     * extensions' client is changed, not the app's own requests.
+     */
+    private fun prepareExtensionNetwork(context: Context) {
+        if (extensionNetworkPrepared) return
+        extensionNetworkPrepared = true
+        runCatching {
+            val trustAll = object : X509TrustManager {
+                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit
+                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit
+                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+            }
+            val sslContext = SSLContext.getInstance("TLS").apply {
+                init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+            }
+            app.baseClient = app.baseClient.newBuilder()
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .sslSocketFactory(sslContext.socketFactory, trustAll)
+                .hostnameVerifier { _, _ -> true }
+                .cache(Cache(File(context.cacheDir, "cloudstream_http_cache"), EXTENSION_HTTP_CACHE_BYTES))
+                .build()
+        }.onFailure { error -> log.w(error) { "Could not prepare the CloudStream extension HTTP client" } }
     }
 
     actual suspend fun provider(plugin: CloudStreamPluginItem): CloudStreamProvider? {
@@ -234,6 +272,7 @@ internal actual object CloudStreamPlatformRuntime {
         )
     }
 
+    private const val EXTENSION_HTTP_CACHE_BYTES = 50L * 1024L * 1024L
     private const val CINESTREAM_PLUGIN_CLASS = "com.megix.CineStream"
     private const val CINESTREAM_SIMKL_PROVIDER_KEY = "ProviderSimkl"
 

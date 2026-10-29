@@ -877,7 +877,16 @@ internal fun StreamList(
             !hasAnyStreams && !uiState.isAnyLoading -> {
                 if (sharedStream == null) {
                     item {
-                        EmptyStateBlock(reason = uiState.emptyStateReason)
+                        EmptyStateBlock(
+                            reason = uiState.emptyStateReason,
+                            // What each source answered, so a failure can be told apart from a missing title.
+                            details = uiState.groups
+                                .mapNotNull { group -> group.error?.takeIf(String::isNotBlank)?.let { "${group.addonName} : $it" } }
+                                .distinct()
+                                .take(EMPTY_STATE_MAX_ERRORS)
+                                .joinToString("\n")
+                                .takeIf(String::isNotEmpty),
+                        )
                     }
                 }
             }
@@ -1365,6 +1374,7 @@ private fun LoadingStateBlock(
 @Composable
 private fun EmptyStateBlock(
     reason: StreamsEmptyStateReason?,
+    details: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val title: String
@@ -1416,8 +1426,19 @@ private fun EmptyStateBlock(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
         )
+        if (details != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = details,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
+
+private const val EMPTY_STATE_MAX_ERRORS = 3
 
 @Composable
 private fun FooterLoadingBlock(
