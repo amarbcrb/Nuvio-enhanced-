@@ -52,9 +52,22 @@ internal fun RememberedSeriesSource.candidateStreams(
     val fromAddon = streams.filter { stream ->
         stream.addonId == addonId && stream.isSelectableForPlayback(debridEnabled)
     }
-    val name = sourceName ?: return fromAddon
-    val (sameSource, others) = fromAddon.partition { stream ->
-        stream.sourceName?.trim().equals(name, ignoreCase = true)
-    }
-    return sameSource + others
+    return fromAddon.sameServerFirst(sourceName)
+}
+
+/**
+ * The server a link comes from inside its source ("uqload" for "Uqload · 360p"): its source
+ * name, or else the start of its name. Null when the link names neither.
+ */
+internal fun StreamItem.serverKey(): String? =
+    (sourceName?.takeIf { it.isNotBlank() } ?: name?.substringBefore(" · "))
+        ?.trim()
+        ?.lowercase()
+        ?.takeIf { it.isNotEmpty() }
+
+/** Links of the server [server] (a [serverKey] or source name) first, the order being otherwise kept. */
+internal fun List<StreamItem>.sameServerFirst(server: String?): List<StreamItem> {
+    val wanted = server?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return this
+    val (sameServer, others) = partition { stream -> stream.serverKey() == wanted }
+    return sameServer + others
 }

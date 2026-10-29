@@ -16,6 +16,7 @@ import com.nuvio.app.features.streams.StreamAutoPlayMode
 import com.nuvio.app.features.streams.StreamAutoPlaySelector
 import com.nuvio.app.features.streams.StreamAutoPlaySource
 import com.nuvio.app.features.streams.StreamItem
+import com.nuvio.app.features.streams.sameServerFirst
 import com.nuvio.app.features.watching.domain.isShortPlaceholderDuration
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -80,6 +81,8 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
     settings: PlayerSettingsUiState,
     currentStreamBingeGroup: String?,
     currentSourceAddonId: String? = null,
+    /** [serverKey] of the link playing now, kept for the next episode when its source has it. */
+    currentServer: String? = null,
     onDownloadedEpisodeSelected: (DownloadItem, MetaVideo) -> Unit,
     onEpisodeStreamSelected: (StreamItem, MetaVideo) -> Unit,
     onManualSelectionRequired: (MetaVideo) -> Unit,
@@ -202,6 +205,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
                 parentMetaType = parentMetaType,
                 sourceAddonId = currentSourceAddonId,
                 preferredBingeGroup = currentStreamBingeGroup,
+                preferredServer = currentServer,
             )
             if (sameSourceStream != null) {
                 playSelectedOrAskManually(sameSourceStream)
@@ -413,6 +417,7 @@ private suspend fun findNextEpisodeStreamOnSameSource(
     parentMetaType: String,
     sourceAddonId: String,
     preferredBingeGroup: String?,
+    preferredServer: String?,
 ): StreamItem? {
     PlayerStreamsRepository.loadEpisodeStreams(
         type = type,
@@ -429,7 +434,9 @@ private suspend fun findNextEpisodeStreamOnSameSource(
         }
     } ?: return null
     if (state.searchScopeId != sourceAddonId) return null
+    // The server the current episode plays from (Uqload rather than the extension's first link).
     val streams = state.groups.filter { it.addonId == sourceAddonId }.flatMap { it.streams }
+        .sameServerFirst(preferredServer)
     if (streams.isEmpty()) return null
     val debridSettings = DebridSettingsRepository.snapshot()
     return StreamAutoPlaySelector.selectAutoPlayStream(

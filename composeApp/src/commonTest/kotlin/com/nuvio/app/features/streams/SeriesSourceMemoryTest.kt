@@ -35,4 +35,18 @@ class SeriesSourceMemoryTest {
 
         assertTrue(remembered.candidateStreams(streams, debridEnabled = false).isEmpty())
     }
+
+    @Test
+    fun `the server playing now comes first for the next episode`() {
+        val streams = listOf(
+            link("cloudstream:movix", null, "Upvid"),
+            link("cloudstream:movix", "Uqload", "Uqload"),
+            link("cloudstream:movix", "Uqload", "Uqload · 360p"),
+        )
+        val playing = link("cloudstream:movix", null, "Uqload · 360p")
+
+        assertEquals("uqload", playing.serverKey())
+        assertEquals(listOf("Uqload", "Uqload · 360p", "Upvid"), streams.sameServerFirst(playing.serverKey()).map { it.name })
+        assertEquals(streams, streams.sameServerFirst(null))
+    }
 }

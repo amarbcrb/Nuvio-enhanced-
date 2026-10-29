@@ -34,6 +34,7 @@ import com.nuvio.app.features.streams.SeriesSourceMemoryRepository
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.hasLikelyExpiringPlaybackCredentials
+import com.nuvio.app.features.streams.serverKey
 import com.nuvio.app.features.tracking.TrackingScrobbleAction
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
@@ -86,7 +87,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         if (errorMessage != null) {
             SeriesSourceMemoryRepository.forget(parentMetaId)
         } else if (initialLoadCompleted) {
-            SeriesSourceMemoryRepository.save(parentMetaId, activeProviderAddonId, activeStream?.sourceName)
+            SeriesSourceMemoryRepository.save(parentMetaId, activeProviderAddonId, activeStream?.serverKey())
         }
     }
 

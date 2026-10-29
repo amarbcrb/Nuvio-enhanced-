@@ -19,6 +19,7 @@ import com.nuvio.app.features.servers.serverPlaybackMessage
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.streams.YouTubeStreamResolver
+import com.nuvio.app.features.streams.serverKey
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
@@ -613,6 +614,7 @@ internal fun PlayerScreenRuntime.playNextEpisode(automatic: Boolean = false) {
         settings = playerSettingsUiState,
         currentStreamBingeGroup = currentStreamBingeGroup,
         currentSourceAddonId = activeProviderAddonId?.takeIf { it.isNotBlank() },
+        currentServer = activeStream?.serverKey(),
         onDownloadedEpisodeSelected = { item, episode ->
             if (isCurrentRequest()) switchToDownloadedEpisode(item, episode)
         },
