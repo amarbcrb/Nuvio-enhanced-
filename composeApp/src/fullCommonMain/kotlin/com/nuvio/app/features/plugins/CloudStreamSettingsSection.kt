@@ -1112,12 +1112,6 @@ private class CloudStreamSettingsCopy private constructor(
         if (turkish) "CS3 repositoryleri" else "CS3 repositories"
     val providersSectionTitle: String =
         if (turkish) "CS3 providerları" else "CS3 providers"
-    val sectionDescription: String =
-        if (turkish) {
-            "Standart .cs3 paketleri indirilen üçüncü taraf kodudur. Android full sürümü bu paketleri CloudStream çalışma zamanı ile çalıştırabilir; iOS yalnızca uygulamaya derlenmiş uyumluluk adaptörlerini kullanabilir. Yalnızca güvendiğiniz depoları ve eklentileri kurun."
-        } else {
-            "Standard .cs3 packages are downloaded third-party code. Android full builds can run them with the embedded CloudStream runtime; iOS can only use compatibility adapters compiled into the app. Only install repositories and plugins you trust."
-        }
     val securityWarningTitle: String =
         if (turkish) "Üçüncü taraf kod güvenlik uyarısı" else "Third-party code security warning"
     val securityWarningBody: String =
@@ -1262,31 +1256,6 @@ private class CloudStreamSettingsCopy private constructor(
 
     fun installedVersion(version: Int): String =
         if (turkish) "Kurulu v$version" else "Installed v$version"
-
-    fun compatibilityReason(platformSupport: CloudStreamPlatformSupport): String =
-        when (platformSupport) {
-            CloudStreamPlatformSupport.AndroidAndIos -> {
-                if (turkish) {
-                    "Bu provider, Nuvio Plus içine derlenmiş incelenmiş çapraz platform adaptörü kullanır."
-                } else {
-                    "This provider has a reviewed cross-platform adapter compiled into Nuvio Plus."
-                }
-            }
-            CloudStreamPlatformSupport.AndroidOnly -> {
-                if (turkish) {
-                    "Android full sürümü bu standart CloudStream .cs3 paketini gömülü CloudStream çalışma zamanı ile çalıştırır."
-                } else {
-                    "Android full builds execute this standard CloudStream .cs3 package with the embedded CloudStream runtime."
-                }
-            }
-            CloudStreamPlatformSupport.Unsupported -> {
-                if (turkish) {
-                    "Bu standart .cs3 paketi Android DEX kodu içerir ve iOS üzerinde çalışamaz."
-                } else {
-                    "This standard .cs3 package contains Android DEX code, which cannot run on iOS."
-                }
-            }
-        }
 
     fun pluginInstalled(name: String): String =
         if (turkish) "$name paketi denetlendi ve kuruldu." else "$name package was checked and installed."
