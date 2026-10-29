@@ -77,6 +77,10 @@ import nuvio.composeapp.generated.resources.streams_search_scope_title
 import nuvio.composeapp.generated.resources.streams_search_scope_unavailable
 import nuvio.composeapp.generated.resources.streams_sources_menu
 import nuvio.composeapp.generated.resources.streams_languages_menu
+import nuvio.composeapp.generated.resources.streams_language_menu
+import nuvio.composeapp.generated.resources.settings_stream_dub_any
+import nuvio.composeapp.generated.resources.settings_stream_dub_prefer
+import nuvio.composeapp.generated.resources.settings_stream_dub_only
 import nuvio.composeapp.generated.resources.streams_unpin_source
 import org.jetbrains.compose.resources.stringResource
 import com.nuvio.app.core.ui.glass.ambientLiquidGlass
@@ -130,10 +134,8 @@ internal fun ProviderFilterRow(
         if (onRefresh != null) {
             refreshChip(isRefreshing, onRefresh)
         }
-        // One drop-down menu holds the source shown, where to search and the language filter,
-        // instead of a row of chips side by side.
+        // One drop-down for the sources (and where to search), one for the language.
         val selectedGroup = addonGroups.firstOrNull { it.addonId == selectedFilter }
-        val showLanguageToggle = onRefresh != null && languagePreferences.linkLanguages.isNotEmpty()
         var sourceMenuExpanded by remember { mutableStateOf(false) }
         Box {
             if (filterChip != null) {
@@ -173,10 +175,8 @@ internal fun ProviderFilterRow(
                         },
                     )
                 }
-                if (showSearchScopeChip || showLanguageToggle) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                }
                 if (showSearchScopeChip) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     val scopedName = sourceOptions.firstOrNull { it.id == searchScopeId }?.name
                     MenuItem(
                         text = stringResource(Res.string.streams_search_scope_title) + " : " +
@@ -187,25 +187,14 @@ internal fun ProviderFilterRow(
                         },
                     )
                 }
-                if (showLanguageToggle && onRefresh != null) {
-                    MenuItem(
-                        text = if (languageFilterPaused) {
-                            stringResource(Res.string.streams_language_filter_all)
-                        } else {
-                            stringResource(
-                                Res.string.streams_languages_menu,
-                                languagePreferences.linkLanguages.sorted().joinToString(", ") { it.uppercase() },
-                            )
-                        },
-                        selected = !languageFilterPaused,
-                        onClick = {
-                            sourceMenuExpanded = false
-                            StreamLanguagePreferencesRepository.setLinkFilterPaused(!languageFilterPaused)
-                            onRefresh()
-                        },
-                    )
-                }
             }
+        }
+        if (onRefresh != null) {
+            LanguageMenuChip(
+                preferences = languagePreferences,
+                filterPaused = languageFilterPaused,
+                onChanged = onRefresh,
+            )
         }
     }
 
@@ -312,6 +301,75 @@ internal fun AddonStreamGroup.soleSourcePin(): PinTarget? {
 }
 
 internal data class PinTarget(val key: String, val label: String)
+
+/**
+ * Language drop-down of the stream screens: the saved link languages or every language, and how
+ * dubbed versions are favoured. Any change reloads the links through [onChanged].
+ */
+@Composable
+private fun LanguageMenuChip(
+    preferences: StreamLanguagePreferences,
+    filterPaused: Boolean,
+    onChanged: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val hasLanguages = preferences.linkLanguages.isNotEmpty()
+    val savedLanguages = preferences.linkLanguages.sorted().joinToString(", ") { it.uppercase() }
+    Box {
+        FilterChip(
+            label = if (hasLanguages && !filterPaused) savedLanguages else stringResource(Res.string.streams_language_menu),
+            isSelected = hasLanguages && !filterPaused,
+            trailingIcon = Icons.Rounded.KeyboardArrowDown,
+            onClick = { expanded = true },
+        )
+        Menu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (hasLanguages) {
+                MenuItem(
+                    text = stringResource(Res.string.streams_languages_menu, savedLanguages),
+                    selected = !filterPaused,
+                    onClick = {
+                        expanded = false
+                        if (filterPaused) {
+                            StreamLanguagePreferencesRepository.setLinkFilterPaused(false)
+                            onChanged()
+                        }
+                    },
+                )
+                MenuItem(
+                    text = stringResource(Res.string.streams_language_filter_all),
+                    selected = filterPaused,
+                    onClick = {
+                        expanded = false
+                        if (!filterPaused) {
+                            StreamLanguagePreferencesRepository.setLinkFilterPaused(true)
+                            onChanged()
+                        }
+                    },
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            }
+            StreamDubMode.entries.forEach { mode ->
+                MenuItem(
+                    text = stringResource(
+                        when (mode) {
+                            StreamDubMode.Any -> Res.string.settings_stream_dub_any
+                            StreamDubMode.PreferDubbed -> Res.string.settings_stream_dub_prefer
+                            StreamDubMode.DubbedOnly -> Res.string.settings_stream_dub_only
+                        },
+                    ),
+                    selected = preferences.dubMode == mode,
+                    onClick = {
+                        expanded = false
+                        if (preferences.dubMode != mode) {
+                            StreamLanguagePreferencesRepository.update { it.copy(dubMode = mode) }
+                            onChanged()
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
 
 /** "★ Name (12)" for a source of the drop-down list, with "…" while it is still searching. */
 internal fun sourceMenuLabel(group: AddonStreamGroup, isFavorite: Boolean): String = buildString {

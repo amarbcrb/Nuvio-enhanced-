@@ -135,11 +135,17 @@ internal suspend fun resolveCloudStreamProviderStreams(
                         sources = sources,
                     ).map { stream -> stream.withCloudStreamAudioVariant(target.audioVariant) }
                 }
-                return streams.takeIf { it.isNotEmpty() }
-                    ?: run {
-                        lastError = IllegalStateException("No links found")
-                        null
-                    }
+                if (streams.isEmpty()) {
+                    lastError = IllegalStateException("No links found")
+                    return null
+                }
+                // Next episodes of this title go straight to this page instead of searching again.
+                CloudStreamSearchRouteIndex.remember(
+                    providerId = providerGroup.providerId,
+                    query = searchRequest.title,
+                    items = listOf(match),
+                )
+                return streams
             }
 
             val indexedRoutes = CloudStreamSearchRouteIndex.find(
@@ -344,7 +350,8 @@ private fun List<String>.cleanCloudStreamRequestAliases(primaryTitle: String): L
 // CloudStream providers own stage-specific timeout hints. The host timeout only
 // prevents a permanently stuck provider; it must leave enough room for the
 // callback-based loadLinks contract, whose upstream default is measured in minutes.
-private const val CLOUDSTREAM_PROVIDER_STREAM_TIMEOUT_MS = 120_000L
+// Past this, an extension is left out so the list finishes instead of waiting minutes for it.
+private const val CLOUDSTREAM_PROVIDER_STREAM_TIMEOUT_MS = 40_000L
 private const val CLOUDSTREAM_SEARCH_CANDIDATE_LIMIT = 3
 
 private fun CloudStreamPluginItem.supportsCloudStreamRequest(

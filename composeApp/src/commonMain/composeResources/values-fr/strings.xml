@@ -2028,4 +2028,5 @@
     <string name="streams_languages_menu">Langues : %1$s</string>
     <string name="compose_nav_settings">Réglages</string>
     <string name="streams_choose_other_source">Choisir une autre source</string>
+    <string name="streams_language_menu">Langue</string>
 </resources>

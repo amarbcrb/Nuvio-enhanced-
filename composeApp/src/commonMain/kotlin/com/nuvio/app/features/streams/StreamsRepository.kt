@@ -680,8 +680,12 @@ object StreamsRepository {
                 launch { publishCompletion(StreamLoadCompletion.Addon(source.load())) }
             }
 
-            // Favorite sources start first, so they also get the first CloudStream permits.
-            cloudStreamProviderGroups.favoriteSourcesFirst { it.addonId }.forEach { providerGroup ->
+            // Favorite sources start first, then those that found links lately, so they also get
+            // the first CloudStream permits.
+            cloudStreamProviderGroups
+                .bySourceTrackRecord { it.addonId }
+                .favoriteSourcesFirst { it.addonId }
+                .forEach { providerGroup ->
                 launch {
                     val group = cloudStreamPermits.withPermit {
                         resolveCloudStreamProviderStreams(
@@ -689,6 +693,7 @@ object StreamsRepository {
                             request = cloudStreamSearchRequest,
                         )
                     }
+                    StreamSourceStats.record(group.addonId, hadLinks = group.streams.isNotEmpty())
                     publishCompletion(StreamLoadCompletion.Addon(group))
                 }
             }
