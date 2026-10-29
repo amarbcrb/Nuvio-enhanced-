@@ -2961,4 +2961,15 @@
     <string name="compose_nav_settings">Settings</string>
     <string name="streams_choose_other_source">Choose another source</string>
     <string name="streams_language_menu">Language</string>
+    <string name="library_category_favorites">Favorites</string>
+    <string name="library_category_anime">Anime</string>
+    <string name="library_category_movies">Movies</string>
+    <string name="library_category_series">Series</string>
+    <string name="library_add_favorite">Add to favorites</string>
+    <string name="library_remove_favorite">Remove from favorites</string>
+    <string name="library_categories_title">Categories</string>
+    <string name="library_categories_done">Done</string>
+    <string name="library_category_create">Create</string>
+    <string name="library_category_delete">Delete category</string>
+    <string name="library_category_new_hint">New category</string>
 </resources>

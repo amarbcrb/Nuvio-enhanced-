@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ListAlt
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
@@ -119,6 +122,8 @@ import com.nuvio.app.features.home.components.HomeHeroTrailerPlaybackController
 import com.nuvio.app.features.home.components.shouldBlurContinueWatchingArtwork
 import com.nuvio.app.features.library.refreshLibraryReleaseScheduleIfStale
 import com.nuvio.app.features.library.warmLibraryReleaseSchedule
+import com.nuvio.app.features.library.LibraryCategoriesRepository
+import com.nuvio.app.features.library.LibraryCategoryPickerDialog
 import com.nuvio.app.features.library.LibraryItem
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.LibrarySection
@@ -299,6 +304,7 @@ internal fun MainAppContent(
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         var selectedPosterActionTarget by remember { mutableStateOf<PosterActionTarget?>(null) }
         var selectedPosterAnchor by remember { mutableStateOf<PosterZoomAnchor?>(null) }
+        var libraryCategoryPickerItem by remember { mutableStateOf<LibraryItem?>(null) }
         val posterOverlayBackdrop = rememberNuvioBackdrop()
         var selectedContinueWatchingForActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
         var selectedContinueWatchingZoomAnchor by remember { mutableStateOf<PosterZoomAnchor?>(null) }
@@ -2229,7 +2235,28 @@ internal fun MainAppContent(
                                     }
                                 },
                             ),
-                        ),
+                        ) + if (isSaved && !isRemoteLibrarySource) {
+                            // Favorites and the user's own categories of the saved Library.
+                            val categoryItem = posterActionTarget.libraryItem
+                                ?: preview.toLibraryItem(savedAtEpochMs = 0L)
+                            val isFavorite = LibraryCategoriesRepository.isFavorite(categoryItem)
+                            listOf(
+                                PosterZoomOverlayAction(
+                                    icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                                    label = stringResource(
+                                        if (isFavorite) Res.string.library_remove_favorite else Res.string.library_add_favorite,
+                                    ),
+                                    onSelected = { LibraryCategoriesRepository.toggleFavorite(categoryItem) },
+                                ),
+                                PosterZoomOverlayAction(
+                                    icon = Icons.AutoMirrored.Rounded.ListAlt,
+                                    label = stringResource(Res.string.library_categories_title),
+                                    onSelected = { libraryCategoryPickerItem = categoryItem },
+                                ),
+                            )
+                        } else {
+                            emptyList()
+                        },
                         backdrop = posterOverlayBackdrop,
                         onDismissed = {
                             selectedPosterActionTarget = null
@@ -2237,6 +2264,13 @@ internal fun MainAppContent(
                         },
                     )
                 }
+            }
+
+            libraryCategoryPickerItem?.let { item ->
+                LibraryCategoryPickerDialog(
+                    item = item,
+                    onDismiss = { libraryCategoryPickerItem = null },
+                )
             }
 
             selectedContinueWatchingForActions?.let { item ->

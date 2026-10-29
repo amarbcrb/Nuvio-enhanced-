@@ -276,6 +276,24 @@ fun LibraryScreen(
         selected = displaySettings.sortOption,
         sourceMode = uiState.sourceMode,
     )
+    val libraryCategories by remember {
+        LibraryCategoriesRepository.ensureLoaded()
+        LibraryCategoriesRepository.state
+    }.collectAsStateWithLifecycle()
+    val categoryTitles = LibraryCategoryTitles(
+        favorites = stringResource(Res.string.library_category_favorites),
+        anime = stringResource(Res.string.library_category_anime),
+        movies = stringResource(Res.string.library_category_movies),
+        series = stringResource(Res.string.library_category_series),
+    )
+    // The saved Library is shown as Favorites, Anime, Movies, Series and the user's categories.
+    val savedSections = remember(uiState.sections, uiState.items, uiState.sourceMode, libraryCategories, categoryTitles) {
+        if (uiState.sourceMode == LibrarySourceMode.LOCAL) {
+            buildLocalLibraryCategories(uiState.items, libraryCategories, categoryTitles)
+        } else {
+            uiState.sections
+        }
+    }
     val orderListKeys = if (sourceMode != LibraryViewMode.Saved) emptyList() else {
         if (displaySettings.layoutMode == LibraryLayoutMode.HORIZONTAL) uiState.sections.map { it.type }
         else listOfNotNull(uiState.sections.firstOrNull { it.type == selectedLibrarySectionKey }?.type
@@ -283,10 +301,10 @@ fun LibraryScreen(
     }
     val providerOrders = rememberLibraryProviderOrders(uiState.sourceMode, orderListKeys, effectiveSortOption)
     val visibleSortOption = if (providerOrders.failed) LibrarySortOption.DEFAULT else effectiveSortOption
-    val sortedSections = remember(uiState.sections, displaySettings, uiState.sourceMode, sourceMode, providerOrders) {
+    val sortedSections = remember(savedSections, displaySettings, uiState.sourceMode, sourceMode, providerOrders) {
         if (sourceMode == LibraryViewMode.Saved && displaySettings.layoutMode == LibraryLayoutMode.HORIZONTAL) {
             sortLibrarySections(
-                sections = uiState.sections,
+                sections = savedSections,
                 selected = visibleSortOption,
                 sourceMode = uiState.sourceMode,
                 providerOrders = providerOrders.ranks,

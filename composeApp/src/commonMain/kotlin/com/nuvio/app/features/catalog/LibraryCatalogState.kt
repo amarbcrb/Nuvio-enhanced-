@@ -1,6 +1,10 @@
 package com.nuvio.app.features.catalog
 
+import com.nuvio.app.features.library.LibraryCategoriesRepository
+import com.nuvio.app.features.library.LibraryCategoryTitles
+import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.library.LibraryUiState
+import com.nuvio.app.features.library.buildLocalLibraryCategories
 import com.nuvio.app.features.library.LibraryProviderOrders
 import com.nuvio.app.features.library.LibrarySortOption
 import com.nuvio.app.features.library.librarySorter
@@ -38,7 +42,18 @@ private suspend fun LibraryUiState.libraryCatalogState(
     target: CatalogTarget.Library,
     orders: LibraryProviderOrders,
 ): CatalogUiState {
-    val items = sections.firstOrNull { it.type == target.sectionType }?.items.orEmpty()
+    // The saved Library screen groups titles into its own categories (Favorites, Anime...).
+    val sourceSections = if (sourceMode == LibrarySourceMode.LOCAL) {
+        LibraryCategoriesRepository.ensureLoaded()
+        buildLocalLibraryCategories(
+            items = this.items,
+            state = LibraryCategoriesRepository.state.value,
+            titles = LibraryCategoryTitles(favorites = "", anime = "", movies = "", series = ""),
+        )
+    } else {
+        sections
+    }
+    val items = sourceSections.firstOrNull { it.type == target.sectionType }?.items.orEmpty()
     return CatalogUiState(
         items = sortLibraryItems(
             items = items,

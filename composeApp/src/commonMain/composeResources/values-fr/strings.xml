@@ -2029,4 +2029,15 @@
     <string name="compose_nav_settings">Réglages</string>
     <string name="streams_choose_other_source">Choisir une autre source</string>
     <string name="streams_language_menu">Langue</string>
+    <string name="library_category_favorites">Favoris</string>
+    <string name="library_category_anime">Anime</string>
+    <string name="library_category_movies">Films</string>
+    <string name="library_category_series">Séries</string>
+    <string name="library_add_favorite">Ajouter aux favoris</string>
+    <string name="library_remove_favorite">Retirer des favoris</string>
+    <string name="library_categories_title">Catégories</string>
+    <string name="library_categories_done">OK</string>
+    <string name="library_category_create">Créer</string>
+    <string name="library_category_delete">Supprimer la catégorie</string>
+    <string name="library_category_new_hint">Nouvelle catégorie</string>
 </resources>
