@@ -80,15 +80,23 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         }
     }
 
-    // Once an episode actually plays, its source becomes the one the series plays from next time.
-    // A link that does not play is not remembered: the next episode opens the stream list again.
-    LaunchedEffect(initialLoadCompleted, errorMessage, activeProviderAddonId, activeStream, parentMetaId) {
+    // Once an episode has really played for a while, its source and server become the ones the
+    // series plays from next time. A link that only starts loading, stays black or fails is not
+    // remembered, and a failure forgets the remembered one.
+    LaunchedEffect(activePlaybackKey, activeProviderAddonId, activeStream, parentMetaId) {
         if (!isSeries) return@LaunchedEffect
-        if (errorMessage != null) {
-            SeriesSourceMemoryRepository.forget(parentMetaId)
-        } else if (initialLoadCompleted) {
-            SeriesSourceMemoryRepository.save(parentMetaId, activeProviderAddonId, activeStream?.serverKey())
+        var playedMs = 0L
+        while (playedMs < SERIES_SOURCE_MIN_PLAYED_MS) {
+            delay(SERIES_SOURCE_PLAY_CHECK_MS)
+            if (playbackSnapshot.isPlaying && !playbackSnapshot.isLoading && errorMessage == null) {
+                playedMs += SERIES_SOURCE_PLAY_CHECK_MS
+            }
         }
+        SeriesSourceMemoryRepository.save(parentMetaId, activeProviderAddonId, activeStream?.serverKey())
+    }
+
+    LaunchedEffect(errorMessage, parentMetaId) {
+        if (isSeries && errorMessage != null) SeriesSourceMemoryRepository.forget(parentMetaId)
     }
 
     LaunchedEffect(activePlaybackKey, activeSourceUrl, activeSourceAudioUrl, activeSourceHeaders, activeSourceResponseHeaders) {
@@ -1012,3 +1020,5 @@ private fun SkipInterval.isIntroLikeSkipInterval(): Boolean =
 private const val SKIP_INTRO_PRE_ROLL_SECONDS = 10.0
 private const val CREDENTIAL_REFRESH_POLL_COUNT = 30
 private const val CREDENTIAL_REFRESH_POLL_INTERVAL_MS = 500L
+private const val SERIES_SOURCE_MIN_PLAYED_MS = 20_000L
+private const val SERIES_SOURCE_PLAY_CHECK_MS = 1_000L

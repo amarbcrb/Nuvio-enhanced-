@@ -49,8 +49,12 @@ import okhttp3.dnsoverhttps.DnsOverHttps
 import java.lang.ref.WeakReference
 import java.util.Collections
 import java.util.zip.ZipFile
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -466,7 +470,12 @@ private class AndroidDexCloudStreamProvider(
         val api = findProvider(route.providerClassName)
         val subtitles = Collections.synchronizedList(mutableListOf<CloudStreamSubtitle>())
         val links = Collections.synchronizedList(mutableListOf<ExtractorLink>())
-        val completed = withTimeout(stageTimeout(api.loadLinksTimeoutMs, DEFAULT_LINK_TIMEOUT_MS)) {
+        val firstLinkAtMs = AtomicLong(0L)
+        // Extensions try their players one after another and only return at the end, so a slow
+        // player held back the links the others had already found. The links are taken a few
+        // seconds after the first one arrives, without waiting for the slow players; the
+        // extension runs detached so one that ignores cancellation cannot hold the caller.
+        val task = linkScope.async {
             api.loadLinks(
                 api.withCurrentSiteUrl(route.data),
                 false,
@@ -478,8 +487,27 @@ private class AndroidDexCloudStreamProvider(
                         headers = subtitle.headers.orEmpty(),
                     )
                 },
-                links::add,
+                { link ->
+                    links += link
+                    firstLinkAtMs.compareAndSet(0L, System.currentTimeMillis())
+                },
             )
+        }
+        val completed = try {
+            withTimeoutOrNull(stageTimeout(api.loadLinksTimeoutMs, DEFAULT_LINK_TIMEOUT_MS)) {
+                while (!task.isCompleted) {
+                    val firstAt = firstLinkAtMs.get()
+                    if (firstAt != 0L && System.currentTimeMillis() - firstAt >= LINKS_AFTER_FIRST_WAIT_MS) break
+                    delay(LINK_POLL_MS)
+                }
+                when {
+                    !task.isCompleted -> true
+                    // Links found before an extension error are still used.
+                    else -> runCatching { task.await() }.getOrElse { error -> if (links.isEmpty()) throw error else true }
+                }
+            } ?: false
+        } finally {
+            if (!task.isCompleted) task.cancel()
         }
         val subtitleSnapshot = synchronized(subtitles) { subtitles.toList() }
         val linkSnapshot = synchronized(links) { links.toList() }
@@ -578,6 +606,11 @@ private class AndroidDexCloudStreamProvider(
         private const val DEFAULT_DISCOVERY_TIMEOUT_MS = 15_000L
         private const val DEFAULT_LOAD_TIMEOUT_MS = 30_000L
         private const val DEFAULT_LINK_TIMEOUT_MS = 120_000L
+        private const val LINKS_AFTER_FIRST_WAIT_MS = 4_000L
+        private const val LINK_POLL_MS = 150L
+
+        /** Runs extensions' link searches detached from their callers (see loadLinks). */
+        private val linkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 }
 
