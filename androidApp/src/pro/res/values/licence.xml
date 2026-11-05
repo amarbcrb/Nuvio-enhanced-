@@ -4,7 +4,7 @@
     <bool name="licence_required">true</bool>
 
     <!-- Cle publique du generateur de licences (Reglages > Cle publique). -->
-    <string name="licence_public_key" translatable="false">MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESHkK7HwjV+b5i9tiSxmT11LTC/shtfZcDK6SAZddvWTCjUk2sIiJFodK8+Y+IStgv7zzHEP/UNkbDpou05VxRA==</string>
+    <string name="licence_public_key" translatable="false">MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhYO7hhwrFfmZfoRdlHKZnPAwOVHGlIARJur9kd6a15T8n0oqbF7pvVZQTJeF1pxZh8dXjrI0bng64jb/n6NKFg====</string>
 
     <!-- Optionnel : lien "Raw" d'un fichier texte avec un code appareil bloque par ligne. Vide = pas de liste. -->
     <string name="licence_blocklist_url" translatable="false"></string>
