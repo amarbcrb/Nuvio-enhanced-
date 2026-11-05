@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Palette
@@ -51,6 +52,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import com.nuvio.app.core.build.AppVersionConfig
+import com.nuvio.app.core.licence.LicenceInfo
+import com.nuvio.app.core.licence.SubscriptionInfo
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_about_made_with
 import nuvio.composeapp.generated.resources.compose_about_version_format
@@ -119,6 +122,25 @@ internal fun LazyListScope.settingsRootContent(
     showAdvancedSection: Boolean = true,
     showSupportersContributorsPage: Boolean = true,
 ) {
+    // Nuvio Pro seulement : jours d'accès restants, et un appui pour entrer une nouvelle clé.
+    if (AppVersionConfig.EDITION == "pro") {
+        item {
+            val subscription by LicenceInfo.state.collectAsStateWithLifecycle()
+            subscription?.let { info ->
+                SettingsSection(title = "Nuvio Pro", isTablet = isTablet) {
+                    SettingsGroup(isTablet = isTablet) {
+                        SettingsNavigationRow(
+                            title = subscriptionTitle(info),
+                            description = subscriptionDescription(info),
+                            icon = Icons.Rounded.Lock,
+                            isTablet = isTablet,
+                            onClick = { LicenceInfo.openKeyEntry?.invoke() },
+                        )
+                    }
+                }
+            }
+        }
+    }
     if (showAccountSection && onSwitchProfileClick != null) {
         item {
             SettingsProfileCard(isTablet = isTablet, onClick = onSwitchProfileClick)
@@ -329,6 +351,22 @@ internal fun LazyListScope.settingsRootContent(
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+private fun subscriptionTitle(info: SubscriptionInfo): String = when {
+    info.daysLeft <= 1 -> "Dernier jour d'accès"
+    else -> "${info.daysLeft} jours restants"
+}
+
+private fun subscriptionDescription(info: SubscriptionInfo): String = buildString {
+    append("Accès jusqu'au ")
+    append(info.endDateText)
+    if (info.nextStartText != null) {
+        append(" · Renouvelé à partir du ")
+        append(info.nextStartText)
+    } else {
+        append(" · Appuie pour entrer une nouvelle clé")
     }
 }
 

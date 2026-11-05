@@ -151,20 +151,47 @@ internal class LicenceManager(context: Context) {
         if (!config.required) return LicenceStatus.Valid(expiryDay = Int.MAX_VALUE, daysLeft = Int.MAX_VALUE)
         if (publicKey == null) return LicenceStatus.NotConfigured
         if (prefs.getBoolean(KEY_BLOCKED, false)) return LicenceStatus.Blocked
-        val stored = prefs.getString(KEY_LICENCE, null) ?: return LicenceStatus.Missing
+        // Cle de renouvellement en attente : elle remplace la cle actuelle des que sa periode commence.
+        val next = prefs.getString(KEY_NEXT_LICENCE, null)
+        if (next != null) {
+            val nextStatus = check(publicKey, next, nowMillis)
+            when (nextStatus) {
+                is LicenceStatus.Valid -> {
+                    prefs.edit().putString(KEY_LICENCE, next).remove(KEY_NEXT_LICENCE).apply()
+                    recordSeen(nextStatus, nowMillis)
+                    return nextStatus
+                }
+                is LicenceStatus.NotYetValid -> Unit
+                else -> prefs.edit().remove(KEY_NEXT_LICENCE).apply()
+            }
+        }
+        val stored = prefs.getString(KEY_LICENCE, null)
+            ?: return nextStart(nowMillis)?.let { LicenceStatus.NotYetValid(it) } ?: LicenceStatus.Missing
         return check(publicKey, stored, nowMillis).also { recordSeen(it, nowMillis) }
     }
 
-    /** Enregistre la cle si elle est valable pour ce telephone. */
+    /**
+     * Enregistre la cle si elle est faite pour ce telephone. Une cle qui commence plus tard
+     * (renouvellement en avance) est gardee de cote et prend le relais le jour de son debut.
+     */
     fun activate(input: String, nowMillis: Long = System.currentTimeMillis()): LicenceStatus {
         if (publicKey == null) return LicenceStatus.NotConfigured
         if (prefs.getBoolean(KEY_BLOCKED, false)) return LicenceStatus.Blocked
         val result = check(publicKey, input, nowMillis)
-        if (result is LicenceStatus.Valid) {
-            prefs.edit().putString(KEY_LICENCE, LicenceFormat.normalize(input)).apply()
+        when (result) {
+            is LicenceStatus.Valid -> prefs.edit().putString(KEY_LICENCE, LicenceFormat.normalize(input)).apply()
+            is LicenceStatus.NotYetValid -> prefs.edit().putString(KEY_NEXT_LICENCE, LicenceFormat.normalize(input)).apply()
+            else -> Unit
         }
         recordSeen(result, nowMillis)
         return result
+    }
+
+    /** Premier jour de la cle de renouvellement en attente, ou null. */
+    fun nextStart(nowMillis: Long = System.currentTimeMillis()): Int? {
+        val key = publicKey ?: return null
+        val next = prefs.getString(KEY_NEXT_LICENCE, null) ?: return null
+        return (check(key, next, nowMillis) as? LicenceStatus.NotYetValid)?.startDay
     }
 
     /** Lit l'heure reelle et la liste de blocage. Sans internet, ne fait rien. */
@@ -255,6 +282,7 @@ internal class LicenceManager(context: Context) {
 
     private companion object {
         const val KEY_LICENCE = "licence"
+        const val KEY_NEXT_LICENCE = "next_licence"
         const val KEY_LAST_SEEN = "last_seen"
         const val KEY_NETWORK_TIME = "network_time"
         const val KEY_BLOCKED = "blocked"

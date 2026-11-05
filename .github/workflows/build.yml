@@ -60,7 +60,8 @@ jobs:
 
       # Nuvio Pro is built only once the public key from the licence generator is in
       # androidApp/src/pro/res/values/licence.xml. A key that is not a valid P-256 public key
-      # (a character changed while copying) stops the build here, before anything is published.
+      # (a character changed while copying) is reported here; Nuvio Plus is still built so the
+      # shared code is checked, then the job stops before publishing anything.
       - name: Check Nuvio Pro licence key
         id: pro
         run: |
@@ -78,7 +79,8 @@ jobs:
               why="la longueur est bonne mais au moins un caractère a changé"
             fi
             echo "::error file=$file::La clé publique n'est pas valable ($why). Recopie-la avec le bouton Copier du générateur, sans capture d'écran ni retape."
-            exit 1
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "invalid=true" >> "$GITHUB_OUTPUT"
           fi
 
       # Version.xcconfig 0.6.4 (code 147) + run 12 -> version 0.6.16, version code 159.
@@ -103,6 +105,12 @@ jobs:
             -Pnuvio.app.versionCode=${{ steps.version.outputs.code }} \
             --stacktrace
           cp androidApp/build/outputs/apk/full/debug/androidApp-full-debug.apk NuvioPlus.apk
+
+      - name: Stop before publishing (damaged Nuvio Pro key)
+        if: steps.pro.outputs.invalid == 'true'
+        run: |
+          echo "::error::Nuvio Plus a été construit, mais rien n'est publié tant que la clé publique de Nuvio Pro est abîmée."
+          exit 1
 
       - name: Build Nuvio Pro
         if: steps.pro.outputs.build == 'true'

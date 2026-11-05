@@ -3,6 +3,7 @@ package com.nuvio.app.core.licence
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -13,14 +14,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +58,10 @@ fun LicenceGate(content: @Composable () -> Unit) {
 
 @Composable
 private fun ProLicenceGate(manager: LicenceManager, content: @Composable () -> Unit) {
+    val context = LocalContext.current
     var status by remember { mutableStateOf(manager.status()) }
+    var showKeyEntry by remember { mutableStateOf(false) }
+    var renewals by remember { mutableStateOf(0) }
     LaunchedEffect(manager) {
         while (true) {
             manager.refreshOnline()
@@ -63,8 +70,63 @@ private fun ProLicenceGate(manager: LicenceManager, content: @Composable () -> U
         }
     }
 
+    // Les réglages affichent les jours restants et ouvrent la fenêtre de nouvelle clé.
+    val current = status
+    LaunchedEffect(current, renewals) {
+        LicenceInfo.update(
+            (current as? LicenceStatus.Valid)?.let {
+                SubscriptionInfo(
+                    daysLeft = it.daysLeft + 1,
+                    endDateText = dayToText(it.expiryDay),
+                    nextStartText = manager.nextStart()?.let(::dayToText),
+                )
+            },
+        )
+    }
+    DisposableEffect(Unit) {
+        LicenceInfo.openKeyEntry = { showKeyEntry = true }
+        onDispose { LicenceInfo.openKeyEntry = null }
+    }
+
+    // Rappel à l'ouverture quand il reste 3 jours ou moins.
+    LaunchedEffect(Unit) {
+        val valid = status as? LicenceStatus.Valid ?: return@LaunchedEffect
+        val left = valid.daysLeft + 1
+        if (left <= 3 && manager.nextStart() == null) {
+            val text = if (left == 1) "Nuvio Pro : dernier jour d'accès" else "Nuvio Pro : plus que $left jours d'accès"
+            Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+        }
+    }
+
     if (status is LicenceStatus.Valid) {
         content()
+        if (showKeyEntry) {
+            val dark = isSystemInDarkTheme()
+            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
+                KeyEntryDialog(
+                    deviceCode = manager.deviceCode,
+                    onDismiss = { showKeyEntry = false },
+                    onActivate = { key ->
+                        val result = manager.activate(key)
+                        when (result) {
+                            is LicenceStatus.Valid -> {
+                                status = result
+                                showKeyEntry = false
+                                null
+                            }
+                            is LicenceStatus.NotYetValid -> {
+                                status = manager.status()
+                                renewals++
+                                showKeyEntry = false
+                                Toast.makeText(context, "Nouvelle clé enregistrée : elle commence le ${dayToText(result.startDay)}", Toast.LENGTH_LONG).show()
+                                null
+                            }
+                            else -> messageFor(result)
+                        }
+                    },
+                )
+            }
+        }
     } else {
         val dark = isSystemInDarkTheme()
         MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
@@ -129,6 +191,45 @@ private fun LicenceScreen(
             )
         }
     }
+}
+
+/** Entrer une nouvelle clé sans quitter l'appli (renouvellement). Renvoie un message d'erreur ou null. */
+@Composable
+private fun KeyEntryDialog(
+    deviceCode: String,
+    onDismiss: () -> Unit,
+    onActivate: (String) -> String?,
+) {
+    var input by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nouvelle clé d'accès") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it; error = null },
+                    label = { Text("Clé d'accès") },
+                    isError = error != null,
+                    supportingText = if (error != null) { { Text(error.orEmpty()) } } else null,
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Code du téléphone : $deviceCode",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { error = onActivate(input) }, enabled = input.isNotBlank()) { Text("Activer") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler") }
+        },
+    )
 }
 
 /** Message sous le champ, seulement quand quelque chose ne va pas. */
