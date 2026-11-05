@@ -55,11 +55,11 @@ Sur ton PC : `./gradlew :androidApp:assembleFullDebug -Pnuvio.android.distributi
 
 1. Le client installe Nuvio Pro. En bas de l'écran, il voit le **code du téléphone** (par exemple `K7F3-92QX`). Un appui dessus le copie.
 2. Il te l'envoie avec son paiement.
-3. Dans le générateur : tape le code, son nom, la durée, puis **Créer la licence**.
+3. Dans le générateur : tape le code et son nom, choisis la **date de début** et la **date de fin** (ou une durée, qui calcule la fin), puis **Créer la licence**. La clé marche du jour de début au jour de fin inclus.
 4. Appuie sur **Envoyer par WhatsApp** ou **Copier la clé**, et envoie-la-lui.
 5. Il colle la clé dans le champ **Clé d'accès** et appuie sur **Activer**.
 
-Pour renouveler, appuie sur **Renouveler** dans la liste des clients. Si la licence est encore active, les jours s'ajoutent à la date de fin actuelle.
+Pour renouveler, appuie sur **Renouveler** dans la liste des clients. Le début est mis au lendemain de la fin actuelle (ou à aujourd'hui si elle est passée), et tu peux changer les dates avant de créer la clé. Le client colle la nouvelle clé à la place de l'ancienne.
 
 ## Bloquer quelqu'un avant la fin (optionnel)
 

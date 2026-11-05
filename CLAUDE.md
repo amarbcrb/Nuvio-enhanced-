@@ -41,7 +41,7 @@ Seuls ces fichiers distinguent les deux éditions :
 
 ## Licence de Nuvio Pro
 
-- Clé = 8 octets (version, code du téléphone sur 5 octets, jour de fin) + signature ECDSA P-256, en base32 Crockford (116 caractères).
+- Clé = 10 octets (version 2, code du téléphone sur 5 octets, jour de début, jour de fin) + signature ECDSA P-256, en base32 Crockford (119 caractères). Valable du jour de début au jour de fin inclus.
 - Le format est défini deux fois et doit rester identique : bloc `licence-core` de `licence/generateur.html` et `LicenceFormat` dans `LicenceManager.kt`.
 - Après une modification du format : `node licence/test/core.test.js vecteurs.json && java licence/test/InteropTest.java vecteurs.json`.
 - La clé secrète n'est jamais dans le dépôt. Seule la clé publique va dans `androidApp/src/pro/res/values/licence.xml`.

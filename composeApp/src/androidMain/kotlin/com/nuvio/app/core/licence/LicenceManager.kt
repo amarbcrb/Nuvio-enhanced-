@@ -44,6 +44,7 @@ internal class LicenceConfig(
 internal sealed interface LicenceStatus {
     data object Missing : LicenceStatus
     data class Valid(val expiryDay: Int, val daysLeft: Int) : LicenceStatus
+    data class NotYetValid(val startDay: Int) : LicenceStatus
     data class Expired(val expiryDay: Int) : LicenceStatus
     data object Invalid : LicenceStatus
     data object WrongDevice : LicenceStatus
@@ -55,10 +56,10 @@ internal sealed interface LicenceStatus {
 /** Meme format que licence/generateur.html (bloc "licence-core"). */
 internal object LicenceFormat {
     const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-    const val VERSION = 1
-    const val PAYLOAD_LEN = 8
+    const val VERSION = 2
+    const val PAYLOAD_LEN = 10 // version(1) + appareil(5) + jour de debut(2) + jour de fin(2)
     const val SIG_LEN = 64
-    const val KEY_CHARS = 116
+    const val KEY_CHARS = 119
     const val DAY_MS = 86_400_000L
 
     fun normalize(text: String): String = buildString {
@@ -222,9 +223,11 @@ internal class LicenceManager(context: Context) {
         // Heure du telephone remise en arriere par rapport a ce que l'appli a deja vu.
         if (nowMillis + CLOCK_TOLERANCE_MS < prefs.getLong(KEY_LAST_SEEN, 0L)) return LicenceStatus.ClockChanged
 
-        val expiryDay = ((payload[6].toInt() and 0xFF) shl 8) or (payload[7].toInt() and 0xFF)
+        val startDay = ((payload[6].toInt() and 0xFF) shl 8) or (payload[7].toInt() and 0xFF)
+        val expiryDay = ((payload[8].toInt() and 0xFF) shl 8) or (payload[9].toInt() and 0xFF)
         val effectiveNow = maxOf(nowMillis, prefs.getLong(KEY_NETWORK_TIME, 0L))
         val today = (effectiveNow / LicenceFormat.DAY_MS).toInt()
+        if (today < startDay) return LicenceStatus.NotYetValid(startDay)
         if (today > expiryDay) return LicenceStatus.Expired(expiryDay)
         return LicenceStatus.Valid(expiryDay, expiryDay - today)
     }

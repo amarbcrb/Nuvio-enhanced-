@@ -17,8 +17,9 @@ async function test(name, fn) { await fn(); passed++; console.log("ok - " + name
   const keys = await Core.createKeys();
   const device = "K7F3-92QX";
   const today = 20397; // 5 novembre 2025
+  const start = today;
   const expiry = today + 29;
-  const key = await Core.createLicence(keys.privateKey, device, expiry);
+  const key = await Core.createLicence(keys.privateKey, device, start, expiry);
 
   await test("base32 aller-retour", () => {
     for (let n = 0; n < 80; n++) {
@@ -37,7 +38,7 @@ async function test(name, fn) { await fn(); passed++; console.log("ok - " + name
     const again = await Core.loadSecret(keys.secret);
     assert.strictEqual(again.publicB64, keys.publicB64);
     const pub = await Core.importPublic(keys.publicB64);
-    assert.strictEqual((await Core.readLicence(pub, await Core.createLicence(again.privateKey, device, expiry), device, today)).ok, true);
+    assert.strictEqual((await Core.readLicence(pub, await Core.createLicence(again.privateKey, device, start, expiry), device, today)).ok, true);
   });
   await test("dernier jour encore valable", async () => assert.strictEqual((await Core.readLicence(keys.publicKey, key, device, expiry)).ok, true));
   await test("lendemain expire", async () => assert.strictEqual((await Core.readLicence(keys.publicKey, key, device, expiry + 1)).reason, "expired"));
@@ -49,13 +50,28 @@ async function test(name, fn) { await fn(); passed++; console.log("ok - " + name
   });
   await test("autre cle secrete refusee", async () => {
     const other = await Core.createKeys();
-    const otherKey = await Core.createLicence(other.privateKey, device, expiry);
+    const otherKey = await Core.createLicence(other.privateKey, device, start, expiry);
     assert.strictEqual((await Core.readLicence(keys.publicKey, otherKey, device, today)).reason, "signature");
   });
   await test("cle tronquee refusee", async () => assert.strictEqual((await Core.readLicence(keys.publicKey, key.slice(0, 100), device, today)).reason, "format"));
   await test("minuscules, espaces, tirets, O et I acceptes", async () => {
     const messy = " " + key.toLowerCase().replace(/(.{4})/g, "$1-").replace(/0/g, "o").replace(/1/g, "i") + "\n";
     assert.strictEqual((await Core.readLicence(keys.publicKey, messy, "k7f3 92qx", today)).ok, true);
+  });
+  await test("pas encore valable avant le debut", async () => {
+    const later = await Core.createLicence(keys.privateKey, device, today + 10, today + 40);
+    const before = await Core.readLicence(keys.publicKey, later, device, today + 9);
+    assert.strictEqual(before.reason, "notyet");
+    assert.strictEqual(before.startDay, today + 10);
+    assert.strictEqual((await Core.readLicence(keys.publicKey, later, device, today + 10)).ok, true);
+  });
+  await test("fin avant le debut refusee", async () => {
+    await assert.rejects(Core.createLicence(keys.privateKey, device, today + 5, today + 4));
+  });
+  await test("dates du formulaire", () => {
+    assert.strictEqual(Core.dayFromInput("2025-11-05"), 20397);
+    assert.strictEqual(Core.dayToInput(20397), "2025-11-05");
+    assert.strictEqual(Core.dayFromInput(""), null);
   });
   await test("format du code appareil", () => {
     assert.strictEqual(Core.formatDeviceCode("k7f392qx"), "K7F3-92QX");
@@ -67,9 +83,10 @@ async function test(name, fn) { await fn(); passed++; console.log("ok - " + name
     // Plusieurs cles valables : la conversion r||s vers DER doit marcher quel que soit le premier octet.
     const cases = [];
     for (let n = 0; n < 40; n++) {
-      cases.push({ key: await Core.createLicence(keys.privateKey, device, expiry), device, today, expect: "valid" });
+      cases.push({ key: await Core.createLicence(keys.privateKey, device, start, expiry), device, today, expect: "valid" });
     }
     cases.push({ key, device, today: expiry + 1, expect: "expired" });
+    cases.push({ key: await Core.createLicence(keys.privateKey, device, today + 10, today + 40), device, today, expect: "notyet" });
     cases.push({ key, device: "AAAA-BBBB", today, expect: "device" });
     cases.push({ key: key.slice(0, 5) + (key[5] === "Z" ? "Y" : "Z") + key.slice(6), device, today, expect: "signature" });
     fs.writeFileSync(out, JSON.stringify({ publicKey: keys.publicB64, cases }, null, 2));

@@ -134,6 +134,7 @@ private fun LicenceScreen(
 /** Message sous le champ, seulement quand quelque chose ne va pas. */
 private fun messageFor(status: LicenceStatus): String? = when (status) {
     LicenceStatus.Missing, is LicenceStatus.Valid -> null
+    is LicenceStatus.NotYetValid -> "Clé valable à partir du ${dayToText(status.startDay)}."
     is LicenceStatus.Expired -> "Accès terminé le ${dayToText(status.expiryDay)}."
     LicenceStatus.Invalid -> "Clé non valable."
     LicenceStatus.WrongDevice -> "Cette clé est pour un autre téléphone."

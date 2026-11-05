@@ -83,11 +83,11 @@ public class InteropTest {
 
     static String check(PublicKey pub, String key, String device, int today) throws Exception {
         String n = normalize(key);
-        if (n.length() != 116) return "format";
+        if (n.length() != 119) return "format";
         byte[] all = decode(n);
-        byte[] payload = Arrays.copyOfRange(all, 0, 8);
-        byte[] sig = Arrays.copyOfRange(all, 8, 72);
-        if (payload[0] != 1) return "format";
+        byte[] payload = Arrays.copyOfRange(all, 0, 10);
+        byte[] sig = Arrays.copyOfRange(all, 10, 74);
+        if (payload[0] != 2) return "format";
         boolean ok;
         try {
             Signature v = Signature.getInstance("SHA256withECDSA");
@@ -100,7 +100,9 @@ public class InteropTest {
         if (!ok) return "signature";
         byte[] dev = decode(normalize(device));
         for (int i = 0; i < dev.length; i++) if (payload[1 + i] != dev[i]) return "device";
-        int expiry = ((payload[6] & 0xFF) << 8) | (payload[7] & 0xFF);
+        int start = ((payload[6] & 0xFF) << 8) | (payload[7] & 0xFF);
+        int expiry = ((payload[8] & 0xFF) << 8) | (payload[9] & 0xFF);
+        if (today < start) return "notyet";
         return today > expiry ? "expired" : "valid";
     }
 
@@ -119,7 +121,7 @@ public class InteropTest {
             seen.merge(got, 1, Integer::sum);
             count++;
         }
-        if (count != 43) throw new AssertionError("43 cas attendus, " + count + " lus");
+        if (count != 44) throw new AssertionError("44 cas attendus, " + count + " lus");
         System.out.println("ok - " + seen);
 
         // Le code appareil calcule cote appli doit etre accepte tel quel par le generateur.

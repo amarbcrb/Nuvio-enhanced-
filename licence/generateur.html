@@ -57,7 +57,7 @@ section { display: flex; flex-direction: column; gap: 14px; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 label { font-weight: 600; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
 .hint { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
-input[type="text"], select, textarea {
+input[type="text"], input[type="date"], select, textarea {
   font: inherit; color: var(--fg); background: var(--bg);
   border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%;
 }
@@ -121,7 +121,7 @@ details[open] summary { margin-bottom: 14px; }
   <header>
     <span class="eyebrow">Abonnements</span>
     <h1>Générateur de licences</h1>
-    <p class="lead">Crée une clé de 30 jours pour le téléphone d'un client. La clé ne marche que sur ce téléphone et s'arrête toute seule à la date prévue.</p>
+    <p class="lead">Crée une clé d'accès pour le téléphone d'un client, valable entre les deux dates que tu choisis. La clé ne marche que sur ce téléphone et s'arrête toute seule à la date de fin.</p>
   </header>
 
   <div id="libError" class="msg error" hidden>Ce navigateur ne sait pas signer les licences. Ouvre cette page dans Chrome ou Safari à jour.</div>
@@ -168,13 +168,15 @@ details[open] summary { margin-bottom: 14px; }
         <span class="hint">Affiché en bas de l'écran de Nuvio Pro.</span>
         <input type="text" id="device" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7F3-92QX" maxlength="12">
       </label>
+      <label for="client">Nom du client
+        <span class="hint">Pour toi seulement.</span>
+        <input type="text" id="client" autocomplete="off" placeholder="Karim, quartier des Pins">
+      </label>
       <div class="row">
-        <label for="client">Nom du client
-          <span class="hint">Pour toi seulement.</span>
-          <input type="text" id="client" autocomplete="off" placeholder="Karim, quartier des Pins">
+        <label for="start">Début
+          <input type="date" id="start">
         </label>
         <label for="duration">Durée
-          <span class="hint">Ajoutée à la date de fin actuelle.</span>
           <select id="duration">
             <option value="7">7 jours</option>
             <option value="15">15 jours</option>
@@ -182,7 +184,11 @@ details[open] summary { margin-bottom: 14px; }
             <option value="60">60 jours</option>
             <option value="90">90 jours</option>
             <option value="365">1 an</option>
+            <option value="custom">Autre (choisir la fin)</option>
           </select>
+        </label>
+        <label for="end">Fin (incluse)
+          <input type="date" id="end">
         </label>
       </div>
       <div id="genMsg" class="msg error" hidden></div>
@@ -194,7 +200,7 @@ details[open] summary { margin-bottom: 14px; }
       <div class="result-meta">
         <span>Client : <strong id="resClient"></strong></span>
         <span>Code : <strong id="resCode" class="mono"></strong></span>
-        <span>Valable jusqu'au <strong id="resUntil"></strong></span>
+        <span>Du <strong id="resFrom"></strong> au <strong id="resUntil"></strong></span>
       </div>
       <div id="resKey" class="keybox"></div>
       <div class="row">
@@ -245,10 +251,10 @@ details[open] summary { margin-bottom: 14px; }
 var LicenceCore = (function () {
   "use strict";
   var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // base32 Crockford
-  var VERSION = 1;
-  var PAYLOAD_LEN = 8;   // version(1) + appareil(5) + jour de fin(2)
+  var VERSION = 2;
+  var PAYLOAD_LEN = 10;  // version(1) + appareil(5) + jour de début(2) + jour de fin(2)
   var SIG_LEN = 64;      // signature ECDSA P-256, r||s
-  var KEY_CHARS = 116;   // 72 octets en base32
+  var KEY_CHARS = 119;   // 74 octets en base32
   var DEVICE_CHARS = 8;  // 5 octets en base32
   var DAY_MS = 86400000;
   var ALGO = { name: "ECDSA", namedCurve: "P-256" };
@@ -295,6 +301,12 @@ var LicenceCore = (function () {
     return decode(s);
   }
   function today(nowMs) { return Math.floor((nowMs == null ? Date.now() : nowMs) / DAY_MS); }
+  // "2026-11-05" <-> numéro de jour.
+  function dayFromInput(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+    return m ? Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / DAY_MS) : null;
+  }
+  function dayToInput(day) { return new Date(day * DAY_MS).toISOString().slice(0, 10); }
 
   // Charge une clé secrète sauvegardée (PKCS#8 en base64) et en déduit la clé publique (SPKI en base64).
   async function loadSecret(secretB64) {
@@ -313,13 +325,17 @@ var LicenceCore = (function () {
     return subtle().importKey("spki", fromB64(publicB64), ALGO, true, ["verify"]);
   }
 
-  async function createLicence(privateKey, deviceCode, expiryDay) {
-    if (!(expiryDay >= 0 && expiryDay <= 65535)) throw new Error("Date de fin hors limites.");
+  // Les jours sont comptés depuis le 1er janvier 1970 (UTC). La clé est valable de startDay à endDay inclus.
+  async function createLicence(privateKey, deviceCode, startDay, endDay) {
+    if (!(startDay >= 0 && startDay <= 65535 && endDay >= 0 && endDay <= 65535)) throw new Error("Date hors limites.");
+    if (endDay < startDay) throw new Error("La fin est avant le début.");
     var payload = new Uint8Array(PAYLOAD_LEN);
     payload[0] = VERSION;
     payload.set(deviceBytes(deviceCode), 1);
-    payload[6] = (expiryDay >> 8) & 255;
-    payload[7] = expiryDay & 255;
+    payload[6] = (startDay >> 8) & 255;
+    payload[7] = startDay & 255;
+    payload[8] = (endDay >> 8) & 255;
+    payload[9] = endDay & 255;
     var sig = new Uint8Array(await subtle().sign(SIGN, privateKey, payload));
     if (sig.length !== SIG_LEN) throw new Error("Signature inattendue.");
     var all = new Uint8Array(PAYLOAD_LEN + SIG_LEN);
@@ -328,7 +344,7 @@ var LicenceCore = (function () {
     return encode(all);
   }
 
-  // Même vérification que l'appli. Résultat : ok, ou reason = format | signature | device | expired.
+  // Même vérification que l'appli. Résultat : ok, ou reason = format | signature | device | notyet | expired.
   async function readLicence(publicKey, licence, deviceCode, todayDay) {
     var s = normalize(licence);
     if (s.length !== KEY_CHARS) return { ok: false, reason: "format" };
@@ -338,12 +354,15 @@ var LicenceCore = (function () {
     if (!(await subtle().verify(SIGN, publicKey, sig, payload))) return { ok: false, reason: "signature" };
     var dev = deviceBytes(deviceCode);
     for (var i = 0; i < dev.length; i++) if (payload[1 + i] !== dev[i]) return { ok: false, reason: "device" };
-    var expiryDay = (payload[6] << 8) | payload[7];
-    if (todayDay > expiryDay) return { ok: false, reason: "expired", expiryDay: expiryDay };
-    return { ok: true, expiryDay: expiryDay, daysLeft: expiryDay - todayDay };
+    var startDay = (payload[6] << 8) | payload[7];
+    var expiryDay = (payload[8] << 8) | payload[9];
+    if (todayDay < startDay) return { ok: false, reason: "notyet", startDay: startDay, expiryDay: expiryDay };
+    if (todayDay > expiryDay) return { ok: false, reason: "expired", startDay: startDay, expiryDay: expiryDay };
+    return { ok: true, startDay: startDay, expiryDay: expiryDay, daysLeft: expiryDay - todayDay };
   }
 
   return {
+    dayFromInput: dayFromInput, dayToInput: dayToInput,
     normalize: normalize, encode: encode, decode: decode, isDeviceCode: isDeviceCode,
     formatDeviceCode: formatDeviceCode, today: today, loadSecret: loadSecret, createKeys: createKeys,
     importPublic: importPublic, createLicence: createLicence, readLicence: readLicence,
@@ -356,7 +375,7 @@ var LicenceCore = (function () {
 <script>
 (function () {
   "use strict";
-  var K_SECRET = "licence.secret.p256.v1", K_LEDGER = "licence.ledger.v2";
+  var K_SECRET = "licence.secret.p256.v1", K_LEDGER = "licence.ledger.v3";
   var $ = function (id) { return document.getElementById(id); };
   var storageOk = true;
   function load(k) { try { return localStorage.getItem(k); } catch (e) { storageOk = false; return null; } }
@@ -380,6 +399,7 @@ var LicenceCore = (function () {
   }
 
   function enterWork() {
+    setDates(LicenceCore.today(), 30);
     $("setPublic").textContent = keys.publicB64;
     $("setSecret").textContent = keys.secret;
     $("storageWarn").hidden = storageOk;
@@ -442,9 +462,25 @@ var LicenceCore = (function () {
   $("device").addEventListener("blur", function () {
     if (LicenceCore.isDeviceCode(this.value)) this.value = LicenceCore.formatDeviceCode(this.value);
   });
+  // Début, durée et fin restent cohérents : changer la durée recalcule la fin, changer la fin passe en « Autre ».
+  function setDates(startDay, days) {
+    $("start").value = LicenceCore.dayToInput(startDay);
+    $("duration").value = String(days);
+    $("end").value = LicenceCore.dayToInput(startDay + days - 1);
+  }
+  function syncEnd() {
+    var start = LicenceCore.dayFromInput($("start").value);
+    var days = parseInt($("duration").value, 10);
+    if (start != null && days > 0) $("end").value = LicenceCore.dayToInput(start + days - 1);
+  }
+  $("start").addEventListener("change", syncEnd);
+  $("duration").addEventListener("change", syncEnd);
+  $("end").addEventListener("change", function () { $("duration").value = "custom"; });
+
   function showResult(e) {
     $("resClient").textContent = e.name;
     $("resCode").textContent = e.code;
+    $("resFrom").textContent = dayToText(e.start);
     $("resUntil").textContent = dayToText(e.expiry);
     $("resKey").textContent = e.key;
     $("resWa").href = "https://wa.me/?text=" + encodeURIComponent(e.key);
@@ -464,23 +500,26 @@ var LicenceCore = (function () {
     msg.hidden = true;
     var code = LicenceCore.formatDeviceCode(raw);
     var typed = $("client").value.trim();
-    var days = parseInt($("duration").value, 10);
-    var today = LicenceCore.today();
+    var start = LicenceCore.dayFromInput($("start").value);
+    var expiry = LicenceCore.dayFromInput($("end").value);
+    if (start == null || expiry == null || expiry < start) {
+      msg.textContent = "Choisis une date de début et une date de fin, la fin après le début.";
+      msg.hidden = false;
+      return;
+    }
     var ledger = readLedger();
     var entry = ledger.filter(function (e) { return e.code === code; })[0];
     var name = typed || (entry && entry.name) || "Sans nom";
-    // Renouvellement avant la fin : on prolonge depuis la date de fin actuelle.
-    var expiry = entry && entry.expiry >= today ? entry.expiry + days : today + days - 1;
     $("genBtn").disabled = true;
     try {
-      var key = await LicenceCore.createLicence(keys.privateKey, code, expiry);
-      var check = await LicenceCore.readLicence(keys.publicKey, key, code, today);
+      var key = await LicenceCore.createLicence(keys.privateKey, code, start, expiry);
+      var check = await LicenceCore.readLicence(keys.publicKey, key, code, start);
       if (!check.ok) throw new Error(check.reason);
-      if (entry) { entry.name = name; entry.expiry = expiry; entry.key = key; }
-      else { entry = { code: code, name: name, expiry: expiry, key: key }; ledger.push(entry); }
+      if (entry) { entry.name = name; entry.start = start; entry.expiry = expiry; entry.key = key; }
+      else { entry = { code: code, name: name, start: start, expiry: expiry, key: key }; ledger.push(entry); }
       writeLedger(ledger);
       $("genForm").reset();
-      $("duration").value = "30";
+      setDates(LicenceCore.today(), 30);
       renderLedger();
       showResult(entry);
     } catch (e) {
@@ -505,17 +544,21 @@ var LicenceCore = (function () {
       var n = document.createElement("span"); n.className = "name"; n.textContent = e.name;
       var c = document.createElement("span"); c.className = "code"; c.textContent = e.code;
       var u = document.createElement("span"); u.className = "until";
-      u.textContent = (left < 0 ? "Terminée le " : "Jusqu'au ") + dayToText(e.expiry);
+      u.textContent = left < 0 ? "Terminée le " + dayToText(e.expiry) : "Du " + dayToText(e.start) + " au " + dayToText(e.expiry);
+      var notYet = e.start > today;
       who.append(n, c, u);
       var act = document.createElement("div"); act.className = "actions";
       var pill = document.createElement("span");
       if (left < 0) { pill.className = "pill off"; pill.textContent = "Expirée"; }
+      else if (notYet) { pill.className = "pill warn"; pill.textContent = "Commence dans " + (e.start - today) + " j"; }
       else if (left <= 3) { pill.className = "pill warn"; pill.textContent = left === 0 ? "Dernier jour" : "Plus que " + (left + 1) + " j"; }
       else { pill.className = "pill ok"; pill.textContent = (left + 1) + " j restants"; }
       var renew = document.createElement("button");
       renew.type = "button"; renew.className = "secondary small"; renew.textContent = "Renouveler";
       renew.addEventListener("click", function () {
         $("device").value = e.code; $("client").value = e.name === "Sans nom" ? "" : e.name;
+        // La nouvelle période commence le lendemain de la fin actuelle, ou aujourd'hui si elle est finie.
+        setDates(Math.max(today, e.expiry + 1), 30);
         $("genForm").scrollIntoView({ behavior: "smooth", block: "start" });
         $("duration").focus();
       });
