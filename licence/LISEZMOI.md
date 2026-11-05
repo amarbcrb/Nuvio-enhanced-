@@ -70,13 +70,24 @@ Pour renouveler, appuie sur **Renouveler** dans la liste des clients. Le début 
 
 ## Bloquer quelqu'un (remboursement, abus)
 
-La liste de blocage est `licence/bloques.txt`, déjà branchée dans Nuvio Pro.
+La liste de blocage est `licence/bloques.txt`. Nuvio Pro la relit à l'ouverture et toutes les 30 minutes quand il a internet. Un téléphone bloqué affiche « Accès suspendu », même s'il lui reste des jours, et le reste même hors ligne.
 
-1. Dans le générateur, liste **Clients**, appuie sur **Bloquer** à côté du client. Son code est copié et la page GitHub de `bloques.txt` s'ouvre.
-2. Colle le code sur une nouvelle ligne, puis **Commit changes**.
-3. Le téléphone est bloqué à sa prochaine connexion : à l'ouverture de l'appli, ou au plus 30 minutes après s'il est déjà ouvert. Il reste bloqué même hors ligne ensuite.
+### En un appui (recommandé)
 
-Pour débloquer, supprime la ligne. Modifier ce fichier ne relance pas la construction de l'appli.
+Une seule fois, dans le générateur sur ton site (pas la page Claude, qui ne peut pas joindre GitHub) :
+
+1. **Réglages > Bloquer en un appui** : suis les 4 étapes pour créer un jeton GitHub (Only select repositories > Nuvio-enhanced-, Contents : Read and write).
+2. Colle le jeton, puis **Enregistrer et tester**.
+
+Ensuite, dans **Clients** : **Bloquer**, puis **Confirmer le blocage**. Le client passe en « Bloqué ». Pour lui rendre l'accès : **Débloquer**, puis **Confirmer le déblocage**.
+
+Le jeton reste dans ce navigateur. Il ne peut modifier que ce dépôt. Pour le retirer : **Réglages > Retirer le jeton**, ou supprime-le sur GitHub (Settings > Developer settings > Personal access tokens).
+
+### Sans jeton
+
+**Bloquer** copie le code et ouvre `bloques.txt` sur GitHub : colle le code sur une nouvelle ligne, puis **Commit changes**. Pour débloquer, supprime la ligne.
+
+Modifier ce fichier ne relance pas la construction de l'appli.
 
 ## Ce que fait Nuvio Pro
 
