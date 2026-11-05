@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CollectionsBookmark
@@ -196,14 +195,7 @@ internal fun settingsSearchEntries(
             target = SettingsSearchTarget.SwitchProfile,
         )
     }
-    addPage(
-        page = SettingsPage.Account,
-        key = "account",
-        title = accountPage,
-        description = stringResource(Res.string.compose_settings_root_account_description),
-        category = accountCategory,
-        icon = Icons.Rounded.AccountCircle,
-    )
+    // Pas de compte Nuvio : la page Compte n'apparaît pas dans la recherche.
     addPage(
         page = SettingsPage.TraktAuthentication,
         key = "tracking",
@@ -354,36 +346,6 @@ internal fun settingsSearchEntries(
         )
     }
 
-    addRow(
-        page = SettingsPage.Account,
-        key = "account-status",
-        title = stringResource(Res.string.settings_account_status),
-        pageLabel = accountPage,
-        section = accountPage,
-        category = accountCategory,
-        icon = Icons.Rounded.AccountCircle,
-    )
-    addRow(
-        page = SettingsPage.Account,
-        key = "account-sign-out",
-        title = stringResource(Res.string.settings_account_sign_out),
-        pageLabel = accountPage,
-        section = accountPage,
-        category = accountCategory,
-        icon = Icons.Rounded.AccountCircle,
-    )
-    if (accountDeletionEnabled) {
-        addRow(
-            page = SettingsPage.Account,
-            key = "account-delete",
-            title = stringResource(Res.string.settings_account_delete_account),
-            description = stringResource(Res.string.settings_account_delete_account_description),
-            pageLabel = accountPage,
-            section = accountPage,
-            category = accountCategory,
-            icon = Icons.Rounded.AccountCircle,
-        )
-    }
 
     addRow(
         page = SettingsPage.Appearance,

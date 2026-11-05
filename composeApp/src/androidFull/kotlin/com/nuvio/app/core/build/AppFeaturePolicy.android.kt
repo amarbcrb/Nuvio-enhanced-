@@ -2,8 +2,9 @@ package com.nuvio.app.core.build
 
 actual object AppFeaturePolicy {
     actual val pluginsEnabled: Boolean = true
-    actual val supportersContributorsPageEnabled: Boolean = true
-    actual val donationActionsEnabled: Boolean = true
+    // Nuvio Plus / Nuvio Pro : pas de page communauté ni de dons Nuvio.
+    actual val supportersContributorsPageEnabled: Boolean = false
+    actual val donationActionsEnabled: Boolean = false
     actual val donationProgressEnabled: Boolean = false
     actual val accountDeletionEnabled: Boolean = false
     actual val personalMediaAddonCopyEnabled: Boolean = false

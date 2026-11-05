@@ -63,9 +63,9 @@ Pour renouveler, appuie sur **Renouveler** dans la liste des clients. Le début 
 
 ## Ce que voit le client
 
-- **Jours restants** : en haut des réglages de Nuvio Pro, la ligne « Nuvio Pro » affiche « 12 jours restants » et la date de fin.
+- **Jours restants** : en haut des réglages de Nuvio Pro, la section **Abonnement** affiche « 12 jours restants » et la date de fin.
 - **Rappel** : quand il reste 3 jours ou moins, un message s'affiche à l'ouverture de l'appli.
-- **Renouvellement en avance** : le client appuie sur la ligne « Nuvio Pro » dans les réglages et colle la nouvelle clé. Si elle commence plus tard (le lendemain de la fin actuelle), l'appli la garde et passe dessus toute seule le jour venu.
+- **Renouvellement en avance** : le client appuie sur la ligne de la section **Abonnement** dans les réglages et colle la nouvelle clé. Si elle commence plus tard (le lendemain de la fin actuelle), l'appli la garde et passe dessus toute seule le jour venu.
 - **Après la date de fin** : l'appli revient sur l'écran de clé.
 
 ## Bloquer quelqu'un (remboursement, abus)

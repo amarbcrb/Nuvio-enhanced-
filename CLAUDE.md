@@ -28,7 +28,7 @@ Seuls ces fichiers distinguent les deux éditions :
 - `composeApp/src/androidMain/kotlin/com/nuvio/app/MainActivity.kt` : l'appli est entourée de `LicenceGate { ... }`.
 - `composeApp/build.gradle.kts` : écrit `AppVersionConfig.EDITION`.
 - `composeApp/src/commonMain/kotlin/com/nuvio/app/features/updater/AppUpdaterRepository.kt` : chaque édition ne télécharge que son APK.
-- `composeApp/src/commonMain/kotlin/com/nuvio/app/core/licence/LicenceInfo.kt` et `features/settings/SettingsRootPage.kt` : dans Nuvio Pro seulement, une ligne « Nuvio Pro » en haut des réglages affiche les jours restants et ouvre la fenêtre de nouvelle clé.
+- `composeApp/src/commonMain/kotlin/com/nuvio/app/core/licence/LicenceInfo.kt` et `features/settings/SettingsRootPage.kt` : dans Nuvio Pro seulement, une section « Abonnement » en haut des réglages affiche les jours restants et ouvre la fenêtre de nouvelle clé.
 - `licence/` : générateur de clés (`generateur.html`), tests, guide (`LISEZMOI.md`).
 
 ## Quelle édition modifier

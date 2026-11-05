@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Extension
@@ -42,12 +41,10 @@ import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Policy
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
@@ -57,16 +54,13 @@ import com.nuvio.app.core.licence.SubscriptionInfo
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_about_made_with
 import nuvio.composeapp.generated.resources.compose_about_version_format
-import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
 import nuvio.composeapp.generated.resources.compose_settings_page_appearance
 import nuvio.composeapp.generated.resources.compose_settings_page_integrations
 import nuvio.composeapp.generated.resources.compose_settings_page_licenses_attributions
 import nuvio.composeapp.generated.resources.compose_settings_page_notifications
 import nuvio.composeapp.generated.resources.compose_settings_page_playback
-import nuvio.composeapp.generated.resources.compose_settings_page_privacy_policy
 import nuvio.composeapp.generated.resources.compose_settings_page_supporters_contributors
-import nuvio.composeapp.generated.resources.compose_settings_root_account_description
 import nuvio.composeapp.generated.resources.compose_settings_root_appearance_description
 import nuvio.composeapp.generated.resources.compose_settings_root_check_updates_description
 import nuvio.composeapp.generated.resources.compose_settings_root_check_updates_title
@@ -76,7 +70,6 @@ import nuvio.composeapp.generated.resources.compose_settings_root_integrations_d
 import nuvio.composeapp.generated.resources.compose_settings_root_notifications_description
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_description
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_title
-import nuvio.composeapp.generated.resources.compose_settings_root_privacy_policy_description
 import nuvio.composeapp.generated.resources.compose_settings_root_switch_profile_description
 import nuvio.composeapp.generated.resources.compose_settings_root_switch_profile_title
 import nuvio.composeapp.generated.resources.compose_settings_root_tracking_description
@@ -97,7 +90,6 @@ import nuvio.composeapp.generated.resources.about_licenses_attributions_subtitle
 import nuvio.composeapp.generated.resources.whats_new_root_description
 import org.jetbrains.compose.resources.stringResource
 
-private const val PRIVACY_POLICY_URL = "https://nuvio.tv/privacy-policy"
 
 internal fun LazyListScope.settingsRootContent(
     isTablet: Boolean,
@@ -122,12 +114,12 @@ internal fun LazyListScope.settingsRootContent(
     showAdvancedSection: Boolean = true,
     showSupportersContributorsPage: Boolean = true,
 ) {
-    // Nuvio Pro seulement : jours d'accès restants, et un appui pour entrer une nouvelle clé.
+    // Nuvio Pro seulement : section « Abonnement » avec les jours restants ; un appui ouvre la fenêtre de nouvelle clé.
     if (AppVersionConfig.EDITION == "pro") {
         item {
             val subscription by LicenceInfo.state.collectAsStateWithLifecycle()
             subscription?.let { info ->
-                SettingsSection(title = "Nuvio Pro", isTablet = isTablet) {
+                SettingsSection(title = "Abonnement", isTablet = isTablet) {
                     SettingsGroup(isTablet = isTablet) {
                         SettingsNavigationRow(
                             title = subscriptionTitle(info),
@@ -152,16 +144,9 @@ internal fun LazyListScope.settingsRootContent(
                 title = stringResource(Res.string.compose_settings_root_account_section),
                 isTablet = isTablet,
             ) {
+                // Pas de compte Nuvio (nuvio.tv) dans cette appli : seulement la Watch Party et le suivi.
                 SettingsGroup(isTablet = isTablet) {
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.compose_settings_page_account),
-                        description = stringResource(Res.string.compose_settings_root_account_description),
-                        icon = Icons.Rounded.AccountCircle,
-                        isTablet = isTablet,
-                        onClick = onAccountClick,
-                    )
                     if (onWatchPartyClick != null) {
-                        SettingsGroupDivider(isTablet = isTablet)
                         SettingsNavigationRow(
                             title = stringResource(Res.string.party_title),
                             description = stringResource(Res.string.party_settings_description),
@@ -169,8 +154,8 @@ internal fun LazyListScope.settingsRootContent(
                             isTablet = isTablet,
                             onClick = onWatchPartyClick,
                         )
+                        SettingsGroupDivider(isTablet = isTablet)
                     }
-                    SettingsGroupDivider(isTablet = isTablet)
                     SettingsNavigationRow(
                         title = stringResource(Res.string.compose_settings_page_tracking),
                         description = stringResource(Res.string.compose_settings_root_tracking_description),
@@ -234,7 +219,6 @@ internal fun LazyListScope.settingsRootContent(
     }
     if (showAboutSection) {
         item {
-            val uriHandler = LocalUriHandler.current
             SettingsSection(
                 title = stringResource(Res.string.compose_settings_root_about_section),
                 isTablet = isTablet,
@@ -256,14 +240,6 @@ internal fun LazyListScope.settingsRootContent(
                         icon = Icons.Rounded.NewReleases,
                         isTablet = isTablet,
                         onClick = onWhatsNewClick,
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.compose_settings_page_privacy_policy),
-                        description = stringResource(Res.string.compose_settings_root_privacy_policy_description),
-                        icon = Icons.Rounded.Policy,
-                        isTablet = isTablet,
-                        onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                     )
                     SettingsGroupDivider(isTablet = isTablet)
                     SettingsNavigationRow(
