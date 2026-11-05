@@ -126,7 +126,7 @@ label { font-weight: 600; font-size: 0.95rem; display: flex; flex-direction: col
 .label-row { display: inline-flex; align-items: center; gap: 7px; }
 .label-row .ico { width: 18px; height: 18px; color: var(--tint, var(--blue)); }
 .hint { font-weight: 400; color: var(--muted); font-size: 0.86rem; }
-input[type="text"], input[type="password"], input[type="date"], select, textarea {
+input[type="text"], input[type="date"], select, textarea {
   font: inherit; font-size: 1rem; color: var(--fg); background: var(--card-2);
   border: 1px solid transparent; border-radius: 14px; padding: 13px 14px; width: 100%;
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -179,10 +179,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .msg { font-size: 0.92rem; border-radius: 16px; padding: 12px 14px; display: flex; gap: 9px; align-items: flex-start; }
 .msg .ico { width: 19px; height: 19px; }
 .msg.error { background: var(--red-soft); color: var(--red); }
-.msg.ok { background: var(--green-soft); color: var(--green); }
-.steps { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
-.steps a { color: var(--blue); font-weight: 600; }
-button.danger-solid { background: var(--red); color: #fff; }
 .msg.warn { background: var(--orange-soft); color: var(--orange); }
 .check { flex-direction: row; align-items: flex-start; gap: 10px; font-weight: 600; }
 .check input { margin-top: 2px; width: 22px; height: 22px; flex: none; accent-color: var(--blue); }
@@ -386,8 +382,7 @@ details[open] summary .chev { transform: rotate(180deg); }
     <div class="block" id="clientsBlock" style="display:flex;flex-direction:column;gap:14px">
       <div class="section-head"><h2><span class="ico-badge t-teal"><svg class="ico"><use href="#i-users"/></svg></span>Clients</h2><span class="count" id="ledgerCount"></span></div>
       <div class="panel">
-      <div id="blockHint" class="msg warn" hidden><svg class="ico"><use href="#i-lock"/></svg><span>Code <strong id="blockHintCode"></strong> copié. Sur la page GitHub qui s'ouvre, colle-le sur une nouvelle ligne puis appuie sur <strong>Commit changes</strong>. Pour bloquer en un appui, ajoute ton jeton GitHub dans Réglages.</span></div>
-      <div id="blockMsg" class="msg" hidden></div>
+      <div id="blockHint" class="msg warn" hidden><svg class="ico"><use href="#i-lock"/></svg><span>Code <strong id="blockHintCode"></strong> copié. Sur la page GitHub qui s'ouvre, colle-le sur une nouvelle ligne puis appuie sur <strong>Commit changes</strong>. Le téléphone est bloqué à sa prochaine connexion (au plus 30 minutes s'il est ouvert). Pour débloquer, supprime la ligne.</span></div>
       <ul id="ledger" class="ledger"></ul>
       <p id="ledgerEmpty" class="empty"><svg class="ico"><use href="#i-sparkle"/></svg><span>Aucune licence pour l'instant. Chaque licence créée apparaît ici avec ses dates, pour savoir qui doit renouveler.</span></p>
       </div>
@@ -408,24 +403,6 @@ details[open] summary .chev { transform: rotate(180deg); }
             <button type="button" id="toggleSecret" class="secondary"><svg class="ico"><use href="#i-eye"/></svg><span class="lbl">Afficher la clé secrète</span></button>
             <button type="button" class="secondary" data-copy="setSecret" id="copySecret" hidden><svg class="ico"><use href="#i-copy"/></svg><span class="lbl">Copier</span></button>
           </div>
-        </div>
-        <div class="sub">
-          <div class="field-title t-red"><svg class="ico"><use href="#i-lock"/></svg>Bloquer en un appui</div>
-          <p class="hint">Avec un jeton GitHub limité à ce dépôt, les boutons Bloquer et Débloquer de la liste Clients modifient la liste de blocage tout seuls. Le jeton reste dans ce navigateur. À faire une seule fois :</p>
-          <ol class="hint steps">
-            <li>Ouvre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">la création de jeton GitHub</a>.</li>
-            <li>Nom : <strong>Nuvio blocage</strong>. Expiration : la durée que tu veux.</li>
-            <li>Repository access : <strong>Only select repositories</strong>, puis <strong>Nuvio-enhanced-</strong>.</li>
-            <li>Permissions : <strong>Contents</strong>, <strong>Read and write</strong>. Puis <strong>Generate token</strong>, et copie-le.</li>
-          </ol>
-          <label for="ghToken">Jeton GitHub
-            <input type="password" id="ghToken" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-          </label>
-          <div class="row">
-            <button type="button" id="ghSave"><svg class="ico"><use href="#i-check"/></svg><span class="lbl">Enregistrer et tester</span></button>
-            <button type="button" id="ghForget" class="secondary"><span class="lbl">Retirer le jeton</span></button>
-          </div>
-          <div id="ghMsg" class="msg" hidden></div>
         </div>
         <div class="sub">
           <div class="field-title t-red"><svg class="ico"><use href="#i-trash"/></svg>Retirer la clé secrète de ce navigateur</div>
@@ -596,75 +573,6 @@ var LicenceCore = (function () {
 
   var keys = null, pending = null;
   var BLOCKLIST_EDIT_URL = "https://github.com/amarbcrb/Nuvio-enhanced-/edit/main/licence/bloques.txt";
-
-  // --- Liste de blocage sur GitHub (licence/bloques.txt) ---
-  // Nuvio Pro compare chaque ligne entière au code du téléphone : on n'écrit que des codes, un par ligne.
-  var GH_API = "https://api.github.com/repos/amarbcrb/Nuvio-enhanced-/contents/licence/bloques.txt";
-  var K_GH = "licence.github.token";
-  var ghToken = load(K_GH) || "";
-  var blocked = null;   // codes bloqués (normalisés), null tant que la liste n'est pas lue
-  var blockSha = null;  // version du fichier, demandée par GitHub pour le modifier
-
-  function utf8FromB64(b64) {
-    var bin = atob(String(b64).replace(/\s+/g, "")); var bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder().decode(bytes);
-  }
-  function b64FromUtf8(text) {
-    var bytes = new TextEncoder().encode(text); var s = "";
-    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-    return btoa(s);
-  }
-  function ghHeaders(json) {
-    var h = { Authorization: "Bearer " + ghToken, Accept: "application/vnd.github+json" };
-    if (json) h["Content-Type"] = "application/json";
-    return h;
-  }
-  function ghError(status) {
-    if (status === 401) return "GitHub refuse le jeton : il est expiré ou mal copié. Crée-en un nouveau dans Réglages.";
-    if (status === 403 || status === 404) return "Le jeton n'a pas le droit de modifier ce dépôt. Vérifie : Only select repositories > Nuvio-enhanced-, et Contents : Read and write.";
-    if (status === "network") return "Cette page ne peut pas joindre GitHub. Le blocage en un appui marche depuis ton site (amarbcrb.pages.dev), pas depuis la page Claude.";
-    return "GitHub a répondu une erreur (" + status + "). Réessaie dans un instant.";
-  }
-  async function ghRequest(url, options) {
-    var res;
-    try { res = await fetch(url, options); } catch (e) { throw new Error(ghError("network")); }
-    if (!res.ok) { var err = new Error(ghError(res.status)); err.status = res.status; throw err; }
-    return res.json();
-  }
-  async function ghReadList() {
-    var data = await ghRequest(GH_API + "?ref=main&t=" + Date.now(), { headers: ghHeaders(false), cache: "no-store" });
-    blockSha = data.sha;
-    var text = utf8FromB64(data.content || "");
-    blocked = new Set(text.split("\n").map(function (l) { return LicenceCore.normalize(l); }).filter(function (c) { return c.length === 8; }));
-    return text;
-  }
-  async function ghSetBlocked(code, block, retried) {
-    var text = await ghReadList();
-    var norm = LicenceCore.normalize(code);
-    if (block === blocked.has(norm)) return;
-    var lines = text.replace(/\n+$/, "").split("\n");
-    if (block) lines.push(LicenceCore.formatDeviceCode(code));
-    else lines = lines.filter(function (l) { return LicenceCore.normalize(l) !== norm; });
-    try {
-      var data = await ghRequest(GH_API, {
-        method: "PUT", headers: ghHeaders(true),
-        body: JSON.stringify({
-          message: (block ? "Bloquer " : "Débloquer ") + LicenceCore.formatDeviceCode(code),
-          content: b64FromUtf8(lines.join("\n") + "\n"), sha: blockSha, branch: "main"
-        })
-      });
-      blockSha = data.content && data.content.sha;
-      if (block) blocked.add(norm); else blocked.delete(norm);
-    } catch (e) {
-      // 409 : le fichier a changé entre-temps (modifié ailleurs) ; on relit et on réessaie une fois.
-      if (e.status === 409 && !retried) return ghSetBlocked(code, block, true);
-      throw e;
-    }
-  }
-  function showBlockMsg(kind, text) {
-    var m = $("blockMsg"); m.className = "msg " + kind; m.textContent = text; m.hidden = false;
-  }
   function icon(id) { return '<svg class="ico"><use href="#' + id + '"/></svg>'; }
 
   // Thème : automatique (celui du système), clair ou sombre. Gardé dans ce navigateur.
@@ -731,32 +639,7 @@ var LicenceCore = (function () {
     $("storageWarn").hidden = storageOk;
     renderLedger();
     show("work");
-    $("ghToken").value = ghToken;
-    if (ghToken) ghReadList().then(renderLedger, function (err) { showBlockMsg("error", err.message); });
   }
-
-  $("ghSave").addEventListener("click", async function () {
-    var m = $("ghMsg");
-    ghToken = $("ghToken").value.trim();
-    if (!ghToken) { m.className = "msg error"; m.textContent = "Colle d'abord ton jeton GitHub."; m.hidden = false; return; }
-    save(K_GH, ghToken);
-    this.disabled = true;
-    try {
-      await ghReadList();
-      m.className = "msg ok";
-      m.textContent = "Connecté. " + (blocked.size ? blocked.size + " téléphone(s) bloqué(s)." : "Aucun téléphone bloqué.") + " Les boutons Bloquer marchent maintenant en un appui.";
-    } catch (err) {
-      m.className = "msg error"; m.textContent = err.message;
-    }
-    m.hidden = false;
-    this.disabled = false;
-    renderLedger();
-  });
-  $("ghForget").addEventListener("click", function () {
-    drop(K_GH); ghToken = ""; blocked = null; $("ghToken").value = "";
-    var m = $("ghMsg"); m.className = "msg ok"; m.textContent = "Jeton retiré de ce navigateur."; m.hidden = false;
-    renderLedger();
-  });
 
   // Copie : la presse-papiers peut être refusée, on sélectionne alors le texte.
   document.addEventListener("click", function (ev) {
@@ -918,46 +801,15 @@ var LicenceCore = (function () {
         $("genForm").scrollIntoView({ behavior: "smooth", block: "start" });
         $("duration").focus();
       });
-      var isBlocked = !!(blocked && blocked.has(LicenceCore.normalize(e.code)));
-      if (isBlocked) { pill.className = "pill off"; pill.textContent = "Bloqué"; }
-      var block;
-      if (ghToken) {
-        // En un appui (avec confirmation) : modifie licence/bloques.txt via GitHub.
-        block = document.createElement("button");
-        block.type = "button"; block.className = isBlocked ? "secondary small" : "danger small";
-        var idle = icon("i-lock") + "<span>" + (isBlocked ? "Débloquer" : "Bloquer") + "</span>";
-        block.innerHTML = idle;
-        var armed = null;
-        block.addEventListener("click", async function () {
-          if (!armed) {
-            block.innerHTML = icon("i-alert") + "<span>" + (isBlocked ? "Confirmer le déblocage" : "Confirmer le blocage") + "</span>";
-            if (!isBlocked) block.className = "danger-solid small";
-            armed = setTimeout(function () { armed = null; block.innerHTML = idle; block.className = isBlocked ? "secondary small" : "danger small"; }, 4000);
-            return;
-          }
-          clearTimeout(armed); armed = null;
-          block.disabled = true; block.innerHTML = "<span>Un instant…</span>";
-          try {
-            await ghSetBlocked(e.code, !isBlocked);
-            showBlockMsg("ok", isBlocked
-              ? e.name + " (" + e.code + ") est débloqué. L'accès revient à sa prochaine connexion."
-              : e.name + " (" + e.code + ") est bloqué. Son appli se bloque à sa prochaine connexion, au plus 30 minutes si elle est ouverte.");
-          } catch (err) {
-            showBlockMsg("error", err.message);
-          }
-          renderLedger();
-        });
-      } else {
-        // Sans jeton : copie le code et ouvre licence/bloques.txt sur GitHub pour l'y coller.
-        block = document.createElement("a");
-        block.className = "btn small danger-link"; block.href = BLOCKLIST_EDIT_URL; block.target = "_blank"; block.rel = "noopener";
-        block.innerHTML = icon("i-lock") + "<span>Bloquer</span>";
-        block.addEventListener("click", function () {
-          try { navigator.clipboard.writeText(e.code).catch(function () {}); } catch (err) {}
-          $("blockHint").hidden = false;
-          $("blockHintCode").textContent = e.code;
-        });
-      }
+      // Bloquer : copie le code et ouvre licence/bloques.txt sur GitHub pour l'y coller.
+      var block = document.createElement("a");
+      block.className = "btn small danger-link"; block.href = BLOCKLIST_EDIT_URL; block.target = "_blank"; block.rel = "noopener";
+      block.innerHTML = icon("i-lock") + "<span>Bloquer</span>";
+      block.addEventListener("click", function () {
+        try { navigator.clipboard.writeText(e.code).catch(function () {}); } catch (err) {}
+        $("blockHint").hidden = false;
+        $("blockHintCode").textContent = e.code;
+      });
       act.append(pill, renew, block);
       if (e.key && left >= 0) {
         var again = document.createElement("button");
