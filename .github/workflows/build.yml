@@ -7,6 +7,10 @@ name: Build Nuvio Plus and Nuvio Pro
 on:
   push:
     branches: [main]
+    # The key generator and the docs are not part of the app.
+    paths-ignore:
+      - "licence/**"
+      - "**.md"
   workflow_dispatch:
 
 permissions:
