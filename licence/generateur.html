@@ -444,7 +444,10 @@ var LicenceCore = (function () {
     return crypto.subtle;
   }
   function toB64(bytes) { var s = ""; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); }
-  function fromB64(text) { var s = atob(String(text).replace(/\s+/g, "")); var b = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; }
+  // Garde seulement les caractères base64 : espaces, retours à la ligne, caractères invisibles
+  // ou guillemets ajoutés par une appli de notes ou une messagerie sont ignorés.
+  function cleanB64(text) { return String(text == null ? "" : text).replace(/-/g, "+").replace(/_/g, "/").replace(/[^A-Za-z0-9+\/=]/g, ""); }
+  function fromB64(text) { var s = atob(cleanB64(text)); var b = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; }
 
   function normalize(text) {
     return String(text == null ? "" : text).toUpperCase()
@@ -542,6 +545,7 @@ var LicenceCore = (function () {
 
   return {
     dayFromInput: dayFromInput, dayToInput: dayToInput,
+    cleanB64: cleanB64, SECRET_CHARS: 184,
     normalize: normalize, encode: encode, decode: decode, isDeviceCode: isDeviceCode,
     formatDeviceCode: formatDeviceCode, today: today, loadSecret: loadSecret, createKeys: createKeys,
     importPublic: importPublic, createLicence: createLicence, readLicence: readLicence,
@@ -673,9 +677,12 @@ var LicenceCore = (function () {
   $("importBtn").addEventListener("click", async function () {
     var msg = $("importMsg");
     try {
-      keys = await LicenceCore.loadSecret($("importSeed").value.trim());
+      keys = await LicenceCore.loadSecret($("importSeed").value);
     } catch (e) {
-      msg.textContent = "Ce texte n'est pas une clé secrète valable. Colle la sauvegarde complète, sans rien ajouter.";
+      var got = LicenceCore.cleanB64($("importSeed").value).length;
+      msg.textContent = got !== LicenceCore.SECRET_CHARS
+        ? "Ce texte n'est pas une clé secrète complète : " + got + " caractères au lieu de " + LicenceCore.SECRET_CHARS + ". Recopie toute la sauvegarde, du premier au dernier caractère."
+        : "La longueur est bonne (" + got + " caractères), mais au moins un caractère a changé. Recopie la sauvegarde d'origine par copier-coller, sans la retaper : les lettres O et I se confondent facilement avec les chiffres 0 et 1.";
       msg.hidden = false;
       return;
     }
