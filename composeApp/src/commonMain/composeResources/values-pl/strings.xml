@@ -396,7 +396,7 @@
     <string name="compose_settings_page_account">Konto</string>
     <string name="compose_settings_page_addons">Dodatki</string>
     <string name="compose_settings_page_appearance">Wygląd</string>
-    <string name="compose_settings_page_content_discovery">Treści i odkrywanie</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Kontynuuj oglądanie</string>
     <string name="compose_settings_page_debrid">Debrid</string>
     <string name="compose_settings_page_homescreen">Ekran główny</string>

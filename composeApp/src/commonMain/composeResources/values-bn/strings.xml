@@ -502,7 +502,7 @@
     <string name="compose_settings_page_addons">অ্যাডন</string>
     <string name="compose_settings_page_advanced">অ্যাডভান্সড</string>
     <string name="compose_settings_page_appearance">লেআউট</string>
-    <string name="compose_settings_page_content_discovery">কন্টেন্ট ও ডিসকভারি</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">দেখা চালিয়ে যান</string>
     <string name="compose_settings_page_debrid">সংযুক্ত পরিষেবাগুলি</string>
     <string name="compose_settings_page_homescreen">হোম লেআউট</string>

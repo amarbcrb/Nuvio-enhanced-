@@ -108,6 +108,10 @@ import com.nuvio.app.core.ui.glass.nuvioBackdropSource
 import com.nuvio.app.core.ui.glass.rememberNuvioBackdrop
 import com.nuvio.app.features.downloads.DownloadsSettingsRepository
 import com.nuvio.app.features.details.components.DetailActions
+import com.nuvio.app.features.details.components.LocalDetailCategoriesAction
+import com.nuvio.app.features.library.LibraryCategoryPickerDialog
+import com.nuvio.app.features.library.LibraryItem
+import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.details.components.CommentDetailSheet
 import com.nuvio.app.features.details.components.DetailAdditionalInfoSection
 import com.nuvio.app.features.details.components.DetailCastSection
@@ -429,6 +433,12 @@ fun MetaDetailsScreen(
         }
     }
 
+    // Bouton « Catégories » des actions : range le titre dans une catégorie existante de la Bibliothèque.
+    var categoryPickerItem by remember(type, id) { mutableStateOf<LibraryItem?>(null) }
+    val openCategoryPicker: (() -> Unit)? = displayedMeta
+        ?.takeIf { libraryUiState.sourceMode == LibrarySourceMode.LOCAL }
+        ?.let { meta -> { categoryPickerItem = meta.toLibraryItem(savedAtEpochMs = 0L) } }
+    CompositionLocalProvider(LocalDetailCategoriesAction provides openCategoryPicker) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -2029,6 +2039,13 @@ fun MetaDetailsScreen(
                 },
             )
         }
+    }
+    categoryPickerItem?.let { item ->
+        LibraryCategoryPickerDialog(
+            item = item,
+            onDismiss = { categoryPickerItem = null },
+        )
+    }
     }
 }
 

@@ -244,7 +244,7 @@
     <string name="compose_settings_page_addons">תוספים</string>
     <string name="compose_settings_page_advanced">מתקדם</string>
     <string name="compose_settings_page_appearance">פריסה</string>
-    <string name="compose_settings_page_content_discovery">תוכן וגילוי</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">המשך צפייה</string>
     <string name="compose_settings_page_debrid">שירותים מחוברים</string>
     <string name="compose_settings_page_homescreen">מסך הבית</string>

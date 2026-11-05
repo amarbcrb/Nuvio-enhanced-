@@ -418,7 +418,7 @@
     <string name="compose_settings_page_addons">Extensii</string>
     <string name="compose_settings_page_advanced">Avansat</string>
     <string name="compose_settings_page_appearance">Aspect ecran</string>
-    <string name="compose_settings_page_content_discovery">Conținut și descoperire</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Continuă vizionarea</string>
     <string name="compose_settings_page_debrid">Servicii conectate</string>
     <string name="compose_settings_page_homescreen">Aspect ecran principal</string>

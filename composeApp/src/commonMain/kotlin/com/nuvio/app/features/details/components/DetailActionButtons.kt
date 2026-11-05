@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -64,11 +65,13 @@ import nuvio.composeapp.generated.resources.hero_add_to_library
 import nuvio.composeapp.generated.resources.hero_mark_unwatched
 import nuvio.composeapp.generated.resources.hero_mark_watched
 import nuvio.composeapp.generated.resources.hero_remove_from_library
+import nuvio.composeapp.generated.resources.library_categories_title
 import nuvio.composeapp.generated.resources.playback_unavailable
 import nuvio.composeapp.generated.resources.random_episode_title
 import nuvio.composeapp.generated.resources.shuffle_stop
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -79,6 +82,12 @@ import nuvio.composeapp.generated.resources.streams_open_external_player
 import org.jetbrains.compose.resources.stringResource
 import com.nuvio.app.core.ui.glass.ambientLiquidGlass
 import com.nuvio.app.core.ui.glass.isAmbientLiquidGlassActive
+
+/**
+ * Opens the picker of the user's Library categories for the title on screen.
+ * Null (the default) hides the « Catégories » action.
+ */
+val LocalDetailCategoriesAction = staticCompositionLocalOf<(() -> Unit)?> { null }
 
 data class DetailSecondaryAction(
     val label: String,
@@ -387,6 +396,7 @@ fun DetailActions(
     val shuffleAction = actionSet.shuffle
     val watchedAction = actionSet.watched
     val saveAction = actionSet.save
+    val categoriesAction = actionSet.categories
     val iconActions = actionSet.icons
     DetailActionButtons(
         playLabel = if (playEnabled) playLabel else stringResource(Res.string.playback_unavailable),
@@ -398,6 +408,7 @@ fun DetailActions(
             if (!shuffleEnabled) shuffleAction?.let(::add)
             add(watchedAction)
             add(saveAction)
+            categoriesAction?.let(::add)
         },
         isTablet = isTablet,
         onPlayClick = onPlayClick,
@@ -412,6 +423,7 @@ private class DetailActionSet(
     val shuffle: DetailSecondaryAction?,
     val watched: DetailSecondaryAction,
     val save: DetailSecondaryAction,
+    val categories: DetailSecondaryAction?,
     val icons: List<DetailSecondaryAction>,
 )
 
@@ -450,6 +462,14 @@ private fun detailActionSet(
         onClick = onSaveClick,
         onLongClick = onSaveLongClick,
     )
+    val categoriesLabel = stringResource(Res.string.library_categories_title)
+    val categoriesAction = LocalDetailCategoriesAction.current?.let { openCategories ->
+        DetailSecondaryAction(
+            label = categoriesLabel,
+            icon = Icons.AutoMirrored.Rounded.ListAlt,
+            onClick = openCategories,
+        )
+    }
     val downloadLabel = stringResource(Res.string.details_download_action)
     val playFromStartLabel = stringResource(Res.string.details_action_start_from_beginning)
     val externalLabel = stringResource(Res.string.streams_open_external_player)
@@ -472,8 +492,9 @@ private fun detailActionSet(
         }
         add(watchedAction)
         add(saveAction)
+        categoriesAction?.let(::add)
     }
-    return DetailActionSet(shuffleAction, watchedAction, saveAction, iconActions)
+    return DetailActionSet(shuffleAction, watchedAction, saveAction, categoriesAction, iconActions)
 }
 
 @Composable

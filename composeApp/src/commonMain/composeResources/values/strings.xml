@@ -526,7 +526,7 @@
     <string name="compose_settings_page_advanced">Advanced</string>
     <string name="compose_settings_page_debug_logs">Debug Logs</string>
     <string name="compose_settings_page_appearance">Layout</string>
-    <string name="compose_settings_page_content_discovery">Content &amp; Discovery</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Continue Watching</string>
     <string name="compose_settings_page_debrid">Connected Services</string>
     <string name="compose_settings_page_homescreen">Home Layout</string>

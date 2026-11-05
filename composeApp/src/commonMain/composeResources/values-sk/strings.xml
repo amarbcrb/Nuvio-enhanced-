@@ -408,7 +408,7 @@
     <string name="compose_settings_page_addons">Doplnky</string>
     <string name="compose_settings_page_advanced">Pokročilé</string>
     <string name="compose_settings_page_appearance">Rozloženie</string>
-    <string name="compose_settings_page_content_discovery">Obsah a objavovanie</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Pokračovať v sledovaní</string>
     <string name="compose_settings_page_debrid">Prepojené služby</string>
     <string name="compose_settings_page_homescreen">Rozloženie domovskej obrazovky</string>

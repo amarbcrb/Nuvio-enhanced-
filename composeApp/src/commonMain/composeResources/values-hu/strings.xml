@@ -378,7 +378,7 @@
     <string name="compose_settings_page_account">Fiók</string>
     <string name="compose_settings_page_addons">Kiegészítők</string>
     <string name="compose_settings_page_appearance">Elrendezés</string>
-    <string name="compose_settings_page_content_discovery">Tartalom és felfedezés</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Nézés folytatása</string>
     <string name="compose_settings_page_debrid">Debrid</string>
     <string name="compose_settings_page_homescreen">Kezdőlap elrendezése</string>

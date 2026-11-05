@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.Tune
@@ -338,7 +339,7 @@ internal fun settingsSearchEntries(
             key = "check-updates",
             title = stringResource(Res.string.compose_settings_root_check_updates_title),
             description = stringResource(Res.string.compose_settings_root_check_updates_description),
-            page = if (supportersContributorsPageEnabled) supportersPage else licensesPage,
+            page = licensesPage,
             section = stringResource(Res.string.compose_settings_root_about_section),
             category = aboutCategory,
             icon = Icons.Rounded.CloudDownload,
@@ -1019,8 +1020,25 @@ internal fun settingsSearchEntries(
             icon = Icons.Rounded.Link,
         )
     }
+    addPage(
+        page = SettingsPage.SearchScreen,
+        key = "search-screen",
+        title = stringResource(Res.string.settings_search_screen_title),
+        description = stringResource(Res.string.settings_search_screen_description),
+        icon = Icons.Rounded.Search,
+    )
+    addPage(
+        page = SettingsPage.ConfigBackup,
+        key = "config-backup",
+        title = stringResource(Res.string.settings_backup_section_title),
+        description = stringResource(Res.string.settings_backup_root_description),
+        icon = Icons.Rounded.SaveAlt,
+    )
 
-    return entries
+    // Pages retirées de l'appli (suivi, Live TV, Discord, serveurs multimédias, nouveautés, soutiens).
+    return entries.filterNot { entry ->
+        (entry.target as? SettingsSearchTarget.Page)?.page?.isRemovedFromApp == true
+    }
 }
 
 private data class PlaybackSearchRow(

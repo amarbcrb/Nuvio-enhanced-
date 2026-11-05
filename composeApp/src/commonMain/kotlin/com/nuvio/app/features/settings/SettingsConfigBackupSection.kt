@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +35,13 @@ import nuvio.composeapp.generated.resources.settings_backup_include_sensitive
 import nuvio.composeapp.generated.resources.settings_backup_include_sensitive_description
 import nuvio.composeapp.generated.resources.settings_backup_section
 import org.jetbrains.compose.resources.stringResource
+
+/** Page « Sauvegarde » : un fichier avec les addons, extensions, affiches, langues et réglages. */
+internal fun LazyListScope.configBackupSettingsContent(isTablet: Boolean) {
+    item {
+        SettingsConfigBackupSection(isTablet = isTablet)
+    }
+}
 
 @Composable
 internal fun SettingsConfigBackupSection(isTablet: Boolean) {

@@ -34,10 +34,14 @@ import nuvio.composeapp.generated.resources.library_categories_title
 import nuvio.composeapp.generated.resources.library_categories_done
 import nuvio.composeapp.generated.resources.library_category_create
 import nuvio.composeapp.generated.resources.library_category_delete
+import nuvio.composeapp.generated.resources.library_category_favorites
 import nuvio.composeapp.generated.resources.library_category_new_hint
 import org.jetbrains.compose.resources.stringResource
 
-/** Puts [item] in the user's Library categories, and creates or deletes categories. */
+/**
+ * Puts [item] in Favorites or in the user's Library categories, and creates or deletes categories.
+ * A title added to a category is saved in the Library too, since categories only list saved titles.
+ */
 @Composable
 internal fun LibraryCategoryPickerDialog(
     item: LibraryItem,
@@ -49,6 +53,15 @@ internal fun LibraryCategoryPickerDialog(
     }.collectAsStateWithLifecycle()
     var newName by remember { mutableStateOf("") }
     val key = item.categoryKey()
+    val setInCategory: (String, Boolean) -> Unit = { categoryId, inCategory ->
+        if (inCategory) LibraryRepository.saveLocallyIfMissing(item)
+        LibraryCategoriesRepository.setInCategory(categoryId, item, inCategory)
+    }
+    val isFavorite = key in state.favorites
+    val setFavorite: (Boolean) -> Unit = { favorite ->
+        if (favorite) LibraryRepository.saveLocallyIfMissing(item)
+        if (favorite != isFavorite) LibraryCategoriesRepository.toggleFavorite(item)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -60,17 +73,35 @@ internal fun LibraryCategoryPickerDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { setFavorite(!isFavorite) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = isFavorite,
+                        onCheckedChange = setFavorite,
+                    )
+                    Text(
+                        stringResource(Res.string.library_category_favorites),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 state.categories.forEach { category ->
                     val checked = key in category.itemKeys
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { LibraryCategoriesRepository.setInCategory(category.id, item, !checked) },
+                            .clickable { setInCategory(category.id, !checked) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(
                             checked = checked,
-                            onCheckedChange = { LibraryCategoriesRepository.setInCategory(category.id, item, it) },
+                            onCheckedChange = { setInCategory(category.id, it) },
                         )
                         Text(
                             category.name,
@@ -103,7 +134,7 @@ internal fun LibraryCategoryPickerDialog(
                         enabled = newName.isNotBlank(),
                         onClick = {
                             LibraryCategoriesRepository.createCategory(newName)?.let { category ->
-                                LibraryCategoriesRepository.setInCategory(category.id, item, true)
+                                setInCategory(category.id, true)
                             }
                             newName = ""
                         },

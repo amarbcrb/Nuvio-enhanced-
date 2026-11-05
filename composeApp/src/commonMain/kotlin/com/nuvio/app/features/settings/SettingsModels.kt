@@ -42,6 +42,8 @@ import nuvio.composeapp.generated.resources.compose_settings_page_trakt
 import nuvio.composeapp.generated.resources.compose_settings_page_tracking
 import nuvio.composeapp.generated.resources.compose_settings_root_downloads_title
 import nuvio.composeapp.generated.resources.settings_account
+import nuvio.composeapp.generated.resources.settings_backup_section_title
+import nuvio.composeapp.generated.resources.settings_search_screen_title
 import org.jetbrains.compose.resources.StringResource
 
 internal enum class SettingsCategory(
@@ -113,6 +115,16 @@ internal enum class SettingsPage(
         titleRes = Res.string.compose_settings_page_debug_logs,
         category = SettingsCategory.Advanced,
         parentPage = Advanced,
+    ),
+    ConfigBackup(
+        titleRes = Res.string.settings_backup_section_title,
+        category = SettingsCategory.General,
+        parentPage = Root,
+    ),
+    SearchScreen(
+        titleRes = Res.string.settings_search_screen_title,
+        category = SettingsCategory.General,
+        parentPage = Appearance,
     ),
     Notifications(
         titleRes = Res.string.compose_settings_page_notifications,
@@ -219,5 +231,22 @@ internal enum class SettingsPage(
 
 internal val SettingsPage.opensInlineOnTablet: Boolean
     get() = parentPage != null
+
+/**
+ * Pages removed from Nuvio Plus and Nuvio Pro: no row opens them, the settings search skips them
+ * and a saved navigation state pointing at one falls back to the root page.
+ */
+internal val SettingsPage.isRemovedFromApp: Boolean
+    get() = when (this) {
+        SettingsPage.SupportersContributors,
+        SettingsPage.WhatsNew,
+        SettingsPage.TraktAuthentication,
+        SettingsPage.LiveTv,
+        SettingsPage.DiscordRpc,
+        SettingsPage.MediaServers,
+        SettingsPage.MediaServer,
+        -> true
+        else -> false
+    }
 
 internal fun SettingsPage.previousPage(): SettingsPage? = parentPage

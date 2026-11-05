@@ -421,7 +421,7 @@
     <string name="compose_settings_page_addons">Eklentiler</string>
     <string name="compose_settings_page_advanced">Gelişmiş</string>
     <string name="compose_settings_page_appearance">Görünüm</string>
-    <string name="compose_settings_page_content_discovery">İçerik &amp; Keşif</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">İzlemeye devam</string>
     <string name="compose_settings_page_debrid">Bağlı Servisler</string>
     <string name="compose_settings_page_homescreen">Ana ekran</string>

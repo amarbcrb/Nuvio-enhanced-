@@ -496,7 +496,7 @@
     <string name="compose_settings_page_addons">Аддоны</string>
     <string name="compose_settings_page_advanced">Дополнительно</string>
     <string name="compose_settings_page_appearance">Макет</string>
-    <string name="compose_settings_page_content_discovery">Контент и открытие</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Продолжить просмотр</string>
     <string name="compose_settings_page_debrid">Подключенные услуги</string>
     <string name="compose_settings_page_homescreen">Планировка дома</string>

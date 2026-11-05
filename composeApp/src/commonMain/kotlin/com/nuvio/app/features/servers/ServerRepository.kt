@@ -34,6 +34,12 @@ data class ServersUiState(
 }
 
 object ServerRepository {
+    /**
+     * Off in Nuvio Plus and Nuvio Pro: no more link with Jellyfin, Emby or another media server.
+     * The server code is kept (and still tested: the tests switch this on).
+     */
+    internal var linkingEnabled: Boolean = false
+
     private val log = Logger.withTag("ServerRepository")
     private val json = Json { ignoreUnknownKeys = true }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -231,6 +237,7 @@ object ServerRepository {
     }
 
     fun applySync(snapshot: ServerSyncSnapshot, servers: List<SyncedServer>, keys: Set<String>): Boolean {
+        if (!linkingEnabled) return true
         if (loadedProfileId != snapshot.profileId || localVersion != snapshot.version) return false
         val current = _uiState.value.connections
         val currentByKey = current.associateBy { serverKey(it.providerId, it.remoteServerId, it.remoteUserId) }
@@ -273,8 +280,11 @@ object ServerRepository {
         loadedProfileId = profileId
         syncState = readSyncState(profileId)
         ServerMatcher.clear()
+        // Nuvio Plus et Nuvio Pro n'ont plus de liaison avec Jellyfin, Emby ou un autre serveur :
+        // un serveur relié avant reste enregistré mais n'est plus chargé, ni dans l'accueil, ni dans
+        // la bibliothèque, la recherche ou la lecture.
         _uiState.value = ServersUiState(
-            connections = readConnections(profileId),
+            connections = if (linkingEnabled) readConnections(profileId) else emptyList(),
             revision = _uiState.value.revision + 1,
         )
     }

@@ -396,7 +396,7 @@
     <string name="compose_settings_page_account">Akun</string>
     <string name="compose_settings_page_addons">Addon</string>
     <string name="compose_settings_page_appearance">Tata Letak</string>
-    <string name="compose_settings_page_content_discovery">Konten &amp; Penemuan</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Lanjutkan Menonton</string>
     <string name="compose_settings_page_debrid">Layanan Debrid</string>
     <string name="compose_settings_page_homescreen">Tata Letak Beranda</string>

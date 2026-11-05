@@ -369,7 +369,7 @@
     <string name="compose_settings_page_account">Konto</string>
     <string name="compose_settings_page_addons">Addons</string>
     <string name="compose_settings_page_appearance">Erscheinungsbild</string>
-    <string name="compose_settings_page_content_discovery">Inhalte &amp; Entdeckung</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Weiterschauen</string>
     <string name="compose_settings_page_homescreen">Startbildschirm</string>
     <string name="compose_settings_page_integrations">Integrationen</string>

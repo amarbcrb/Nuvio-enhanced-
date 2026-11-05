@@ -102,6 +102,8 @@ internal class EpisodeNavigatorState {
 
     private var groupedSource: List<MetaVideo>? = null
     private var groupedCache: Map<Int, List<MetaVideo>> = emptyMap()
+    private var allEpisodesSource: Map<Int, List<MetaVideo>>? = null
+    private var allEpisodesCache: List<MetaVideo> = emptyList()
 
     fun grouped(videos: List<MetaVideo>, group: () -> Map<Int, List<MetaVideo>>): Map<Int, List<MetaVideo>> {
         if (groupedSource !== videos) {
@@ -109,6 +111,15 @@ internal class EpisodeNavigatorState {
             groupedCache = group()
         }
         return groupedCache
+    }
+
+    /** Every episode of every season, in season order. Used when the search bar has text. */
+    fun allEpisodes(grouped: Map<Int, List<MetaVideo>>): List<MetaVideo> {
+        if (allEpisodesSource !== grouped) {
+            allEpisodesSource = grouped
+            allEpisodesCache = grouped.allEpisodesInSeasonOrder()
+        }
+        return allEpisodesCache
     }
 
     fun selectSeason(season: Int) {
@@ -124,6 +135,16 @@ internal fun rememberEpisodeNavigatorState(metaId: String): EpisodeNavigatorStat
     remember(metaId) { EpisodeNavigatorState() }
 
 internal fun MetaVideo.navigatorKey(): String = "$season:$episode:$id"
+
+internal fun Map<Int, List<MetaVideo>>.allEpisodesInSeasonOrder(): List<MetaVideo> =
+    keys.sortedBy(::seasonSortKey).flatMap { getValue(it) }
+
+/** With text in the search bar every season is searched; otherwise only the selected season is listed. */
+internal fun episodesForNavigator(
+    query: String,
+    seasonEpisodes: List<MetaVideo>,
+    allEpisodes: List<MetaVideo>,
+): List<MetaVideo> = if (query.isBlank()) seasonEpisodes else allEpisodes
 
 internal fun List<MetaVideo>.filteredAndSortedForNavigator(
     query: String,
@@ -141,8 +162,16 @@ internal fun List<MetaVideo>.filteredAndSortedForNavigator(
     }
 }
 
+private val SeasonEpisodeQuery = Regex("""^s?(\d{1,4})\s*[ex]\s*(\d{1,5})$""", RegexOption.IGNORE_CASE)
+
 private fun MetaVideo.matchesEpisodeQuery(query: String): Boolean {
     query.toIntOrNull()?.let { number -> if (episode == number) return true }
+    // "S2E5", "s02 e05" or "2x05" points at one episode of one season.
+    SeasonEpisodeQuery.matchEntire(query)?.let { match ->
+        val seasonNumber = match.groupValues[1].toIntOrNull()
+        val episodeNumber = match.groupValues[2].toIntOrNull()
+        return season == seasonNumber && episode == episodeNumber
+    }
     return title.contains(query, ignoreCase = true) ||
         overview?.contains(query, ignoreCase = true) == true
 }
@@ -564,7 +593,9 @@ internal fun LazyListScope.detailEpisodeListItems(
         meta.isEpisodeWatchedForNavigator(episode, progressByVideoId, watchedKeys)
     }
     val query = navigator.query
-    val shown = seasonEpisodes.filteredAndSortedForNavigator(query, navigator.sort, isWatched)
+    val allEpisodes = navigator.allEpisodes(grouped)
+    val searchPool = episodesForNavigator(query, seasonEpisodes, allEpisodes)
+    val shown = searchPool.filteredAndSortedForNavigator(query, navigator.sort, isWatched)
     var emitted = 0
 
     item(key = "detail-episodes-header") {
@@ -591,6 +622,7 @@ internal fun LazyListScope.detailEpisodeListItems(
                 navigator = navigator,
                 listState = listState,
                 seasonEpisodes = seasonEpisodes,
+                allEpisodes = allEpisodes,
                 shownCount = shown.size,
                 firstEpisodeIndex = firstEpisodeIndex,
                 isWatched = isWatched,
@@ -670,6 +702,7 @@ private fun EpisodeNavigatorStickyBar(
     navigator: EpisodeNavigatorState,
     listState: LazyListState,
     seasonEpisodes: List<MetaVideo>,
+    allEpisodes: List<MetaVideo>,
     shownCount: Int,
     firstEpisodeIndex: Int,
     isWatched: (MetaVideo) -> Boolean,
@@ -695,20 +728,19 @@ private fun EpisodeNavigatorStickyBar(
         }
     }
 
+    fun listedEpisodes(): List<MetaVideo> =
+        episodesForNavigator(navigator.query, seasonEpisodes, allEpisodes)
+            .filteredAndSortedForNavigator(navigator.query, navigator.sort, isWatched)
+
     val jumpTo: (MetaVideo) -> Unit = { target ->
         scope.launch {
             val key = target.navigatorKey()
-            if (navigator.query.isNotEmpty() &&
-                seasonEpisodes.filteredAndSortedForNavigator(navigator.query, navigator.sort, isWatched)
-                    .none { it.navigatorKey() == key }
-            ) {
+            if (navigator.query.isNotEmpty() && listedEpisodes().none { it.navigatorKey() == key }) {
                 navigator.query = ""
                 withFrameNanos { }
                 withFrameNanos { }
             }
-            val position = seasonEpisodes
-                .filteredAndSortedForNavigator(navigator.query, navigator.sort, isWatched)
-                .indexOfFirst { it.navigatorKey() == key }
+            val position = listedEpisodes().indexOfFirst { it.navigatorKey() == key }
             if (position < 0) return@launch
             listState.animateScrollToItem(firstEpisodeIndex + position)
             listState.animateScrollBy(-(floatingHeaderPx + barHeightPx))
@@ -732,9 +764,10 @@ private fun EpisodeNavigatorStickyBar(
             EpisodeNavigatorBar(
                 state = navigator,
                 shownCount = shownCount,
-                totalCount = seasonEpisodes.size,
+                totalCount = episodesForNavigator(navigator.query, seasonEpisodes, allEpisodes).size,
                 onSubmitNumber = { number ->
-                    seasonEpisodes.firstOrNull { it.episode == number }?.let(jumpTo)
+                    (seasonEpisodes.firstOrNull { it.episode == number } ?: allEpisodes.firstOrNull { it.episode == number })
+                        ?.let(jumpTo)
                 },
             )
         }

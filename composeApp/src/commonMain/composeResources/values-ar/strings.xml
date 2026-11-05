@@ -434,7 +434,7 @@
     <string name="compose_settings_page_addons">الإضافات</string>
     <string name="compose_settings_page_advanced">متقدم</string>
     <string name="compose_settings_page_appearance">التخطيط</string>
-    <string name="compose_settings_page_content_discovery">المحتوى والاستكشاف</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">متابعة المشاهدة</string>
     <string name="compose_settings_page_debrid">الحسابات المرتبطة</string>
     <string name="compose_settings_page_homescreen">تنسيق الواجهة الرئيسية</string>

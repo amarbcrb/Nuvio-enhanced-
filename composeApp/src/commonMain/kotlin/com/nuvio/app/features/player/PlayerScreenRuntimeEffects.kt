@@ -405,7 +405,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
     BindPlayerUiVisibilityEffects()
     BindPlayerMetadataAndSkipEffects()
     BindPartyEffects()
-    BindDiscordRpcEffects()
+    // Discord is no longer part of Nuvio Plus and Nuvio Pro: no presence update on every position tick.
 
     DisposableEffect(activeSourceUrl) {
         val effectSourceUrl = activeSourceUrl

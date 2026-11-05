@@ -418,7 +418,7 @@
     <string name="compose_settings_page_addons">アドオン</string>
     <string name="compose_settings_page_advanced">詳細設定</string>
     <string name="compose_settings_page_appearance">レイアウト</string>
-    <string name="compose_settings_page_content_discovery">コンテンツと探索</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">視聴を続ける</string>
     <string name="compose_settings_page_debrid">連携サービス</string>
     <string name="compose_settings_page_homescreen">ホームレイアウト</string>

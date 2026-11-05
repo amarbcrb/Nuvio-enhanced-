@@ -331,11 +331,8 @@ internal fun MainAppContent(
         LaunchedEffect(libraryUiState.items) {
             warmLibraryReleaseSchedule(libraryUiState.items)
         }
-        val liveTvUiState by remember {
-            LiveTvRepository.ensureLoaded()
-            LiveTvRepository.uiState
-        }.collectAsStateWithLifecycle()
-        val showLiveTvInNavigation = liveTvUiState.showInNavigation
+        // Live TV is no longer set up in the app (removed from Integrations), so no Live TV tab either.
+        val showLiveTvInNavigation = false
         val authState by AuthRepository.state.collectAsStateWithLifecycle()
         val openPosterActions: (PosterActionTarget) -> Unit = { target ->
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -2235,25 +2232,32 @@ internal fun MainAppContent(
                                     }
                                 },
                             ),
-                        ) + if (isSaved && !isRemoteLibrarySource) {
-                            // Favorites and the user's own categories of the saved Library.
+                        ) + if (!isRemoteLibrarySource) {
+                            // Favorites and the user's own categories of the saved Library. The categories
+                            // picker is offered for any title: adding it to a category saves it too.
                             val categoryItem = posterActionTarget.libraryItem
                                 ?: preview.toLibraryItem(savedAtEpochMs = 0L)
                             val isFavorite = LibraryCategoriesRepository.isFavorite(categoryItem)
-                            listOf(
-                                PosterZoomOverlayAction(
-                                    icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                                    label = stringResource(
-                                        if (isFavorite) Res.string.library_remove_favorite else Res.string.library_add_favorite,
+                            buildList {
+                                if (isSaved) {
+                                    add(
+                                        PosterZoomOverlayAction(
+                                            icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                                            label = stringResource(
+                                                if (isFavorite) Res.string.library_remove_favorite else Res.string.library_add_favorite,
+                                            ),
+                                            onSelected = { LibraryCategoriesRepository.toggleFavorite(categoryItem) },
+                                        ),
+                                    )
+                                }
+                                add(
+                                    PosterZoomOverlayAction(
+                                        icon = Icons.AutoMirrored.Rounded.ListAlt,
+                                        label = stringResource(Res.string.library_categories_title),
+                                        onSelected = { libraryCategoryPickerItem = categoryItem },
                                     ),
-                                    onSelected = { LibraryCategoriesRepository.toggleFavorite(categoryItem) },
-                                ),
-                                PosterZoomOverlayAction(
-                                    icon = Icons.AutoMirrored.Rounded.ListAlt,
-                                    label = stringResource(Res.string.library_categories_title),
-                                    onSelected = { libraryCategoryPickerItem = categoryItem },
-                                ),
-                            )
+                                )
+                            }
                         } else {
                             emptyList()
                         },

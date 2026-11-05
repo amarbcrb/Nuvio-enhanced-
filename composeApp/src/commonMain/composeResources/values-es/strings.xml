@@ -501,7 +501,7 @@
     <string name="compose_settings_page_addons">Complementos</string>
     <string name="compose_settings_page_advanced">Avanzado</string>
     <string name="compose_settings_page_appearance">Apariencia</string>
-    <string name="compose_settings_page_content_discovery">Contenido y descubrimiento</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Seguir viendo</string>
     <string name="compose_settings_page_debrid">Servicios conectados</string>
     <string name="compose_settings_page_homescreen">Pantalla de inicio</string>

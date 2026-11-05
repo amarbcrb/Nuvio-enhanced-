@@ -27,20 +27,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Extension
-import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -60,7 +57,6 @@ import nuvio.composeapp.generated.resources.compose_settings_page_integrations
 import nuvio.composeapp.generated.resources.compose_settings_page_licenses_attributions
 import nuvio.composeapp.generated.resources.compose_settings_page_notifications
 import nuvio.composeapp.generated.resources.compose_settings_page_playback
-import nuvio.composeapp.generated.resources.compose_settings_page_supporters_contributors
 import nuvio.composeapp.generated.resources.compose_settings_root_appearance_description
 import nuvio.composeapp.generated.resources.compose_settings_root_check_updates_description
 import nuvio.composeapp.generated.resources.compose_settings_root_check_updates_title
@@ -72,22 +68,17 @@ import nuvio.composeapp.generated.resources.compose_settings_root_profile_descri
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_title
 import nuvio.composeapp.generated.resources.compose_settings_root_switch_profile_description
 import nuvio.composeapp.generated.resources.compose_settings_root_switch_profile_title
-import nuvio.composeapp.generated.resources.compose_settings_root_tracking_description
 import nuvio.composeapp.generated.resources.compose_settings_root_about_section
 import nuvio.composeapp.generated.resources.compose_settings_root_account_section
 import nuvio.composeapp.generated.resources.compose_settings_root_advanced_description
 import nuvio.composeapp.generated.resources.compose_settings_root_advanced_section
 import nuvio.composeapp.generated.resources.compose_settings_page_content_discovery
-import nuvio.composeapp.generated.resources.compose_settings_page_tracking
-import nuvio.composeapp.generated.resources.compose_settings_page_whats_new
 import nuvio.composeapp.generated.resources.settings_playback_subtitle
-import nuvio.composeapp.generated.resources.updates_debug_test_description
-import nuvio.composeapp.generated.resources.updates_debug_test_title
+import nuvio.composeapp.generated.resources.settings_backup_root_description
+import nuvio.composeapp.generated.resources.settings_backup_section_title
 import nuvio.composeapp.generated.resources.party_settings_description
 import nuvio.composeapp.generated.resources.party_title
-import nuvio.composeapp.generated.resources.about_supporters_contributors_subtitle
 import nuvio.composeapp.generated.resources.about_licenses_attributions_subtitle
-import nuvio.composeapp.generated.resources.whats_new_root_description
 import org.jetbrains.compose.resources.stringResource
 
 
@@ -99,20 +90,15 @@ internal fun LazyListScope.settingsRootContent(
     onNotificationsClick: () -> Unit,
     onContentDiscoveryClick: () -> Unit,
     onIntegrationsClick: () -> Unit,
-    onTrackingClick: () -> Unit,
-    onSupportersContributorsClick: () -> Unit,
     onLicensesAttributionsClick: () -> Unit,
-    onWhatsNewClick: () -> Unit,
     onCheckForUpdatesClick: (() -> Unit)? = null,
-    onTestUpdateBannerClick: (() -> Unit)? = null,
-    onAccountClick: () -> Unit,
+    onConfigBackupClick: () -> Unit,
     onSwitchProfileClick: (() -> Unit)? = null,
     onWatchPartyClick: (() -> Unit)? = null,
     showAccountSection: Boolean = true,
     showGeneralSection: Boolean = true,
     showAboutSection: Boolean = true,
     showAdvancedSection: Boolean = true,
-    showSupportersContributorsPage: Boolean = true,
 ) {
     // Nuvio Pro seulement : section « Abonnement » avec les jours restants ; un appui ouvre la fenêtre de nouvelle clé.
     if (AppVersionConfig.EDITION == "pro") {
@@ -138,30 +124,20 @@ internal fun LazyListScope.settingsRootContent(
             SettingsProfileCard(isTablet = isTablet, onClick = onSwitchProfileClick)
         }
     }
-    if (showAccountSection) {
+    // Pas de compte Nuvio (nuvio.tv) ni de suivi (Trakt, Simkl...) dans cette appli : seulement la Watch Party.
+    if (showAccountSection && onWatchPartyClick != null) {
         item {
             SettingsSection(
                 title = stringResource(Res.string.compose_settings_root_account_section),
                 isTablet = isTablet,
             ) {
-                // Pas de compte Nuvio (nuvio.tv) dans cette appli : seulement la Watch Party et le suivi.
                 SettingsGroup(isTablet = isTablet) {
-                    if (onWatchPartyClick != null) {
-                        SettingsNavigationRow(
-                            title = stringResource(Res.string.party_title),
-                            description = stringResource(Res.string.party_settings_description),
-                            icon = Icons.Rounded.Groups,
-                            isTablet = isTablet,
-                            onClick = onWatchPartyClick,
-                        )
-                        SettingsGroupDivider(isTablet = isTablet)
-                    }
                     SettingsNavigationRow(
-                        title = stringResource(Res.string.compose_settings_page_tracking),
-                        description = stringResource(Res.string.compose_settings_root_tracking_description),
-                        icon = Icons.Default.Sync,
+                        title = stringResource(Res.string.party_title),
+                        description = stringResource(Res.string.party_settings_description),
+                        icon = Icons.Rounded.Groups,
                         isTablet = isTablet,
-                        onClick = onTrackingClick,
+                        onClick = onWatchPartyClick,
                     )
                 }
             }
@@ -213,6 +189,14 @@ internal fun LazyListScope.settingsRootContent(
                         isTablet = isTablet,
                         onClick = onNotificationsClick,
                     )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.settings_backup_section_title),
+                        description = stringResource(Res.string.settings_backup_root_description),
+                        icon = Icons.Rounded.SaveAlt,
+                        isTablet = isTablet,
+                        onClick = onConfigBackupClick,
+                    )
                 }
             }
         }
@@ -223,25 +207,8 @@ internal fun LazyListScope.settingsRootContent(
                 title = stringResource(Res.string.compose_settings_root_about_section),
                 isTablet = isTablet,
             ) {
+                // Plus de page Soutiens/Contributeurs, de Nouveautés, de canal de mise à jour ni de bannière de test.
                 SettingsGroup(isTablet = isTablet) {
-                    if (showSupportersContributorsPage) {
-                        SettingsNavigationRow(
-                            title = stringResource(Res.string.compose_settings_page_supporters_contributors),
-                            description = stringResource(Res.string.about_supporters_contributors_subtitle),
-                            icon = Icons.Rounded.Favorite,
-                            isTablet = isTablet,
-                            onClick = onSupportersContributorsClick,
-                        )
-                        SettingsGroupDivider(isTablet = isTablet)
-                    }
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.compose_settings_page_whats_new),
-                        description = stringResource(Res.string.whats_new_root_description),
-                        icon = Icons.Rounded.NewReleases,
-                        isTablet = isTablet,
-                        onClick = onWhatsNewClick,
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
                     SettingsNavigationRow(
                         title = stringResource(Res.string.compose_settings_page_licenses_attributions),
                         description = stringResource(Res.string.about_licenses_attributions_subtitle),
@@ -251,24 +218,12 @@ internal fun LazyListScope.settingsRootContent(
                     )
                     if (onCheckForUpdatesClick != null) {
                         SettingsGroupDivider(isTablet = isTablet)
-                        UpdateChannelSettingsRow(isTablet = isTablet)
-                        SettingsGroupDivider(isTablet = isTablet)
                         SettingsNavigationRow(
                             title = stringResource(Res.string.compose_settings_root_check_updates_title),
                             description = stringResource(Res.string.compose_settings_root_check_updates_description),
                             icon = Icons.Rounded.CloudDownload,
                             isTablet = isTablet,
                             onClick = onCheckForUpdatesClick,
-                        )
-                    }
-                    if (onTestUpdateBannerClick != null) {
-                        SettingsGroupDivider(isTablet = isTablet)
-                        SettingsNavigationRow(
-                            title = stringResource(Res.string.updates_debug_test_title),
-                            description = stringResource(Res.string.updates_debug_test_description),
-                            icon = Icons.Rounded.BugReport,
-                            isTablet = isTablet,
-                            onClick = onTestUpdateBannerClick,
                         )
                     }
                 }

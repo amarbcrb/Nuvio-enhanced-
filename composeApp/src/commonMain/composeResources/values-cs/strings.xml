@@ -418,7 +418,7 @@
     <string name="compose_settings_page_addons">Doplňky</string>
     <string name="compose_settings_page_advanced">Pokročilé</string>
     <string name="compose_settings_page_appearance">Rozvržení</string>
-    <string name="compose_settings_page_content_discovery">Obsah &amp; objevování</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Pokračovat ve sledování</string>
     <string name="compose_settings_page_debrid">Připojené služby</string>
     <string name="compose_settings_page_homescreen">Rozvržení domů</string>

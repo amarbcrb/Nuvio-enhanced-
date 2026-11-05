@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="episode_navigator_search_hint">Search title, plot or number</string>
+    <string name="episode_navigator_search_hint">Search all seasons: title, plot, number or S2E5</string>
     <string name="episode_navigator_clear_search">Clear search</string>
     <string name="episode_navigator_go_to">Go to</string>
     <string name="episode_navigator_sort">Sort</string>

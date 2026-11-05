@@ -496,7 +496,7 @@
     <string name="compose_settings_page_addons">Добавки</string>
     <string name="compose_settings_page_advanced">Разширени</string>
     <string name="compose_settings_page_appearance">Оформление</string>
-    <string name="compose_settings_page_content_discovery">Съдържание и откриване</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Продължи гледането</string>
     <string name="compose_settings_page_debrid">Свързани услуги</string>
     <string name="compose_settings_page_homescreen">Начален екран</string>

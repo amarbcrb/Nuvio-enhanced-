@@ -23,6 +23,11 @@ import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.PosterCardStyleRepository
 import com.nuvio.app.core.ui.PosterCardStyleStorage
 import com.nuvio.app.features.addons.AddonRepository
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.collection.Collection as NuvioCollection
+import com.nuvio.app.features.collection.CollectionRepository
+import com.nuvio.app.features.search.SearchScreenSettingsRepository
+import com.nuvio.app.isIos
 import com.nuvio.app.features.autosync.AutoSyncPreferencesRepository
 import com.nuvio.app.features.debrid.DebridProviders
 import com.nuvio.app.features.debrid.DebridSettingsRepository
@@ -68,9 +73,6 @@ import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsStorage
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbSettingsStorage
-import com.nuvio.app.features.updater.AppUpdaterPlatform
-import com.nuvio.app.features.updater.UpdateChannel
-import com.nuvio.app.features.updater.UpdatePreferences
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesStorage
 import kotlinx.coroutines.CancellationException
@@ -83,6 +85,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -158,11 +161,17 @@ internal object SettingsConfigTransfer {
                     put("discord_rpc", exportDiscordSettings(includeCredentials))
                     if (includeCredentials) {
                         put("live_tv", exportLiveTvSettings())
-                        put("addons", exportAddons())
                     }
+                    // Installed addons are always in the file: moving them is what the file is for.
+                    put("addons", exportAddons())
                     if (AppFeaturePolicy.pluginsEnabled) {
                         put("plugins", exportPlugins())
                     }
+                    if (cloudStreamTransferEnabled) {
+                        put("cloudstream", exportCloudStream())
+                    }
+                    put("collections", exportCollections())
+                    put("search_screen", exportPayload(SearchScreenSettingsRepository.exportPayload()))
                 },
             )
         }
@@ -279,6 +288,13 @@ internal object SettingsConfigTransfer {
         if (AppFeaturePolicy.pluginsEnabled) {
             section("plugins") { value -> importPlugins(value.jsonObject) }
         }
+        if (cloudStreamTransferEnabled) {
+            section("cloudstream") { value -> importCloudStream(value.jsonObject) }
+        }
+        section("collections") { value -> importCollections(value) }
+        section("search_screen") { value ->
+            value.payloadOrNull()?.let(SearchScreenSettingsRepository::importPayload)
+        }
         section("home") { value -> importHomeSettings(value.jsonObject) }
         HomeRepository.applyCurrentSettings()
         return failures
@@ -307,6 +323,96 @@ internal object SettingsConfigTransfer {
         P2pSettingsRepository.ensureLoaded()
         DiscordRpcRepository.ensureLoaded()
         LiveTvRepository.ensureLoaded()
+        SearchScreenSettingsRepository.ensureLoaded()
+        CollectionRepository.initialize()
+        if (cloudStreamTransferEnabled) CloudStreamRepository.initialize()
+    }
+
+    /** CloudStream extensions exist on Android only, with plugins allowed. */
+    private val cloudStreamTransferEnabled: Boolean
+        get() = AppFeaturePolicy.pluginsEnabled && !isIos
+
+    private fun exportCloudStream(): JsonObject {
+        val state = CloudStreamRepository.uiState.value
+        return buildJsonObject {
+            put("security_warning_accepted", state.securityWarningAccepted)
+            put(
+                "repositories",
+                buildJsonArray {
+                    state.repositories.map { it.manifest.sourceUrl }.distinct().forEach { add(JsonPrimitive(it)) }
+                },
+            )
+            put(
+                "extensions",
+                buildJsonArray {
+                    state.plugins.filter { it.isInstalled }.forEach { plugin ->
+                        add(
+                            buildJsonObject {
+                                put("id", plugin.metadata.id.value)
+                                put("name", plugin.metadata.name)
+                                put("enabled", plugin.enabled)
+                                if (plugin.siteUrlOverrides.isNotEmpty()) {
+                                    put(
+                                        "site_urls",
+                                        buildJsonObject {
+                                            plugin.siteUrlOverrides.forEach { (site, url) -> put(site, url) }
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private suspend fun importCloudStream(payload: JsonObject) {
+        payload.strings("repositories").map(String::trim).filter(String::isNotEmpty).distinct().forEach { url ->
+            if (CloudStreamRepository.uiState.value.repositories.none { it.manifest.sourceUrl == url }) {
+                CloudStreamRepository.addRepository(url)
+            }
+        }
+        if (payload.boolean("security_warning_accepted") == true &&
+            !CloudStreamRepository.uiState.value.securityWarningAccepted
+        ) {
+            CloudStreamRepository.acceptSecurityWarning()
+        }
+        val extensions = payload.objects("extensions")
+        val known = CloudStreamRepository.uiState.value.plugins.map { it.metadata.id.value }.toSet()
+        val toInstall = extensions.mapNotNull { it.string("id") }.filter { it in known }
+        val result = if (toInstall.isNotEmpty() && CloudStreamRepository.uiState.value.securityWarningAccepted) {
+            CloudStreamRepository.installAndEnablePlugins(toInstall)
+        } else {
+            null
+        }
+        extensions.forEach { extension ->
+            val id = extension.string("id") ?: return@forEach
+            if (id !in known) return@forEach
+            if (extension.boolean("enabled") == false) CloudStreamRepository.setPluginEnabled(id, false)
+            (extension["site_urls"] as? JsonObject)?.forEach { (site, url) ->
+                (url as? JsonPrimitive)?.contentOrNull?.let { CloudStreamRepository.setSiteUrl(id, site, it) }
+            }
+        }
+        // A repository that could not be reached, or an extension that failed to install, makes the
+        // import partial so the user knows to check the Extension page.
+        val missing = extensions.size - toInstall.size
+        val installFailed = toInstall.isNotEmpty() && (result == null || result.failures.isNotEmpty())
+        check(missing == 0 && !installFailed) { "Some CloudStream extensions could not be restored" }
+    }
+
+    private fun exportCollections(): JsonElement =
+        runCatching { json.parseToJsonElement(CollectionRepository.exportToJson()) }.getOrElse { JsonArray(emptyList()) }
+
+    /** Adds the collections of the file; one with the same id as a local one replaces it. */
+    private fun importCollections(value: JsonElement) {
+        val array = value as? JsonArray ?: return
+        if (array.isEmpty()) return
+        val text = json.encodeToString(JsonArray.serializer(), array)
+        val validation = CollectionRepository.validateJson(text)
+        check(validation.valid) { validation.error.orEmpty() }
+        json.decodeFromJsonElement(ListSerializer(NuvioCollection.serializer()), array)
+            .forEach(CollectionRepository::addCollection)
     }
 
     private fun exportPayload(payload: String?): JsonElement =
@@ -460,9 +566,6 @@ internal object SettingsConfigTransfer {
         if (DnsSettingsRepository.isSupported) {
             put("dns_provider", DnsSettingsRepository.provider.value.storageId)
         }
-        if (AppUpdaterPlatform.isSupported) {
-            put("update_channel", UpdatePreferences.shared.channel.value.storedValue)
-        }
     }
 
     private fun importGeneralSettings(payload: JsonObject) {
@@ -472,9 +575,6 @@ internal object SettingsConfigTransfer {
         payload.boolean("search_history_enabled")?.let(SearchHistoryRepository::setEnabled)
         if (DnsSettingsRepository.isSupported) {
             payload.string("dns_provider")?.let { DnsSettingsRepository.setProvider(DnsProvider.fromStorage(it)) }
-        }
-        if (AppUpdaterPlatform.isSupported) {
-            UpdateChannel.fromStoredValue(payload.string("update_channel"))?.let(UpdatePreferences.shared::setChannel)
         }
     }
 
@@ -958,6 +1058,11 @@ internal object SettingsConfigTransfer {
         StreamBadgeSettingsStorage.loadStreamBackgroundMode()?.let { put("stream_background_mode", encodeSyncString(it)) }
         StreamBadgeSettingsStorage.loadStreamBadgePlacement()?.let { put("stream_badge_placement", encodeSyncString(it)) }
         StreamBadgeSettingsStorage.loadPinnedStreamSources()?.let { put("pinned_stream_sources", encodeSyncString(it)) }
+        StreamBadgeSettingsStorage.loadPlayerBadgeSource()?.let { put("player_badge_source", encodeSyncString(it)) }
+        // Link and extension languages, dubbed-first choice.
+        StreamBadgeSettingsStorage.loadStreamLanguagePreferences()?.let { put("stream_language_preferences", encodeSyncString(it)) }
+        StreamBadgeSettingsStorage.loadStreamSearchScope()?.let { put("stream_search_scope", encodeSyncString(it)) }
+        StreamBadgeSettingsStorage.loadCatalogSource()?.let { put("catalog_source", encodeSyncString(it)) }
     }
 
     private fun importStreamBadgeSettings(payload: JsonObject) {
@@ -969,6 +1074,10 @@ internal object SettingsConfigTransfer {
         payload.decodeSyncString("stream_background_mode")?.let { StreamBadgeSettingsStorage.saveStreamBackgroundMode(it) }
         payload.decodeSyncString("stream_badge_placement")?.let { StreamBadgeSettingsStorage.saveStreamBadgePlacement(it) }
         payload.decodeSyncString("pinned_stream_sources")?.let { StreamBadgeSettingsStorage.savePinnedStreamSources(it) }
+        payload.decodeSyncString("player_badge_source")?.let { StreamBadgeSettingsStorage.savePlayerBadgeSource(it) }
+        payload.decodeSyncString("stream_language_preferences")?.let { StreamBadgeSettingsStorage.saveStreamLanguagePreferences(it) }
+        payload.decodeSyncString("stream_search_scope")?.let { StreamBadgeSettingsStorage.saveStreamSearchScope(it) }
+        payload.decodeSyncString("catalog_source")?.let { StreamBadgeSettingsStorage.saveCatalogSource(it) }
     }
 
     private fun exportDebridSettings(includeCredentials: Boolean): JsonObject = buildJsonObject {

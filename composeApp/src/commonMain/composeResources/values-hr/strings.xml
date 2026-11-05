@@ -501,7 +501,7 @@
     <string name="compose_settings_page_addons">Dodaci</string>
     <string name="compose_settings_page_advanced">Napredno</string>
     <string name="compose_settings_page_appearance">Izgled</string>
-    <string name="compose_settings_page_content_discovery">Sadržaj i otkrivanje</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Nastavi gledati</string>
     <string name="compose_settings_page_debrid">Povezane usluge</string>
     <string name="compose_settings_page_homescreen">Izgled početnog zaslona</string>

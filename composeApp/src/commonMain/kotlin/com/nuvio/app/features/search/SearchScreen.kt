@@ -127,15 +127,20 @@ fun SearchScreen(
         HomeCatalogSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val recentSearches by SearchHistoryRepository.uiState.collectAsStateWithLifecycle()
+    val searchScreenSettings by remember {
+        SearchScreenSettingsRepository.ensureLoaded()
+        SearchScreenSettingsRepository.state
+    }.collectAsStateWithLifecycle()
+    val showDiscover = searchScreenSettings.showDiscover
     val watchedUiState by WatchedRepository.uiState.collectAsStateWithLifecycle()
     val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     var lastRequestedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     var observedOfflineState by remember { mutableStateOf(false) }
-    val discoverInFocus by remember(query, listState) {
+    val discoverInFocus by remember(query, listState, showDiscover) {
         derivedStateOf {
-            query.isBlank() && listState.firstVisibleItemIndex > 0
+            query.isBlank() && showDiscover && listState.firstVisibleItemIndex > 0
         }
     }
 
@@ -162,12 +167,19 @@ fun SearchScreen(
     }
     val addonManifestsLoading = addonsUiState.addons.hasPendingEnabledManifests()
 
-    ScreenActivityEffect(addonRefreshKey, homeCatalogSettingsUiState.hideUnreleasedContent) { screenActive ->
-        if (!screenActive) return@ScreenActivityEffect
+    ScreenActivityEffect(addonRefreshKey, homeCatalogSettingsUiState.hideUnreleasedContent, showDiscover) { screenActive ->
+        // Discover hidden in Settings > Search screen: nothing to load while the search bar is empty.
+        if (!screenActive || !showDiscover) return@ScreenActivityEffect
         SearchRepository.refreshDiscover(addonsUiState.addons)
     }
 
-    ScreenActivityEffect(query, addonRefreshKey, homeCatalogSettingsUiState.hideUnreleasedContent) { screenActive ->
+    ScreenActivityEffect(
+        query,
+        addonRefreshKey,
+        homeCatalogSettingsUiState.hideUnreleasedContent,
+        searchScreenSettings.hiddenSources,
+        searchScreenSettings.sourceOrder,
+    ) { screenActive ->
         if (!screenActive) return@ScreenActivityEffect
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) {
@@ -183,8 +195,8 @@ fun SearchScreen(
         }
     }
 
-    ScreenActivityEffect(listState, query, discoverUiState.canLoadMore, discoverUiState.isLoading) { screenActive ->
-        if (!screenActive || query.isNotBlank()) return@ScreenActivityEffect
+    ScreenActivityEffect(listState, query, discoverUiState.canLoadMore, discoverUiState.isLoading, showDiscover) { screenActive ->
+        if (!screenActive || query.isNotBlank() || !showDiscover) return@ScreenActivityEffect
 
         snapshotFlow { listState.layoutInfo }
             .map { layoutInfo ->
@@ -300,7 +312,7 @@ fun SearchScreen(
                 autoHidesNativeTabBar = true,
                 modifier = Modifier.weight(1f),
             ) {
-                if (query.isBlank()) {
+                if (query.isBlank() && showDiscover) {
                     item {
                         DiscoverSectionHeader(modifier = Modifier.padding(horizontal = 16.dp))
                     }
@@ -334,7 +346,7 @@ fun SearchScreen(
                             )
                         }
                     }
-                    discoverContent(
+                    if (showDiscover) discoverContent(
                         state = discoverUiState,
                         isSourceLoading = addonManifestsLoading,
                         columns = discoverColumns,

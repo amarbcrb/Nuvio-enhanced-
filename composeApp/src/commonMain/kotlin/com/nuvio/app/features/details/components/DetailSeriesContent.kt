@@ -178,6 +178,7 @@ fun DetailSeriesContent(
     }
 
     val seasons = groupedEpisodes.keys.sortedBy(::seasonSortKey)
+    val allEpisodes = remember(groupedEpisodes) { groupedEpisodes.allEpisodesInSeasonOrder() }
     val defaultSeason = preferredSeasonNumber
         ?.takeIf { it in groupedEpisodes }
         ?: seasons.first()
@@ -237,8 +238,10 @@ fun DetailSeriesContent(
                         val isWatched: (MetaVideo) -> Boolean = { episode ->
                             meta.isEpisodeWatchedForNavigator(episode, progressByVideoId, watchedKeys)
                         }
-                        val shownEpisodes = remember(seasonEpisodes, navigator.query, navigator.sort, progressByVideoId, watchedKeys) {
-                            seasonEpisodes.filteredAndSortedForNavigator(navigator.query, navigator.sort, isWatched)
+                        // With text in the search bar, every season is searched.
+                        val searchPool = episodesForNavigator(navigator.query, seasonEpisodes, allEpisodes)
+                        val shownEpisodes = remember(searchPool, navigator.query, navigator.sort, progressByVideoId, watchedKeys) {
+                            searchPool.filteredAndSortedForNavigator(navigator.query, navigator.sort, isWatched)
                         }
                         val jumpTo: (MetaVideo) -> Unit = { target ->
                             navigatorScope.launch {
@@ -247,7 +250,7 @@ fun DetailSeriesContent(
                                     withFrameNanos { }
                                     withFrameNanos { }
                                 }
-                                val index = seasonEpisodes
+                                val index = episodesForNavigator(navigator.query, seasonEpisodes, allEpisodes)
                                     .filteredAndSortedForNavigator(navigator.query, navigator.sort, isWatched)
                                     .indexOfFirst { it.navigatorKey() == target.navigatorKey() }
                                 if (index >= 0) {
@@ -264,9 +267,10 @@ fun DetailSeriesContent(
                         EpisodeNavigatorBar(
                             state = navigator,
                             shownCount = shownEpisodes.size,
-                            totalCount = seasonEpisodes.size,
+                            totalCount = searchPool.size,
                             onSubmitNumber = { number ->
-                                seasonEpisodes.firstOrNull { it.episode == number }?.let(jumpTo)
+                                (seasonEpisodes.firstOrNull { it.episode == number } ?: allEpisodes.firstOrNull { it.episode == number })
+                                    ?.let(jumpTo)
                             },
                         )
                         if (navigator.goToSheetVisible) {

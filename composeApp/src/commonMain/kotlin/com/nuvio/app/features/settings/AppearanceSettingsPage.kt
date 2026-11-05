@@ -38,6 +38,8 @@ import nuvio.composeapp.generated.resources.cd_selected
 import nuvio.composeapp.generated.resources.collections_header
 import nuvio.composeapp.generated.resources.compose_settings_page_continue_watching
 import nuvio.composeapp.generated.resources.compose_settings_page_homescreen
+import nuvio.composeapp.generated.resources.settings_search_screen_description
+import nuvio.composeapp.generated.resources.settings_search_screen_title
 import nuvio.composeapp.generated.resources.compose_settings_page_meta_screen
 import nuvio.composeapp.generated.resources.compose_settings_page_poster_customization
 import nuvio.composeapp.generated.resources.compose_settings_page_streams
@@ -100,6 +102,7 @@ internal fun LazyListScope.appearanceSettingsContent(
     selectedNavBarStyle: NavBarStyle,
     onNavBarStyleSelected: (NavBarStyle) -> Unit,
     onHomescreenClick: () -> Unit,
+    onSearchScreenClick: () -> Unit,
     onMetaScreenClick: () -> Unit,
     onStreamsClick: () -> Unit,
     onCollectionsClick: () -> Unit,
@@ -315,6 +318,13 @@ internal fun LazyListScope.appearanceSettingsContent(
                     description = stringResource(Res.string.settings_content_discovery_homescreen_description),
                     isTablet = isTablet,
                     onClick = onHomescreenClick,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsNavigationRow(
+                    title = stringResource(Res.string.settings_search_screen_title),
+                    description = stringResource(Res.string.settings_search_screen_description),
+                    isTablet = isTablet,
+                    onClick = onSearchScreenClick,
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsNavigationRow(

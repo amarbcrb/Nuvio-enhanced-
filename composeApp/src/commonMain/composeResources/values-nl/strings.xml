@@ -496,7 +496,7 @@
     <string name="compose_settings_page_addons">Add-ons</string>
     <string name="compose_settings_page_advanced">Geavanceerd</string>
     <string name="compose_settings_page_appearance">Indeling</string>
-    <string name="compose_settings_page_content_discovery">Inhoud en ontdekking</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Verder kijken</string>
     <string name="compose_settings_page_debrid">Verbonden services</string>
     <string name="compose_settings_page_homescreen">Startschermindeling</string>

@@ -163,9 +163,6 @@ internal fun LazyListScope.advancedSettingsContent(
         }
     }
     item {
-        SettingsConfigBackupSection(isTablet = isTablet)
-    }
-    item {
         SettingsSection(
             title = stringResource(Res.string.settings_advanced_section_cache),
             isTablet = isTablet,

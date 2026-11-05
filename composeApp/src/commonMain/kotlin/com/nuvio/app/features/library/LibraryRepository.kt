@@ -356,6 +356,13 @@ object LibraryRepository {
         pushToServer(snapshot)
     }
 
+    /** Saves [item] in the local Library when it isn't there yet: categories only list saved titles. */
+    fun saveLocallyIfMissing(item: LibraryItem) {
+        ensureLoaded()
+        if (localState.contains(item.id, item.type)) return
+        save(item)
+    }
+
     fun remove(id: String) {
         ensureLoaded()
         val result = localState.removeById(id)

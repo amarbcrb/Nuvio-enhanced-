@@ -100,9 +100,12 @@ object SearchRepository {
         val addonManifestErrorMessage = enabledAddons.firstEnabledManifestError()
         val serverSearches = ServerCatalog.searchTargets()
         CloudStreamRepository.initialize()
+        // Sources hidden in Settings > Search screen give no result row; the others follow the chosen order.
+        val searchScreenSettings = SearchScreenSettingsRepository.snapshot()
         val runnableCloudPlugins = CloudStreamRepository.uiState.value.plugins
             .filter(CloudStreamPluginItem::isRunnable)
             .filter { it.isAllowedByLanguagePreferences() }
+            .filterNot { it.searchSourceKey() in searchScreenSettings.hiddenSources }
         // Search always covers every source; the Home catalog source choice does not apply here.
         val activeAddons = enabledAddons.filter { addon -> addon.manifest != null }
         val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
@@ -128,7 +131,7 @@ object SearchRepository {
         val requests = buildSearchRequests(
             addons = activeAddons,
             query = normalizedQuery,
-        )
+        ).filterNot { request -> request.sourceKey in searchScreenSettings.hiddenSources }
         if (requests.isEmpty() && serverSearches.isEmpty() && cloudPlugins.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
@@ -161,12 +164,14 @@ object SearchRepository {
                 append(':')
                 append(cloudPlugins.joinToString(separator = ",") { it.metadata.id.value })
             }
+            append("|order:")
+            append(searchScreenSettings.sourceOrder.joinToString(separator = ","))
         }
         val cloudSearchPermits = Semaphore(CLOUDSTREAM_SEARCH_CONCURRENCY)
-        val loaders: List<suspend () -> HomeCatalogSection> =
-            requests.map { request -> suspend { request.toSection(forceRefresh = forceRefresh) } } +
+        val keyedLoaders: List<Pair<String, suspend () -> HomeCatalogSection>> =
+            requests.map { request -> request.sourceKey to suspend { request.toSection(forceRefresh = forceRefresh) } } +
                 serverSearches.map { ref ->
-                    suspend {
+                    "server|${ref.connection.id}|${ref.kind.contentType}" to suspend {
                         ServerCatalog.searchSection(ref, normalizedQuery).also { section ->
                             require(section.items.isNotEmpty()) {
                                 getString(Res.string.search_error_no_results_for_catalog, section.title)
@@ -175,7 +180,7 @@ object SearchRepository {
                     }
                 } +
                 cloudPlugins.map { plugin ->
-                    suspend {
+                    plugin.searchSourceKey() to suspend {
                         cloudSearchPermits.withPermit {
                             withTimeoutOrNull(CLOUDSTREAM_SEARCH_PROVIDER_TIMEOUT_MS) {
                                 plugin.toCloudSearchSection(normalizedQuery)
@@ -183,6 +188,9 @@ object SearchRepository {
                         } ?: error(getString(Res.string.search_error_no_results_for_catalog, plugin.cloudSearchTitle()))
                     }
                 }
+        val loaderOrder = keyedLoaders.map { it.first }.orderedBy(searchScreenSettings.sourceOrder)
+        val loadersByKey = keyedLoaders.groupBy({ it.first }, { it.second })
+        val loaders: List<suspend () -> HomeCatalogSection> = loaderOrder.distinct().flatMap { key -> loadersByKey[key].orEmpty() }
         if (canReuseRequestState(forceRefresh, requestKey, lastRequestKey)) return
         lastRequestKey = requestKey
 
@@ -724,9 +732,12 @@ private data class SearchCatalogRequest(
     val type: String,
     val query: String,
     val supportsPagination: Boolean,
-)
+) {
+    val sourceKey: String
+        get() = addonSearchSourceKey(addon.manifestUrl, type, catalogId)
+}
 
-private fun AddonCatalog.supportsSearch(): Boolean =
+internal fun AddonCatalog.supportsSearch(): Boolean =
     extra.any { property -> property.name == "search" } &&
         extra.none { property -> property.isRequired && property.name != "search" }
 

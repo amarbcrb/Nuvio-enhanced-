@@ -172,6 +172,7 @@ internal fun installFakeServer(
     connectionId: String = "cfake",
     libraries: List<ServerLibrary> = listOf(provider.movies, provider.shows),
 ): ServerConnection {
+    ServerRepository.linkingEnabled = true
     ServerProviders.registered.removeAll { it.id == provider.id }
     ServerProviders.registered += provider
     val connection = ServerConnection(

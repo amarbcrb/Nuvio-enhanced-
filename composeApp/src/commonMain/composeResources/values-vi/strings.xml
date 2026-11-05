@@ -501,7 +501,7 @@
     <string name="compose_settings_page_addons">Tiện ích</string>
     <string name="compose_settings_page_advanced">Nâng cao</string>
     <string name="compose_settings_page_appearance">Bố cục</string>
-    <string name="compose_settings_page_content_discovery">Nội dung &amp; Khám phá</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Tiếp tục xem</string>
     <string name="compose_settings_page_debrid">Dịch vụ liên kết</string>
     <string name="compose_settings_page_homescreen">Bố cục Trang chủ</string>

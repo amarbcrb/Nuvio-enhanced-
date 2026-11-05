@@ -117,8 +117,9 @@ private fun watchPartyRow(onClick: () -> Unit): (() -> Unit)? {
 }
 
 private fun SettingsPage.isEnabledByPolicy(): Boolean =
-    when (this) {
-        SettingsPage.SupportersContributors -> AppFeaturePolicy.supportersContributorsPageEnabled
+    when {
+        isRemovedFromApp -> false
+        this == SettingsPage.SupportersContributors -> AppFeaturePolicy.supportersContributorsPageEnabled
         else -> true
     }
 
@@ -805,20 +806,15 @@ private fun MobileSettingsScreen(
                             onNotificationsClick = { onPageChange(SettingsPage.Notifications) },
                             onContentDiscoveryClick = { onPageChange(SettingsPage.ContentDiscovery) },
                             onIntegrationsClick = { onPageChange(SettingsPage.Integrations) },
-                            onTrackingClick = { onPageChange(SettingsPage.TraktAuthentication) },
-                            onSupportersContributorsClick = onSupportersContributorsClick,
                             onLicensesAttributionsClick = onLicensesAttributionsClick,
-                            onWhatsNewClick = onWhatsNewClick,
                             onCheckForUpdatesClick = onCheckForUpdatesClick,
-                            onTestUpdateBannerClick = onTestUpdateBannerClick,
-                            onAccountClick = onAccountClick,
+                            onConfigBackupClick = { onPageChange(SettingsPage.ConfigBackup) },
                             onSwitchProfileClick = if (onSwitchProfile != null) {
                                 { onPageChange(SettingsPage.Profile) }
                             } else {
                                 null
                             },
                             onWatchPartyClick = watchPartyRowClick,
-                            showSupportersContributorsPage = AppFeaturePolicy.supportersContributorsPageEnabled,
                         )
                     }
                 }
@@ -888,6 +884,7 @@ private fun MobileSettingsScreen(
                     selectedNavBarStyle = navBarStyle,
                     onNavBarStyleSelected = onNavBarStyleSelected,
                     onHomescreenClick = onHomescreenClick,
+                    onSearchScreenClick = { onPageChange(SettingsPage.SearchScreen) },
                     onMetaScreenClick = onMetaScreenClick,
                     onStreamsClick = { onPageChange(SettingsPage.Streams) },
                     onCollectionsClick = onCollectionsClick,
@@ -900,6 +897,12 @@ private fun MobileSettingsScreen(
                     onDebugLogsClick = { onPageChange(SettingsPage.DebugLogs) },
                 )
                 SettingsPage.DebugLogs -> debugLogsSettingsContent(
+                    isTablet = false,
+                )
+                SettingsPage.ConfigBackup -> configBackupSettingsContent(
+                    isTablet = false,
+                )
+                SettingsPage.SearchScreen -> searchScreenSettingsContent(
                     isTablet = false,
                 )
                 SettingsPage.Notifications -> notificationsSettingsContent(
@@ -931,7 +934,6 @@ private fun MobileSettingsScreen(
                     onAddonsClick = onAddonsClick,
                     onPluginsClick = onPluginsClick,
                     onCloudStreamClick = onCloudStreamClick,
-                    onMediaServersClick = { onPageChange(SettingsPage.MediaServers) },
                 )
                 SettingsPage.Addons -> addonsSettingsContent()
                 SettingsPage.MediaServers -> mediaServersSettingsContent(
@@ -970,8 +972,6 @@ private fun MobileSettingsScreen(
                     onTmdbClick = { onPageChange(SettingsPage.TmdbEnrichment) },
                     onMdbListClick = { onPageChange(SettingsPage.MdbListRatings) },
                     onOmdbClick = { onPageChange(SettingsPage.Omdb) },
-                    onLiveTvClick = { onPageChange(SettingsPage.LiveTv) },
-                    onDiscordClick = { onPageChange(SettingsPage.DiscordRpc) },
                 )
                 SettingsPage.Debrid -> debridSettingsContent(
                     isTablet = false,
@@ -1308,13 +1308,9 @@ private fun TabletSettingsScreen(
                                 onNotificationsClick = { openInlinePage(SettingsPage.Notifications) },
                                 onContentDiscoveryClick = { openInlinePage(SettingsPage.ContentDiscovery) },
                                 onIntegrationsClick = { openInlinePage(SettingsPage.Integrations) },
-                                onTrackingClick = { openInlinePage(SettingsPage.TraktAuthentication) },
-                                onSupportersContributorsClick = { openInlinePage(SettingsPage.SupportersContributors) },
                                 onLicensesAttributionsClick = { openInlinePage(SettingsPage.LicensesAttributions) },
-                                onWhatsNewClick = { openInlinePage(SettingsPage.WhatsNew) },
                                 onCheckForUpdatesClick = onCheckForUpdatesClick,
-                                onTestUpdateBannerClick = onTestUpdateBannerClick,
-                                onAccountClick = { openInlinePage(SettingsPage.Account) },
+                                onConfigBackupClick = { openInlinePage(SettingsPage.ConfigBackup) },
                                 onSwitchProfileClick = if (onSwitchProfile != null) {
                                     { openInlinePage(SettingsPage.Profile) }
                                 } else {
@@ -1325,7 +1321,6 @@ private fun TabletSettingsScreen(
                                 showGeneralSection = activeCategory == SettingsCategory.General,
                                 showAboutSection = activeCategory == SettingsCategory.About,
                                 showAdvancedSection = activeCategory == SettingsCategory.Advanced,
-                                showSupportersContributorsPage = AppFeaturePolicy.supportersContributorsPageEnabled,
                             )
                         }
                     }
@@ -1394,6 +1389,7 @@ private fun TabletSettingsScreen(
                         selectedNavBarStyle = navBarStyle,
                         onNavBarStyleSelected = onNavBarStyleSelected,
                         onHomescreenClick = { openInlinePage(SettingsPage.Homescreen) },
+                        onSearchScreenClick = { openInlinePage(SettingsPage.SearchScreen) },
                         onMetaScreenClick = { openInlinePage(SettingsPage.MetaScreen) },
                         onStreamsClick = { openInlinePage(SettingsPage.Streams) },
                         onCollectionsClick = onCollectionsClick,
@@ -1406,6 +1402,12 @@ private fun TabletSettingsScreen(
                         onDebugLogsClick = { openInlinePage(SettingsPage.DebugLogs) },
                     )
                     SettingsPage.DebugLogs -> debugLogsSettingsContent(
+                        isTablet = true,
+                    )
+                    SettingsPage.ConfigBackup -> configBackupSettingsContent(
+                        isTablet = true,
+                    )
+                    SettingsPage.SearchScreen -> searchScreenSettingsContent(
                         isTablet = true,
                     )
                     SettingsPage.Notifications -> notificationsSettingsContent(
@@ -1437,7 +1439,6 @@ private fun TabletSettingsScreen(
                         onAddonsClick = { openInlinePage(SettingsPage.Addons) },
                         onPluginsClick = { openInlinePage(SettingsPage.Plugins) },
                         onCloudStreamClick = { openInlinePage(SettingsPage.CloudStream) },
-                        onMediaServersClick = { openInlinePage(SettingsPage.MediaServers) },
                     )
                     SettingsPage.Addons -> addonsSettingsContent()
                     SettingsPage.MediaServers -> mediaServersSettingsContent(
@@ -1476,8 +1477,6 @@ private fun TabletSettingsScreen(
                         onTmdbClick = { onPageChange(SettingsPage.TmdbEnrichment) },
                         onMdbListClick = { onPageChange(SettingsPage.MdbListRatings) },
                         onOmdbClick = { onPageChange(SettingsPage.Omdb) },
-                        onLiveTvClick = { onPageChange(SettingsPage.LiveTv) },
-                        onDiscordClick = { onPageChange(SettingsPage.DiscordRpc) },
                     )
                     SettingsPage.Debrid -> debridSettingsContent(
                         isTablet = true,

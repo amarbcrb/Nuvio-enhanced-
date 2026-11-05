@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_search_screen_title">Écran Recherche</string>
+    <string name="settings_search_screen_description">Choisis ce que la recherche affiche et quelles sources donnent des résultats, comme pour l’accueil.</string>
+    <string name="settings_search_screen_section_display">AFFICHAGE</string>
+    <string name="settings_search_screen_discover">Découvrir</string>
+    <string name="settings_search_screen_discover_description">Parcourir un catalogue sous la barre de recherche quand elle est vide.</string>
+    <string name="settings_search_screen_section_sources">RÉSULTATS DE RECHERCHE</string>
+    <string name="settings_search_screen_sources_hint">Désactive une source pour masquer ses résultats. Les flèches règlent l’ordre des lignes.</string>
+    <string name="settings_search_screen_no_sources">Aucun addon ni extension installé ne permet encore de chercher.</string>
+    <string name="settings_search_screen_move_up">Monter</string>
+    <string name="settings_search_screen_move_down">Descendre</string>
+</resources>

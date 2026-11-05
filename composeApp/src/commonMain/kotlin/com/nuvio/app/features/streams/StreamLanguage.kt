@@ -2,6 +2,7 @@ package com.nuvio.app.features.streams
 
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -325,14 +326,30 @@ fun CloudStreamPluginItem.isAllowedByLanguagePreferences(): Boolean {
     return language in allowed || language == "multi" || language == "mul"
 }
 
-/** CloudStream provider language by stream group id, for streams that do not name their language. */
-internal fun cloudStreamProviderLanguages(): Map<String, String> =
-    CloudStreamRepository.uiState.value.plugins
+private class ProviderLanguagesCache(
+    val plugins: List<CloudStreamPluginItem>,
+    val languages: Map<String, String>,
+)
+
+@Volatile
+private var providerLanguagesCache: ProviderLanguagesCache? = null
+
+/**
+ * CloudStream provider language by stream group id, for streams that do not name their language.
+ * Every link card asks for it, so the map is rebuilt only when the extension list changes.
+ */
+internal fun cloudStreamProviderLanguages(): Map<String, String> {
+    val plugins = CloudStreamRepository.uiState.value.plugins
+    providerLanguagesCache?.takeIf { it.plugins === plugins }?.let { return it.languages }
+    val languages = plugins
         .mapNotNull { plugin ->
             plugin.metadata.language?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
                 ?.let { cloudStreamAddonId(plugin.metadata.id.value) to it }
         }
         .toMap()
+    providerLanguagesCache = ProviderLanguagesCache(plugins, languages)
+    return languages
+}
 
 internal fun StreamLanguageInfo.matches(preferences: StreamLanguagePreferences): Boolean {
     val languages = preferences.linkLanguages

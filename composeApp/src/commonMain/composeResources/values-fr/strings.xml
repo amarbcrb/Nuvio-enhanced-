@@ -410,7 +410,7 @@
     <string name="compose_settings_page_addons">Addons</string>
     <string name="compose_settings_page_advanced">Avancé</string>
     <string name="compose_settings_page_appearance">Apparence</string>
-    <string name="compose_settings_page_content_discovery">Contenu et découverte</string>
+    <string name="compose_settings_page_content_discovery">Extension</string>
     <string name="compose_settings_page_continue_watching">Continuer à regarder</string>
     <string name="compose_settings_page_debrid">Services connectés</string>
     <string name="compose_settings_page_homescreen">Écran d’accueil</string>

@@ -832,6 +832,17 @@ internal fun StreamList(
     val pinnedFirst = remember(filteredGroups, pinnedSourceIds, dubMode) {
         splitPinnedSources(filteredGroups.sortedByDubPreference(), pinnedSourceIds)
     }
+    // Sources of each section, grouped and sorted once per change of the results instead of on
+    // every pass of the list builder: the language detection behind the dubbed-first order reads
+    // every link, and doing it while addons were still answering made the screen stutter.
+    val sectionSources = remember(pinnedFirst, dubMode) {
+        val dubFirst = dubMode != StreamDubMode.Any
+        val providerLanguages = if (dubFirst) cloudStreamProviderLanguages() else emptyMap()
+        StreamSectionSources(
+            pinned = pinnedFirst.pinnedGroups.map { it.sourcesForDisplay(dubFirst, providerLanguages) },
+            remaining = pinnedFirst.remainingGroups.map { it.sourcesForDisplay(dubFirst, providerLanguages) },
+        )
+    }
 
     CompositionLocalProvider(LocalStreamSizeLabelFormat provides formatStreamSize) {
     LazyColumn(
@@ -896,6 +907,7 @@ internal fun StreamList(
                     streamSection(
                         sectionKey = "pinned:" + streamSectionRenderKey(groupIndex = pinnedIndex, group = group),
                         group = group,
+                        sources = sectionSources.pinned.getOrElse(pinnedIndex) { group.sourcesForDisplay(false, emptyMap()) },
                         showHeader = true,
                         debridEnabled = debridEnabled,
                         appendInstantServiceToDefaultName = appendInstantServiceToDefaultName,
@@ -914,6 +926,7 @@ internal fun StreamList(
                     streamSection(
                         sectionKey = streamSectionRenderKey(groupIndex = groupIndex, group = group),
                         group = group,
+                        sources = sectionSources.remaining.getOrElse(groupIndex) { group.sourcesForDisplay(false, emptyMap()) },
                         showHeader = uiState.selectedFilter == null,
                         debridEnabled = debridEnabled,
                         appendInstantServiceToDefaultName = appendInstantServiceToDefaultName,
@@ -942,9 +955,37 @@ internal fun StreamList(
     }
 }
 
+/** Links of a section by source name, in display order. */
+private class StreamSectionSources(
+    val pinned: List<List<Pair<String, List<StreamItem>>>>,
+    val remaining: List<List<Pair<String, List<StreamItem>>>>,
+)
+
+/**
+ * Links of [this] by source name; with [dubFirst], sources with a dubbed or multi-language link
+ * come first. Each source is ranked once (the comparator used to rank it on every comparison).
+ */
+private fun AddonStreamGroup.sourcesForDisplay(
+    dubFirst: Boolean,
+    providerLanguages: Map<String, String>,
+): List<Pair<String, List<StreamItem>>> {
+    val streamsBySource = streams.groupBy { stream ->
+        stream.sourceName?.takeIf { it.isNotBlank() } ?: stream.addonName
+    }
+    val rankBySource = if (dubFirst) {
+        streamsBySource.mapValues { (_, sourceStreams) -> sourceStreams.bestDubRank(providerLanguages) }
+    } else {
+        emptyMap()
+    }
+    return streamsBySource.keys
+        .sortedWith(compareBy<String> { source -> rankBySource[source] ?: 0 }.thenBy { it.lowercase() })
+        .map { source -> source to streamsBySource.getValue(source) }
+}
+
 private fun LazyListScope.streamSection(
     sectionKey: String,
     group: AddonStreamGroup,
+    sources: List<Pair<String, List<StreamItem>>>,
     showHeader: Boolean,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
@@ -969,20 +1010,9 @@ private fun LazyListScope.streamSection(
         }
     }
 
-    val streamsBySource = group.streams.groupBy { stream ->
-        stream.sourceName?.takeIf { it.isNotBlank() } ?: stream.addonName
-    }
-    val dubFirst = StreamLanguagePreferencesRepository.snapshot().dubMode != StreamDubMode.Any
-    val providerLanguages = if (dubFirst) cloudStreamProviderLanguages() else emptyMap()
-    val sortedSources = streamsBySource.keys.sortedWith(
-        compareBy<String> { source ->
-            if (dubFirst) streamsBySource.getValue(source).bestDubRank(providerLanguages) else 0
-        }.thenBy { it.lowercase() },
-    )
-    val showSourceHeaders = sortedSources.size > 1
+    val showSourceHeaders = sources.size > 1
 
-    sortedSources.forEachIndexed { sourceIndex, sourceName ->
-        val sourceStreams = streamsBySource[sourceName].orEmpty()
+    sources.forEachIndexed { sourceIndex, (sourceName, sourceStreams) ->
         // A source with a single link needs no header: its card already shows the name. The
         // favorite star is only on the group header, for the whole source.
         if (showSourceHeaders && sourceStreams.size > 1) {

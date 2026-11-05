@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_search_screen_title">Search screen</string>
+    <string name="settings_search_screen_description">Choose what the search screen shows and which sources give results, like the home screen.</string>
+    <string name="settings_search_screen_section_display">DISPLAY</string>
+    <string name="settings_search_screen_discover">Discover</string>
+    <string name="settings_search_screen_discover_description">Browse a catalog under the search bar while it is empty.</string>
+    <string name="settings_search_screen_section_sources">SEARCH RESULTS</string>
+    <string name="settings_search_screen_sources_hint">Turn off a source to hide its results. Arrows set the order of the rows.</string>
+    <string name="settings_search_screen_no_sources">No installed addon or extension can search yet.</string>
+    <string name="settings_search_screen_move_up">Move up</string>
+    <string name="settings_search_screen_move_down">Move down</string>
+</resources>

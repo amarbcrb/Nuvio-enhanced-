@@ -1,0 +1,22 @@
+<resources>
+    <string name="settings_backup_section_title">Sauvegarde et restauration</string>
+    <string name="settings_backup_root_description">Exporte ou importe addons, extensions, affiches, langues et réglages dans un seul fichier</string>
+    <string name="settings_backup_section">SAUVEGARDE</string>
+    <string name="settings_backup_include_sensitive">Inclure les infos sensibles</string>
+    <string name="settings_backup_include_sensitive_description">Ajoute les clés API, les clés debrid et l’ID d’application Discord au fichier. Garde ce fichier pour toi</string>
+    <string name="settings_backup_export">Exporter la configuration</string>
+    <string name="settings_backup_export_description">Enregistre les addons, extensions, plugins, collections, affiches, langues, l’écran Recherche et tous les réglages dans un fichier. Les liens d’addons peuvent contenir des clés personnelles : garde le fichier pour toi</string>
+    <string name="settings_backup_export_done">Configuration exportée</string>
+    <string name="settings_backup_export_failed">Impossible d’exporter la configuration</string>
+    <string name="settings_backup_import">Importer une configuration</string>
+    <string name="settings_backup_import_description">Restaure les addons, extensions et réglages depuis un fichier exporté</string>
+    <string name="settings_backup_importing">Import en cours…</string>
+    <string name="settings_backup_import_confirm_title">Importer la configuration ?</string>
+    <string name="settings_backup_import_confirm_message">Les réglages du fichier remplacent ceux de ce profil. Les addons, extensions, plugins et collections absents sont ajoutés. Tes clés API ne changent pas.</string>
+    <string name="settings_backup_import_confirm_message_sensitive">Les réglages du fichier remplacent ceux de ce profil, clés API et clés debrid comprises. Les addons, extensions, plugins, collections et sources Live TV absents sont ajoutés.</string>
+    <string name="settings_backup_import_confirm_action">Importer</string>
+    <string name="settings_backup_import_done">Configuration importée</string>
+    <string name="settings_backup_import_partial">Configuration importée, mais certaines parties n’ont pas pu être appliquées</string>
+    <string name="settings_backup_import_failed">Impossible d’importer la configuration</string>
+    <string name="settings_backup_import_invalid">Ce fichier n’est pas une configuration Nuvio</string>
+</resources>
