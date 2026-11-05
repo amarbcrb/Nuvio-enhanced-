@@ -62,7 +62,7 @@ val isProEdition = nuvioEdition == "pro"
 if (isProEdition) {
     val licenceXml = file("src/pro/res/values/licence.xml").readText()
     val publicKey = Regex("""name="licence_public_key"[^>]*>([^<]*)<""")
-        .find(licenceXml)?.groupValues?.get(1)?.trim().orEmpty()
+        .find(licenceXml)?.groupValues?.get(1)?.replace(Regex("\\s+"), "").orEmpty()
     val decoded = runCatching { Base64.getDecoder().decode(publicKey) }.getOrNull()
     require(decoded != null && decoded.size == 91) {
         "Nuvio Pro: paste the public key from the licence generator into " +

@@ -34,7 +34,7 @@ internal class LicenceConfig(
             val res = context.resources
             return LicenceConfig(
                 required = res.getBoolean(R.bool.licence_required),
-                publicKeyBase64 = res.getString(R.string.licence_public_key).trim(),
+                publicKeyBase64 = res.getString(R.string.licence_public_key).replace(Regex("\\s+"), ""),
                 blocklistUrl = res.getString(R.string.licence_blocklist_url).trim(),
             )
         }

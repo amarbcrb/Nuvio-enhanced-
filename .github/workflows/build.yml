@@ -58,6 +58,29 @@ jobs:
           rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
           cargo install cargo-ndk --locked
 
+      # Nuvio Pro is built only once the public key from the licence generator is in
+      # androidApp/src/pro/res/values/licence.xml. A key that is not a valid P-256 public key
+      # (a character changed while copying) stops the build here, before anything is published.
+      - name: Check Nuvio Pro licence key
+        id: pro
+        run: |
+          file=androidApp/src/pro/res/values/licence.xml
+          key=$(tr -d '\r\n' < "$file" | sed -n 's/.*name="licence_public_key"[^>]*>\([^<]*\)<.*/\1/p' | tr -d '[:space:]')
+          if [ -z "$key" ] || [ "$key" = "COLLE_ICI_TA_CLE_PUBLIQUE" ]; then
+            echo "::warning::Nuvio Pro not built: paste the public key from the licence generator into $file"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          elif printf '%s' "$key" | base64 -d 2>/dev/null | openssl pkey -pubin -inform DER -noout 2>/dev/null; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            if [ "${#key}" -ne 124 ]; then
+              why="${#key} caractères au lieu de 124"
+            else
+              why="la longueur est bonne mais au moins un caractère a changé"
+            fi
+            echo "::error file=$file::La clé publique n'est pas valable ($why). Recopie-la avec le bouton Copier du générateur, sans capture d'écran ni retape."
+            exit 1
+          fi
+
       # Version.xcconfig 0.6.4 (code 147) + run 12 -> version 0.6.16, version code 159.
       # Always above the 0.6.4 / 147 builds published before this workflow existed.
       - name: Compute version
@@ -80,18 +103,6 @@ jobs:
             -Pnuvio.app.versionCode=${{ steps.version.outputs.code }} \
             --stacktrace
           cp androidApp/build/outputs/apk/full/debug/androidApp-full-debug.apk NuvioPlus.apk
-
-      # Built only once the public key from the licence generator is in
-      # androidApp/src/pro/res/values/licence.xml.
-      - name: Check Nuvio Pro licence key
-        id: pro
-        run: |
-          if grep -q 'COLLE_ICI_TA_CLE_PUBLIQUE' androidApp/src/pro/res/values/licence.xml; then
-            echo "::warning::Nuvio Pro not built: paste the public key from the licence generator into androidApp/src/pro/res/values/licence.xml"
-            echo "build=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "build=true" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Build Nuvio Pro
         if: steps.pro.outputs.build == 'true'
