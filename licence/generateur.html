@@ -1,285 +1,252 @@
 <title>Générateur de licences</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-/* Layout: one narrow column of frosted-glass panels floating over a slowly drifting colour field. */
+/* Layout: iOS-style page — big bold titles, rounded cards on a true black (dark) or grouped grey (light)
+   ground, colour-coded glyphs, and a floating liquid-glass tab bar. */
 :root {
-  --bg: #e9eef6;
-  --blob-1: #7cc8ff;
-  --blob-2: #c6a6ff;
-  --blob-3: #7ff0d0;
-  --glass: rgba(255, 255, 255, 0.52);
-  --glass-strong: rgba(255, 255, 255, 0.72);
-  --glass-edge: rgba(255, 255, 255, 0.85);
-  --glass-shade: rgba(31, 45, 80, 0.10);
-  --sheen: rgba(255, 255, 255, 0.75);
-  --fg: #142033;
-  --muted: #55627a;
-  --line: rgba(20, 32, 51, 0.10);
-  --accent: #0a84ff;
-  --accent-2: #30c7c0;
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --card-2: #f2f2f7;
+  --fg: #000000;
+  --muted: #6c6c70;
+  --line: rgba(60, 60, 67, 0.16);
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-edge: rgba(255, 255, 255, 0.9);
+  --glass-shade: rgba(0, 0, 0, 0.14);
+  --sheen: rgba(255, 255, 255, 0.95);
+  --blue: #007aff;
+  --teal: #30b0c7;
+  --orange: #ff9500;
+  --red: #ff3b30;
+  --green: #34c759;
+  --purple: #af52de;
   --accent-fg: #ffffff;
-  --accent-soft: rgba(10, 132, 255, 0.12);
-  --accent-text: #0a6fd6;
-  --ok: #138a5a;
-  --ok-soft: rgba(19, 138, 90, 0.14);
-  --warn: #9a5b00;
-  --warn-soft: rgba(255, 170, 40, 0.20);
-  --danger: #c4312a;
-  --danger-soft: rgba(230, 70, 60, 0.14);
-  --font-display: "Outfit", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --radius: 22px;
+  --blue-soft: rgba(0, 122, 255, 0.10);
+  --green-soft: rgba(52, 199, 89, 0.14);
+  --orange-soft: rgba(255, 149, 0, 0.16);
+  --red-soft: rgba(255, 59, 48, 0.12);
+  --hero-a: rgba(0, 122, 255, 0.10);
+  --hero-b: rgba(48, 176, 199, 0.08);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, "Roboto Mono", monospace;
+  --radius: 28px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #070b14; --blob-1: #1f6fff; --blob-2: #8a3cff; --blob-3: #00b89c;
-    --glass: rgba(255, 255, 255, 0.08); --glass-strong: rgba(255, 255, 255, 0.13);
-    --glass-edge: rgba(255, 255, 255, 0.16); --glass-shade: rgba(0, 0, 0, 0.45); --sheen: rgba(255, 255, 255, 0.14);
-    --fg: #eef3fb; --muted: #9aa7bd; --line: rgba(255, 255, 255, 0.10);
-    --accent: #3d9bff; --accent-2: #2fd6c6; --accent-fg: #ffffff; --accent-soft: rgba(61, 155, 255, 0.18); --accent-text: #a9d4ff;
-    --ok: #4fdc9e; --ok-soft: rgba(79, 220, 158, 0.14); --warn: #ffc65c; --warn-soft: rgba(255, 198, 92, 0.14);
-    --danger: #ff8a80; --danger-soft: rgba(255, 138, 128, 0.14);
+    --bg: #000000; --card: #1c1c1e; --card-2: #2c2c2e; --fg: #ffffff; --muted: #98989f; --line: rgba(84, 84, 88, 0.55);
+    --glass: rgba(40, 40, 44, 0.55); --glass-edge: rgba(255, 255, 255, 0.14); --glass-shade: rgba(0, 0, 0, 0.6); --sheen: rgba(255, 255, 255, 0.18);
+    --blue: #0a84ff; --teal: #40c8e0; --orange: #ff9f0a; --red: #ff453a; --green: #30d158; --purple: #bf5af2;
+    --blue-soft: rgba(10, 132, 255, 0.18); --green-soft: rgba(48, 209, 88, 0.16); --orange-soft: rgba(255, 159, 10, 0.16); --red-soft: rgba(255, 69, 58, 0.16);
+    --hero-a: rgba(10, 132, 255, 0.22); --hero-b: rgba(64, 200, 224, 0.10);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #070b14; --blob-1: #1f6fff; --blob-2: #8a3cff; --blob-3: #00b89c;
-  --glass: rgba(255, 255, 255, 0.08); --glass-strong: rgba(255, 255, 255, 0.13);
-  --glass-edge: rgba(255, 255, 255, 0.16); --glass-shade: rgba(0, 0, 0, 0.45); --sheen: rgba(255, 255, 255, 0.14);
-  --fg: #eef3fb; --muted: #9aa7bd; --line: rgba(255, 255, 255, 0.10);
-  --accent: #3d9bff; --accent-2: #2fd6c6; --accent-fg: #ffffff; --accent-soft: rgba(61, 155, 255, 0.18); --accent-text: #a9d4ff;
-  --ok: #4fdc9e; --ok-soft: rgba(79, 220, 158, 0.14); --warn: #ffc65c; --warn-soft: rgba(255, 198, 92, 0.14);
-  --danger: #ff8a80; --danger-soft: rgba(255, 138, 128, 0.14);
+  --bg: #000000; --card: #1c1c1e; --card-2: #2c2c2e; --fg: #ffffff; --muted: #98989f; --line: rgba(84, 84, 88, 0.55);
+  --glass: rgba(40, 40, 44, 0.55); --glass-edge: rgba(255, 255, 255, 0.14); --glass-shade: rgba(0, 0, 0, 0.6); --sheen: rgba(255, 255, 255, 0.18);
+  --blue: #0a84ff; --teal: #40c8e0; --orange: #ff9f0a; --red: #ff453a; --green: #30d158; --purple: #bf5af2;
+  --blue-soft: rgba(10, 132, 255, 0.18); --green-soft: rgba(48, 209, 88, 0.16); --orange-soft: rgba(255, 159, 10, 0.16); --red-soft: rgba(255, 69, 58, 0.16);
+  --hero-a: rgba(10, 132, 255, 0.22); --hero-b: rgba(64, 200, 224, 0.10);
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { background: var(--bg); }
+html { background: var(--bg); scroll-behavior: smooth; }
 body {
   background: var(--bg); color: var(--fg);
-  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  font-family: var(--font); font-size: 17px; line-height: 1.45; -webkit-font-smoothing: antialiased;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 28px 56px;
-  min-height: 100%;
-  position: relative; overflow-x: hidden;
-  transition: background-color 400ms ease, color 400ms ease;
+  padding-block: 20px calc(120px + env(safe-area-inset-bottom, 0px));
+  transition: background-color 350ms ease, color 350ms ease;
 }
-
-/* Colour field behind the glass */
-.field { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.field i {
-  position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%;
-  filter: blur(70px); opacity: 0.55; mix-blend-mode: normal;
-  transition: background-color 600ms ease;
+/* A soft blue glow behind the header, like light through a lens */
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: 360px; pointer-events: none; z-index: 0;
+  background: radial-gradient(70% 100% at 20% 0%, var(--hero-a), transparent 70%), radial-gradient(60% 90% at 90% 10%, var(--hero-b), transparent 70%);
 }
-.field i:nth-child(1) { background: var(--blob-1); top: -22vmax; left: -18vmax; }
-.field i:nth-child(2) { background: var(--blob-2); top: 18vmax; right: -24vmax; }
-.field i:nth-child(3) { background: var(--blob-3); bottom: -28vmax; left: 6vmax; }
-@media (prefers-reduced-motion: no-preference) {
-  .field i:nth-child(1) { animation: drift1 26s ease-in-out infinite alternate; }
-  .field i:nth-child(2) { animation: drift2 32s ease-in-out infinite alternate; }
-  .field i:nth-child(3) { animation: drift3 29s ease-in-out infinite alternate; }
-  @keyframes drift1 { to { transform: translate(14vmax, 10vmax) scale(1.12); } }
-  @keyframes drift2 { to { transform: translate(-12vmax, 8vmax) scale(0.9); } }
-  @keyframes drift3 { to { transform: translate(10vmax, -12vmax) scale(1.08); } }
-}
-
-main { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
-h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.12; letter-spacing: -0.01em; }
-h1 { font-size: clamp(1.8rem, 5vw, 2.3rem); font-weight: 700; }
-h2 { font-size: 1.22rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+main { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -0.025em; }
+h1 { font-size: clamp(2rem, 8vw, 2.5rem); font-weight: 800; line-height: 1.05; }
+h2 { font-size: 1.45rem; font-weight: 800; line-height: 1.15; display: flex; align-items: center; gap: 10px; }
 p { margin: 0; }
 .lead { color: var(--muted); max-width: 60ch; }
 
-/* Icons */
-.ico { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ico-badge {
-  width: 38px; height: 38px; border-radius: 12px; display: inline-grid; place-items: center; flex: none;
-  color: var(--accent-fg);
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 6px 16px -6px var(--accent), inset 0 1px 0 rgba(255,255,255,0.45);
+/* Glyphs */
+.ico { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+h2 .ico-badge { display: inline-grid; place-items: center; color: var(--tint, var(--blue)); }
+h2 .ico-badge .ico { width: 26px; height: 26px; stroke-width: 2; }
+.t-blue { --tint: var(--blue); } .t-teal { --tint: var(--teal); } .t-orange { --tint: var(--orange); }
+.t-red { --tint: var(--red); } .t-green { --tint: var(--green); } .t-purple { --tint: var(--purple); }
+
+/* Liquid glass: blur + saturation, a bright top edge and a soft lower shade */
+.glass, .tabbar, .fab, .theme-pill {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 18px 40px -16px var(--glass-shade), inset 0 1px 0 var(--sheen), inset 0 -1px 0 rgba(0,0,0,0.12);
 }
-.ico-badge .ico { width: 20px; height: 20px; }
 
 /* Header */
-header { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; }
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .title { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-text); font-weight: 700; }
-.logo {
-  width: 54px; height: 54px; border-radius: 17px; display: grid; place-items: center; color: var(--accent-fg);
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 12px 28px -10px var(--accent), inset 0 1px 0 rgba(255,255,255,0.5);
-  flex: none;
-}
-.logo .ico { width: 28px; height: 28px; stroke-width: 2; }
-@media (prefers-reduced-motion: no-preference) {
-  .logo .ico { animation: turn 5s ease-in-out infinite; transform-origin: 50% 50%; }
-  @keyframes turn { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-18deg); } 88% { transform: rotate(10deg); } }
-}
-
-/* Glass surfaces */
-.glass, .panel, .theme-toggle, input[type="text"], input[type="date"], select, textarea, button.secondary, .btn.secondary {
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  backdrop-filter: blur(22px) saturate(180%);
-  border: 1px solid var(--glass-edge);
-}
-.panel {
-  position: relative; border-radius: var(--radius); padding: 20px;
-  display: flex; flex-direction: column; gap: 14px;
-  box-shadow: 0 18px 40px -18px var(--glass-shade), inset 0 1px 0 var(--sheen);
-  isolation: isolate;
-}
-.panel::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
-  background: linear-gradient(160deg, var(--sheen) 0%, transparent 38%);
-  opacity: 0.55;
-}
-section { display: flex; flex-direction: column; gap: 16px; }
-@media (prefers-reduced-motion: no-preference) {
-  section:not([hidden]) > .panel, section:not([hidden]) > .group, .result:not([hidden]) {
-    animation: rise 520ms cubic-bezier(.2, .8, .2, 1) both;
-  }
-  section > :nth-child(2) { animation-delay: 70ms; }
-  section > :nth-child(3) { animation-delay: 140ms; }
-  section > :nth-child(4) { animation-delay: 210ms; }
-  @keyframes rise { from { opacity: 0.001; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
-}
-
-/* Theme toggle */
+.eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 0.8rem; font-weight: 700; color: var(--blue); }
+.eyebrow .ico { width: 16px; height: 16px; }
+.theme-pill { display: inline-flex; border-radius: 999px; padding: 4px; flex: none; }
 .theme-toggle {
-  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px;
-  color: var(--fg); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
-  box-shadow: 0 8px 20px -12px var(--glass-shade), inset 0 1px 0 var(--sheen);
+  width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: transparent; border: 0; color: var(--fg); padding: 0;
 }
-.theme-toggle .ico { width: 18px; height: 18px; }
+.theme-toggle .ico { width: 24px; height: 24px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
-  .theme-toggle .ico { transition: transform 500ms cubic-bezier(.2,.8,.2,1); }
-  .theme-toggle:active .ico { transform: rotate(180deg) scale(0.8); }
+  .theme-toggle .ico { transition: transform 500ms cubic-bezier(.2,.9,.2,1); }
+  .theme-toggle:active .ico { transform: rotate(120deg) scale(0.85); }
+}
+
+/* Cards */
+.panel {
+  background: var(--card); border-radius: var(--radius); padding: 22px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+section { display: flex; flex-direction: column; gap: 18px; }
+.section-head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
+.section-head .count { color: var(--muted); font-weight: 700; font-size: 1.05rem; }
+@media (prefers-reduced-motion: no-preference) {
+  section:not([hidden]) > .panel, section:not([hidden]) > .block, .result:not([hidden]) { animation: rise 520ms cubic-bezier(.2, .8, .2, 1) both; }
+  section > :nth-child(2) { animation-delay: 60ms; } section > :nth-child(3) { animation-delay: 120ms; } section > :nth-child(4) { animation-delay: 180ms; }
+  @keyframes rise { from { opacity: 0.001; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 }
 
 /* Forms */
-label { font-weight: 600; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
-.label-row { display: inline-flex; align-items: center; gap: 6px; }
-.label-row .ico { width: 16px; height: 16px; color: var(--accent); }
-.hint { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+label { font-weight: 600; font-size: 0.95rem; display: flex; flex-direction: column; gap: 7px; }
+.label-row { display: inline-flex; align-items: center; gap: 7px; }
+.label-row .ico { width: 18px; height: 18px; color: var(--tint, var(--blue)); }
+.hint { font-weight: 400; color: var(--muted); font-size: 0.86rem; }
 input[type="text"], input[type="date"], select, textarea {
-  font: inherit; color: var(--fg); border-radius: 14px; padding: 11px 13px; width: 100%;
-  background: var(--glass-strong);
-  box-shadow: inset 0 1px 2px var(--glass-shade);
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  font: inherit; font-size: 1rem; color: var(--fg); background: var(--card-2);
+  border: 1px solid transparent; border-radius: 14px; padding: 13px 14px; width: 100%;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-textarea { font-family: var(--font-mono); font-size: 0.88rem; resize: vertical; min-height: 80px; }
-#device { font-family: var(--font-mono); font-size: 1.3rem; letter-spacing: 0.12em; text-transform: uppercase; }
-button:focus-visible, a:focus-visible, summary:focus-visible, .theme-toggle:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 4px var(--blue-soft); }
+textarea { font-family: var(--mono); font-size: 0.9rem; resize: vertical; min-height: 84px; }
+#device { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .row > * { flex: 1 1 160px; min-width: 0; }
 
 /* Buttons */
 button, .btn {
-  font: inherit; font-weight: 700; border-radius: 14px; padding: 12px 18px; cursor: pointer;
-  border: 1px solid transparent; color: var(--accent-fg);
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 10px 22px -12px var(--accent), inset 0 1px 0 rgba(255,255,255,0.4);
+  font: inherit; font-size: 1rem; font-weight: 700; border-radius: 16px; padding: 14px 18px; cursor: pointer;
+  border: 0; color: var(--accent-fg); background: var(--blue);
   text-decoration: none; text-align: center;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  position: relative; overflow: hidden;
-  transition: transform 160ms ease, box-shadow 200ms ease, filter 200ms ease;
+  transition: transform 140ms ease, filter 180ms ease, background-color 180ms ease;
 }
-button::after, .btn::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
-  transform: translateX(-120%);
-}
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  button:not(:disabled):hover, .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
-  button:not(:disabled):hover::after, .btn:hover::after { transform: translateX(120%); transition: transform 700ms ease; }
-  button:not(:disabled):hover .ico, .btn:hover .ico { animation: nudge 600ms ease; }
-  @keyframes nudge { 30% { transform: translateY(-2px) rotate(-8deg); } 60% { transform: translateY(1px) rotate(4deg); } }
-}
+@media (hover: hover) { button:not(:disabled):hover, .btn:hover { filter: brightness(1.08); } }
 button:not(:disabled):active, .btn:active { transform: scale(0.97); }
-button.secondary, .btn.secondary { color: var(--accent-text); background: var(--glass-strong); box-shadow: 0 8px 18px -14px var(--glass-shade), inset 0 1px 0 var(--sheen); }
-button.danger { background: var(--danger-soft); color: var(--danger); border-color: transparent; box-shadow: none; }
-button.small { padding: 7px 11px; font-size: 0.82rem; border-radius: 11px; gap: 6px; }
-button.small .ico { width: 16px; height: 16px; }
-button:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):active .ico, .btn:active .ico { animation: nudge 450ms ease; }
+  @keyframes nudge { 40% { transform: rotate(-10deg) scale(1.15); } }
+}
+button.secondary, .btn.secondary { background: var(--blue-soft); color: var(--blue); }
+button.danger { background: var(--red-soft); color: var(--red); }
+button.small { padding: 8px 12px; font-size: 0.85rem; border-radius: 12px; gap: 6px; }
+button.small .ico { width: 17px; height: 17px; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Keys */
-.field-title { font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; }
-.field-title .ico { width: 18px; height: 18px; color: var(--accent); }
+.field-title { font-weight: 700; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px; }
+.field-title .ico { width: 19px; height: 19px; color: var(--tint, var(--blue)); }
 .keybox {
-  font-family: var(--font-mono); font-size: 0.92rem; line-height: 1.65; letter-spacing: 0.05em;
-  color: var(--fg); border-radius: 14px; padding: 14px; overflow-wrap: anywhere; user-select: all;
-  background: var(--accent-soft); border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+  font-family: var(--mono); font-size: 0.92rem; font-weight: 500; line-height: 1.7; letter-spacing: 0.05em;
+  color: var(--fg); background: var(--card-2); border-radius: 16px; padding: 15px; overflow-wrap: anywhere; user-select: all;
 }
-.result { border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-edge)); }
-.result h2 .ico-badge { background: linear-gradient(135deg, var(--ok), var(--accent-2)); }
-@media (prefers-reduced-motion: no-preference) {
-  .result:not([hidden]) .ico-badge { animation: pop 600ms cubic-bezier(.2, 1.6, .4, 1) both 120ms; }
-  .result:not([hidden]) .keybox { animation: shine 1400ms ease both 200ms; background-size: 220% 100%;
-    background-image: linear-gradient(100deg, transparent 35%, color-mix(in srgb, var(--accent) 22%, transparent) 50%, transparent 65%); }
-  @keyframes pop { from { transform: scale(0.4) rotate(-20deg); opacity: 0; } to { transform: none; opacity: 1; } }
-  @keyframes shine { from { background-position: 120% 0; } to { background-position: -20% 0; } }
-}
-.result-meta { display: flex; gap: 6px 16px; flex-wrap: wrap; color: var(--muted); font-size: 0.9rem; }
+.result { box-shadow: inset 0 0 0 2px var(--green); }
+.result-meta { display: flex; gap: 4px 16px; flex-wrap: wrap; color: var(--muted); font-size: 0.92rem; }
 .result-meta strong { color: var(--fg); }
+@media (prefers-reduced-motion: no-preference) {
+  .result:not([hidden]) h2 .ico-badge { animation: pop 600ms cubic-bezier(.2, 1.7, .4, 1) both 120ms; }
+  @keyframes pop { from { transform: scale(0.3) rotate(-25deg); opacity: 0; } to { transform: none; opacity: 1; } }
+}
 
 /* Messages */
-.msg { font-size: 0.9rem; border-radius: 14px; padding: 11px 13px; display: flex; gap: 8px; align-items: flex-start; }
-.msg.error { background: var(--danger-soft); color: var(--danger); }
-.msg.warn { background: var(--warn-soft); color: var(--warn); }
+.msg { font-size: 0.92rem; border-radius: 16px; padding: 12px 14px; display: flex; gap: 9px; align-items: flex-start; }
+.msg .ico { width: 19px; height: 19px; }
+.msg.error { background: var(--red-soft); color: var(--red); }
+.msg.warn { background: var(--orange-soft); color: var(--orange); }
 .check { flex-direction: row; align-items: flex-start; gap: 10px; font-weight: 600; }
-.check input { margin-top: 3px; width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
+.check input { margin-top: 2px; width: 22px; height: 22px; flex: none; accent-color: var(--blue); }
 
 /* Clients */
-.group { gap: 6px; }
 .ledger { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.ledger li { display: flex; flex-wrap: wrap; gap: 10px 12px; padding: 12px 0; border-top: 1px solid var(--line); align-items: center; }
-.ledger li:first-child { border-top: 0; }
+.ledger li { display: flex; flex-wrap: wrap; gap: 10px 12px; padding: 14px 0; border-top: 1px solid var(--line); align-items: center; }
+.ledger li:first-child { border-top: 0; padding-top: 0; }
+.ledger li:last-child { padding-bottom: 0; }
 .avatar {
-  width: 40px; height: 40px; border-radius: 13px; flex: none; display: grid; place-items: center;
-  font-family: var(--font-display); font-weight: 700; color: var(--accent-fg);
-  background: linear-gradient(135deg, var(--blob-2), var(--accent));
+  width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-weight: 800; font-size: 1.05rem; color: #fff;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
 }
-.who { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.who { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .who .name { font-weight: 700; overflow-wrap: anywhere; }
-.who .code { font-family: var(--font-mono); font-size: 0.82rem; color: var(--muted); }
-.who .until { font-size: 0.84rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.who .code { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+.who .until { font-size: 0.86rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.pill { font-size: 0.74rem; font-weight: 700; border-radius: 999px; padding: 4px 10px; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.pill { font-size: 0.76rem; font-weight: 700; border-radius: 999px; padding: 5px 10px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.pill.ok { background: var(--ok-soft); color: var(--ok); }
-.pill.warn { background: var(--warn-soft); color: var(--warn); }
-.pill.off { background: var(--danger-soft); color: var(--danger); }
+.pill.ok { background: var(--green-soft); color: var(--green); }
+.pill.warn { background: var(--orange-soft); color: var(--orange); }
+.pill.off { background: var(--red-soft); color: var(--red); }
 @media (prefers-reduced-motion: no-preference) {
   .pill.ok::before { animation: beat 2.4s ease-in-out infinite; }
-  @keyframes beat { 50% { box-shadow: 0 0 0 5px transparent, 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); } }
+  @keyframes beat { 50% { opacity: 0.35; } }
 }
-.empty { color: var(--muted); font-size: 0.95rem; display: flex; gap: 10px; align-items: flex-start; }
-.empty .ico { color: var(--accent); margin-top: 2px; }
+.empty { color: var(--muted); display: flex; gap: 10px; align-items: flex-start; }
+.empty .ico { color: var(--teal); }
 
 /* Settings */
 details.panel { padding: 0; }
-summary {
-  cursor: pointer; list-style: none; padding: 18px 20px; display: flex; align-items: center; gap: 10px;
-  font-family: var(--font-display); font-weight: 600; font-size: 1.12rem;
-}
+summary { cursor: pointer; list-style: none; padding: 20px 22px; display: flex; align-items: center; gap: 10px; font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
 summary::-webkit-details-marker { display: none; }
-summary .chev { margin-left: auto; transition: transform 300ms ease; }
+summary .chev { margin-left: auto; color: var(--muted); transition: transform 300ms ease; }
 details[open] summary .chev { transform: rotate(180deg); }
-.settings { display: flex; flex-direction: column; gap: 16px; padding: 0 20px 20px; }
+.settings { display: flex; flex-direction: column; gap: 16px; padding: 0 22px 22px; }
 .sub { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
 
+/* Floating tab bar */
+.dock {
+  position: fixed; z-index: 20; left: 0; right: 0; bottom: 0;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  display: flex; justify-content: center; pointer-events: none;
+}
+.dock-inner { width: 100%; max-width: 640px; display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+.tabbar { flex: 1; min-width: 0; display: flex; border-radius: 999px; padding: 6px; }
+.tab {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 4px; border-radius: 999px; background: transparent; color: var(--muted);
+  font-size: 0.72rem; font-weight: 600; box-shadow: none; border: 1px solid transparent;
+  transition: background-color 250ms ease, color 250ms ease, border-color 250ms ease;
+}
+.tab .ico { width: 25px; height: 25px; color: var(--tint); }
+.tab[aria-current="true"] {
+  color: var(--blue);
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--sheen);
+}
+.tab[aria-current="true"] .ico { color: var(--blue); }
+.fab { width: 64px; height: 64px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--fg); padding: 0; }
+.fab .ico { width: 28px; height: 28px; }
+@media (prefers-reduced-motion: no-preference) {
+  .dock:not([hidden]) .dock-inner { animation: dockIn 600ms cubic-bezier(.2, .9, .2, 1) both 150ms; }
+  @keyframes dockIn { from { transform: translateY(40px); opacity: 0.001; } to { transform: none; opacity: 1; } }
+}
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .panel, .theme-toggle { background: var(--glass-strong); }
+  .tabbar, .fab, .theme-pill { background: var(--card); }
 }
 </style>
 
@@ -306,21 +273,20 @@ details[open] summary .chev { transform: rotate(180deg); }
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></symbol>
   <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5Z" fill="currentColor"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
 </svg>
 
-<div class="field" aria-hidden="true"><i></i><i></i><i></i></div>
 
 <main>
   <header>
     <div class="title">
-      <span class="eyebrow"><svg class="ico" style="width:14px;height:14px"><use href="#i-sparkle"/></svg>Nuvio Pro · Abonnements</span>
+      <span class="eyebrow"><svg class="ico"><use href="#i-key"/></svg>Nuvio Pro · Abonnements</span>
       <h1>Générateur de licences</h1>
       <p class="lead">Crée une clé d'accès pour le téléphone d'un client, valable entre les deux dates que tu choisis. La clé ne marche que sur ce téléphone et s'arrête toute seule à la date de fin.</p>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px">
-      <div class="logo" aria-hidden="true"><svg class="ico"><use href="#i-key"/></svg></div>
+    <div class="theme-pill">
       <button type="button" id="themeToggle" class="theme-toggle" aria-label="Thème : automatique">
-        <svg class="ico"><use id="themeIcon" href="#i-auto"/></svg><span id="themeLabel">Auto</span>
+        <svg class="ico"><use id="themeIcon" href="#i-auto"/></svg><span id="themeLabel" class="sr">Auto</span>
       </button>
     </div>
   </header>
@@ -331,12 +297,12 @@ details[open] summary .chev { transform: rotate(180deg); }
   <!-- Étape 1 : clé secrète -->
   <section id="setup" hidden>
     <div class="panel">
-      <h2><span class="ico-badge"><svg class="ico"><use href="#i-shield"/></svg></span>Première utilisation</h2>
+      <h2><span class="ico-badge t-green"><svg class="ico"><use href="#i-shield"/></svg></span>Première utilisation</h2>
       <p class="lead">Ta clé secrète sert à signer les licences. Elle reste dans ce navigateur et n'est envoyée nulle part.</p>
       <button id="createSeed" type="button"><svg class="ico"><use href="#i-sparkle"/></svg><span class="lbl">Créer ma clé secrète</span></button>
     </div>
     <div class="panel">
-      <h2><span class="ico-badge"><svg class="ico"><use href="#i-upload"/></svg></span>J'ai déjà une sauvegarde</h2>
+      <h2><span class="ico-badge t-teal"><svg class="ico"><use href="#i-upload"/></svg></span>J'ai déjà une sauvegarde</h2>
       <label for="importSeed">Clé secrète sauvegardée
         <textarea id="importSeed" spellcheck="false" autocomplete="off" placeholder="Colle ici le texte que tu as sauvegardé"></textarea>
       </label>
@@ -348,9 +314,9 @@ details[open] summary .chev { transform: rotate(180deg); }
   <!-- Étape 2 : sauvegarde obligatoire -->
   <section id="backup" hidden>
     <div class="panel">
-      <h2><span class="ico-badge"><svg class="ico"><use href="#i-lock"/></svg></span>Sauvegarde ta clé secrète</h2>
+      <h2><span class="ico-badge t-orange"><svg class="ico"><use href="#i-lock"/></svg></span>Sauvegarde ta clé secrète</h2>
       <p class="lead">Si tu la perds, tu ne pourras plus créer de licences pour l'appli actuelle. Copie-la dans un endroit privé : une note verrouillée, un message à toi-même, un papier.</p>
-      <div class="field-title"><svg class="ico"><use href="#i-lock"/></svg>Clé secrète (ne la donne à personne)</div>
+      <div class="field-title t-orange"><svg class="ico"><use href="#i-lock"/></svg>Clé secrète (ne la donne à personne)</div>
       <div id="backupSecret" class="keybox"></div>
       <button type="button" class="secondary" data-copy="backupSecret"><svg class="ico"><use href="#i-copy"/></svg><span class="lbl">Copier la clé secrète</span></button>
       <div class="field-title"><svg class="ico"><use href="#i-key"/></svg>Clé publique (à mettre dans l'appli)</div>
@@ -364,20 +330,20 @@ details[open] summary .chev { transform: rotate(180deg); }
   <!-- Travail quotidien -->
   <section id="work" hidden>
     <form id="genForm" class="panel" novalidate>
-      <h2><span class="ico-badge"><svg class="ico"><use href="#i-key"/></svg></span>Nouvelle licence</h2>
-      <label for="device"><span class="label-row"><svg class="ico"><use href="#i-phone"/></svg>Code appareil du client</span>
+      <h2><span class="ico-badge t-blue"><svg class="ico"><use href="#i-key"/></svg></span>Nouvelle licence</h2>
+      <label for="device" class="t-blue"><span class="label-row"><svg class="ico"><use href="#i-phone"/></svg>Code appareil du client</span>
         <span class="hint">Affiché en bas de l'écran de Nuvio Pro.</span>
         <input type="text" id="device" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7F3-92QX" maxlength="12">
       </label>
-      <label for="client"><span class="label-row"><svg class="ico"><use href="#i-user"/></svg>Nom du client</span>
+      <label for="client" class="t-purple"><span class="label-row"><svg class="ico"><use href="#i-user"/></svg>Nom du client</span>
         <span class="hint">Pour toi seulement.</span>
         <input type="text" id="client" autocomplete="off" placeholder="Karim, quartier des Pins">
       </label>
       <div class="row">
-        <label for="start"><span class="label-row"><svg class="ico"><use href="#i-calendar"/></svg>Début</span>
+        <label for="start" class="t-green"><span class="label-row"><svg class="ico"><use href="#i-calendar"/></svg>Début</span>
           <input type="date" id="start">
         </label>
-        <label for="duration"><span class="label-row"><svg class="ico"><use href="#i-clock"/></svg>Durée</span>
+        <label for="duration" class="t-orange"><span class="label-row"><svg class="ico"><use href="#i-clock"/></svg>Durée</span>
           <select id="duration">
             <option value="7">7 jours</option>
             <option value="15">15 jours</option>
@@ -388,7 +354,7 @@ details[open] summary .chev { transform: rotate(180deg); }
             <option value="custom">Autre (choisir la fin)</option>
           </select>
         </label>
-        <label for="end"><span class="label-row"><svg class="ico"><use href="#i-calendar"/></svg>Fin (incluse)</span>
+        <label for="end" class="t-red"><span class="label-row"><svg class="ico"><use href="#i-calendar"/></svg>Fin (incluse)</span>
           <input type="date" id="end">
         </label>
       </div>
@@ -397,7 +363,7 @@ details[open] summary .chev { transform: rotate(180deg); }
     </form>
 
     <div id="result" class="panel result" hidden>
-      <h2><span class="ico-badge"><svg class="ico"><use href="#i-check"/></svg></span>Licence prête</h2>
+      <h2><span class="ico-badge t-green"><svg class="ico"><use href="#i-check"/></svg></span>Licence prête</h2>
       <div class="result-meta">
         <span>Client : <strong id="resClient"></strong></span>
         <span>Code : <strong id="resCode" class="mono"></strong></span>
@@ -411,14 +377,16 @@ details[open] summary .chev { transform: rotate(180deg); }
       <p class="hint">Le client colle la clé dans le champ « Clé d'accès » de Nuvio Pro, puis appuie sur Activer.</p>
     </div>
 
-    <div class="panel group">
-      <h2><span class="ico-badge"><svg class="ico"><use href="#i-users"/></svg></span>Clients</h2>
+    <div class="block" id="clientsBlock" style="display:flex;flex-direction:column;gap:14px">
+      <div class="section-head"><h2><span class="ico-badge t-teal"><svg class="ico"><use href="#i-users"/></svg></span>Clients</h2><span class="count" id="ledgerCount"></span></div>
+      <div class="panel">
       <ul id="ledger" class="ledger"></ul>
       <p id="ledgerEmpty" class="empty"><svg class="ico"><use href="#i-sparkle"/></svg><span>Aucune licence pour l'instant. Chaque licence créée apparaît ici avec ses dates, pour savoir qui doit renouveler.</span></p>
+      </div>
     </div>
 
     <details id="settings" class="panel">
-      <summary><span class="ico-badge"><svg class="ico"><use href="#i-gear"/></svg></span>Réglages<svg class="ico chev"><use href="#i-chev"/></svg></summary>
+      <summary><span class="ico-badge t-orange" style="display:inline-grid;color:var(--orange)"><svg class="ico" style="width:26px;height:26px"><use href="#i-gear"/></svg></span>Réglages<svg class="ico chev"><use href="#i-chev"/></svg></summary>
       <div class="settings">
         <div class="sub">
           <div class="field-title"><svg class="ico"><use href="#i-key"/></svg>Clé publique (à mettre dans l'appli)</div>
@@ -426,7 +394,7 @@ details[open] summary .chev { transform: rotate(180deg); }
           <button type="button" class="secondary" data-copy="setPublic"><svg class="ico"><use href="#i-copy"/></svg><span class="lbl">Copier la clé publique</span></button>
         </div>
         <div class="sub">
-          <div class="field-title"><svg class="ico"><use href="#i-lock"/></svg>Clé secrète</div>
+          <div class="field-title t-orange"><svg class="ico"><use href="#i-lock"/></svg>Clé secrète</div>
           <div id="setSecret" class="keybox" hidden></div>
           <div class="row">
             <button type="button" id="toggleSecret" class="secondary"><svg class="ico"><use href="#i-eye"/></svg><span class="lbl">Afficher la clé secrète</span></button>
@@ -434,7 +402,7 @@ details[open] summary .chev { transform: rotate(180deg); }
           </div>
         </div>
         <div class="sub">
-          <div class="field-title"><svg class="ico"><use href="#i-trash"/></svg>Retirer la clé secrète de ce navigateur</div>
+          <div class="field-title t-red"><svg class="ico"><use href="#i-trash"/></svg>Retirer la clé secrète de ce navigateur</div>
           <p class="hint">Sans ta sauvegarde, tu ne pourras plus créer de licences valables pour l'appli. La liste des clients est gardée.</p>
           <button type="button" id="forget" class="danger"><svg class="ico"><use href="#i-trash"/></svg><span class="lbl">Retirer la clé secrète</span></button>
           <div id="forgetConfirm" class="row" hidden>
@@ -446,6 +414,17 @@ details[open] summary .chev { transform: rotate(180deg); }
     </details>
   </section>
 </main>
+
+<nav class="dock" id="dock" hidden aria-label="Sections">
+  <div class="dock-inner">
+    <div class="tabbar">
+      <button type="button" class="tab t-blue" data-target="genForm" aria-current="true"><svg class="ico"><use href="#i-key"/></svg><span>Licence</span></button>
+      <button type="button" class="tab t-teal" data-target="clientsBlock"><svg class="ico"><use href="#i-users"/></svg><span>Clients</span></button>
+      <button type="button" class="tab t-orange" data-target="settings"><svg class="ico"><use href="#i-gear"/></svg><span>Réglages</span></button>
+    </div>
+    <button type="button" class="fab" id="newLicence" aria-label="Nouvelle licence"><svg class="ico"><use href="#i-plus"/></svg></button>
+  </div>
+</nav>
 <!-- Format des licences. LicenceManager.kt (appli Android) suit exactement ce format. -->
 <script id="licence-core">
 var LicenceCore = (function () {
@@ -619,7 +598,31 @@ var LicenceCore = (function () {
     $("setup").hidden = view !== "setup";
     $("backup").hidden = view !== "backup";
     $("work").hidden = view !== "work";
+    $("dock").hidden = view !== "work";
   }
+
+  // Barre du bas : chaque onglet fait défiler jusqu'à sa section, et l'onglet visible s'allume.
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  function setTab(id) { tabs.forEach(function (t) { t.setAttribute("aria-current", t.getAttribute("data-target") === id ? "true" : "false"); }); }
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () {
+      var id = t.getAttribute("data-target");
+      if (id === "settings") $("settings").open = true;
+      setTab(id);
+      $(id).scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  if ("IntersectionObserver" in window) {
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) setTab(en.target.id); });
+    }, { rootMargin: "-40% 0px -55% 0px" });
+    ["genForm", "clientsBlock", "settings"].forEach(function (id) { spy.observe($(id)); });
+  }
+  $("newLicence").addEventListener("click", function () {
+    $("genForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    setTab("genForm");
+    setTimeout(function () { $("device").focus({ preventScroll: true }); }, 350);
+  });
 
   function enterWork() {
     setDates(LicenceCore.today(), 30);
@@ -760,6 +763,7 @@ var LicenceCore = (function () {
     var ul = $("ledger");
     ul.textContent = "";
     $("ledgerEmpty").hidden = list.length > 0;
+    $("ledgerCount").textContent = list.length ? String(list.length) : "";
     var today = LicenceCore.today();
     list.forEach(function (e) {
       var left = e.expiry - today;
