@@ -49,8 +49,8 @@ Seuls ces fichiers distinguent les deux éditions :
 ## Construire et publier
 
 - Une seule branche : `main`. Chaque push sur `main` lance `.github/workflows/build.yml`.
-- Le workflow construit Nuvio Plus, puis Nuvio Pro si la clé publique est collée, et publie une release `v<majeur>.<mineur>.<numéro du build>` avec les deux APK. Il garde les 5 dernières releases.
-- La version vient de `iosApp/Configuration/Version.xcconfig` (`MARKETING_VERSION` pour majeur.mineur, `CURRENT_PROJECT_VERSION` + numéro du build pour le version code).
+- Le workflow construit Nuvio Plus, puis Nuvio Pro si la clé publique est collée, et publie une release `v<majeur>.<mineur>.<patch + numéro du build>` avec les deux APK. Il garde les 5 dernières releases.
+- La version vient de `iosApp/Configuration/Version.xcconfig` (`MARKETING_VERSION` + numéro du build sur le dernier chiffre, `CURRENT_PROJECT_VERSION` + numéro du build pour le version code).
 - Le bouton « Mise à jour » de l'appli lit les releases de `amarbcrb/Nuvio-enhanced-`.
 - En local : `./gradlew :androidApp:assembleFullDebug -Pnuvio.android.distribution=full -Pnuvio.ios.distribution=appstore`, plus `-Pnuvio.edition=pro` pour Nuvio Pro.
 - Dans un script Gradle (`.kts`), importe les classes Java (`import java.util.Base64`) : `java.util.X` écrit en entier ne compile pas, car `java` y désigne une extension Gradle.

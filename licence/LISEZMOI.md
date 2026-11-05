@@ -40,7 +40,7 @@ Tant que la clé publique n'est pas collée, GitHub construit seulement Nuvio Pl
 
 ## 3. Récupérer les APK
 
-À chaque push sur `main`, GitHub Actions construit les deux APK et publie une release numérotée (par exemple `v0.6.42`) qui contient `NuvioPlus.apk` et `NuvioPro.apk`. Les 5 dernières releases sont gardées.
+À chaque push sur `main`, GitHub Actions construit les deux APK et publie une release numérotée (par exemple `v0.6.6`) qui contient `NuvioPlus.apk` et `NuvioPro.apk`. Les 5 dernières releases sont gardées.
 
 Liens qui pointent toujours vers la dernière version :
 

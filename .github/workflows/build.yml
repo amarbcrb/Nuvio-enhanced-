@@ -1,7 +1,7 @@
 name: Build Nuvio Plus and Nuvio Pro
 
 # Each push to main builds both editions and publishes them in one numbered release
-# (v<major>.<minor>.<run number>). The in-app updater reads these releases: Nuvio Plus
+# (v<major>.<minor>.<patch + run number>). The in-app updater reads these releases: Nuvio Plus
 # downloads NuvioPlus.apk, Nuvio Pro downloads NuvioPro.apk.
 
 on:
@@ -54,13 +54,15 @@ jobs:
           rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
           cargo install cargo-ndk --locked
 
-      # 0.6.4 in Version.xcconfig + run 42 -> version 0.6.42, version code 147 + 42.
+      # Version.xcconfig 0.6.4 (code 147) + run 12 -> version 0.6.16, version code 159.
+      # Always above the 0.6.4 / 147 builds published before this workflow existed.
       - name: Compute version
         id: version
         run: |
           marketing=$(grep '^MARKETING_VERSION=' iosApp/Configuration/Version.xcconfig | cut -d= -f2 | tr -d '[:space:]')
           base_code=$(grep '^CURRENT_PROJECT_VERSION=' iosApp/Configuration/Version.xcconfig | cut -d= -f2 | tr -d '[:space:]')
-          version="${marketing%.*}.${GITHUB_RUN_NUMBER}"
+          patch="${marketing##*.}"
+          version="${marketing%.*}.$((patch + GITHUB_RUN_NUMBER))"
           code=$((base_code + GITHUB_RUN_NUMBER))
           echo "name=$version" >> "$GITHUB_OUTPUT"
           echo "code=$code" >> "$GITHUB_OUTPUT"
