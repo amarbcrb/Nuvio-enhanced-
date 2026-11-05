@@ -68,13 +68,15 @@ Pour renouveler, appuie sur **Renouveler** dans la liste des clients. Le début 
 - **Renouvellement en avance** : le client appuie sur la ligne « Nuvio Pro » dans les réglages et colle la nouvelle clé. Si elle commence plus tard (le lendemain de la fin actuelle), l'appli la garde et passe dessus toute seule le jour venu.
 - **Après la date de fin** : l'appli revient sur l'écran de clé.
 
-## Bloquer quelqu'un avant la fin (optionnel)
+## Bloquer quelqu'un (remboursement, abus)
 
-1. Crée un fichier `bloques.txt` dans un dépôt GitHub public, avec un code appareil par ligne.
-2. Mets son lien « Raw » dans `licence_blocklist_url`.
-3. Pour bloquer quelqu'un, ajoute son code. Pour le débloquer, retire-le.
+La liste de blocage est `licence/bloques.txt`, déjà branchée dans Nuvio Pro.
 
-Nuvio Pro consulte ce fichier toutes les 30 minutes quand il a internet.
+1. Dans le générateur, liste **Clients**, appuie sur **Bloquer** à côté du client. Son code est copié et la page GitHub de `bloques.txt` s'ouvre.
+2. Colle le code sur une nouvelle ligne, puis **Commit changes**.
+3. Le téléphone est bloqué à sa prochaine connexion : à l'ouverture de l'appli, ou au plus 30 minutes après s'il est déjà ouvert. Il reste bloqué même hors ligne ensuite.
+
+Pour débloquer, supprime la ligne. Modifier ce fichier ne relance pas la construction de l'appli.
 
 ## Ce que fait Nuvio Pro
 

@@ -1,0 +1,3 @@
+# Codes de téléphone bloqués dans Nuvio Pro, un par ligne (par exemple K7F3-92QX).
+# Pour bloquer : ajoute le code. Pour débloquer : supprime la ligne.
+# Nuvio Pro relit ce fichier à l'ouverture et toutes les 30 minutes quand il a internet.
