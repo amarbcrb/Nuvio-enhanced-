@@ -81,13 +81,22 @@ public class InteropTest {
         return out;
     }
 
+    static String lastName;
+
+    // Meme logique que LicenceManager.check : version 2 sans nom, version 3 avec le nom du client.
     static String check(PublicKey pub, String key, String device, int today) throws Exception {
+        lastName = null;
         String n = normalize(key);
-        if (n.length() != 119) return "format";
         byte[] all = decode(n);
-        byte[] payload = Arrays.copyOfRange(all, 0, 10);
-        byte[] sig = Arrays.copyOfRange(all, 10, 74);
-        if (payload[0] != 2) return "format";
+        if (all.length < 74 || n.length() != (all.length * 8 + 4) / 5) return "format";
+        int version = all[0] & 0xFF;
+        int payloadLen;
+        if (version == 2) payloadLen = 10;
+        else if (version == 3) payloadLen = 11 + (all[10] & 0xFF);
+        else return "format";
+        if (all.length != payloadLen + 64) return "format";
+        byte[] payload = Arrays.copyOfRange(all, 0, payloadLen);
+        byte[] sig = Arrays.copyOfRange(all, payloadLen, payloadLen + 64);
         boolean ok;
         try {
             Signature v = Signature.getInstance("SHA256withECDSA");
@@ -102,6 +111,7 @@ public class InteropTest {
         for (int i = 0; i < dev.length; i++) if (payload[1 + i] != dev[i]) return "device";
         int start = ((payload[6] & 0xFF) << 8) | (payload[7] & 0xFF);
         int expiry = ((payload[8] & 0xFF) << 8) | (payload[9] & 0xFF);
+        if (version == 3) lastName = new String(payload, 11, payloadLen - 11, java.nio.charset.StandardCharsets.UTF_8);
         if (today < start) return "notyet";
         return today > expiry ? "expired" : "valid";
     }
@@ -112,16 +122,18 @@ public class InteropTest {
         if (!pk.find()) throw new AssertionError("publicKey manquante");
         PublicKey pub = KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(pk.group(1))));
 
-        Matcher m = Pattern.compile("\"key\": \"([^\"]+)\",\\s*\"device\": \"([^\"]+)\",\\s*\"today\": (\\d+),\\s*\"expect\": \"([a-z]+)\"").matcher(json);
+        Matcher m = Pattern.compile("\"key\": \"([^\"]+)\",\\s*\"device\": \"([^\"]+)\",\\s*\"today\": (\\d+),\\s*\"expect\": \"([a-z]+)\"(?:,\\s*\"name\": \"([^\"]+)\")?").matcher(json);
         int count = 0;
         java.util.Map<String, Integer> seen = new java.util.TreeMap<>();
         while (m.find()) {
             String got = check(pub, m.group(1), m.group(2), Integer.parseInt(m.group(3)));
             if (!got.equals(m.group(4))) throw new AssertionError("cas " + count + " : attendu " + m.group(4) + ", obtenu " + got);
+            if (m.group(5) != null && !m.group(5).equals(lastName)) throw new AssertionError("nom attendu " + m.group(5) + ", obtenu " + lastName);
+            if (m.group(5) != null) System.out.println("ok - nom " + lastName);
             seen.merge(got, 1, Integer::sum);
             count++;
         }
-        if (count != 44) throw new AssertionError("44 cas attendus, " + count + " lus");
+        if (count != 47) throw new AssertionError("47 cas attendus, " + count + " lus");
         System.out.println("ok - " + seen);
 
         // Le code appareil calcule cote appli doit etre accepte tel quel par le generateur.

@@ -73,6 +73,35 @@ async function test(name, fn) { await fn(); passed++; console.log("ok - " + name
     assert.strictEqual(Core.dayToInput(20397), "2025-11-05");
     assert.strictEqual(Core.dayFromInput(""), null);
   });
+  await test("cle avec nom : nom lu et signe", async () => {
+    const named = await Core.createLicence(keys.privateKey, device, start, expiry, "Karim Benali");
+    const r = await Core.readLicence(keys.publicKey, named, device, today);
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.name, "Karim Benali");
+    assert(named.length > Core.KEY_CHARS);
+  });
+  await test("nom avec accents et arabe", async () => {
+    for (const n of ["Amélie Dupré", "أمين بوشارب"]) {
+      const k = await Core.createLicence(keys.privateKey, device, start, expiry, n);
+      assert.strictEqual((await Core.readLicence(keys.publicKey, k, device, today)).name, n);
+    }
+  });
+  await test("nom trop long coupe a 40 octets sans casser un caractere", async () => {
+    const k = await Core.createLicence(keys.privateKey, device, start, expiry, "é".repeat(30));
+    const r = await Core.readLicence(keys.publicKey, k, device, today);
+    assert.strictEqual(r.name, "é".repeat(20));
+  });
+  await test("nom modifie refuse", async () => {
+    const k = await Core.createLicence(keys.privateKey, device, start, expiry, "Karim");
+    const bytes = Core.decode(Core.normalize(k)); bytes[12] ^= 1;
+    assert.strictEqual((await Core.readLicence(keys.publicKey, Core.encode(bytes), device, today)).reason, "signature");
+  });
+  await test("cle sans nom : pas de nom", async () => {
+    assert.strictEqual((await Core.readLicence(keys.publicKey, key, device, today)).name, null);
+  });
+  await test("caractere en trop a la fin refuse", async () => {
+    assert.strictEqual((await Core.readLicence(keys.publicKey, key + "A", device, today)).reason, "format");
+  });
   await test("format du code appareil", () => {
     assert.strictEqual(Core.formatDeviceCode("k7f392qx"), "K7F3-92QX");
     assert.strictEqual(Core.isDeviceCode("K7F3-92Q"), false);
@@ -84,6 +113,9 @@ async function test(name, fn) { await fn(); passed++; console.log("ok - " + name
     const cases = [];
     for (let n = 0; n < 40; n++) {
       cases.push({ key: await Core.createLicence(keys.privateKey, device, start, expiry), device, today, expect: "valid" });
+    }
+    for (const n of ["Karim Benali", "Amélie Dupré", "أمين بوشارب"]) {
+      cases.push({ key: await Core.createLicence(keys.privateKey, device, start, expiry, n), device, today, expect: "valid", name: n });
     }
     cases.push({ key, device, today: expiry + 1, expect: "expired" });
     cases.push({ key: await Core.createLicence(keys.privateKey, device, today + 10, today + 40), device, today, expect: "notyet" });

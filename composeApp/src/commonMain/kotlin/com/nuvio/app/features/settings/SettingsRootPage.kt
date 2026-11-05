@@ -330,12 +330,19 @@ internal fun LazyListScope.settingsRootContent(
     }
 }
 
-private fun subscriptionTitle(info: SubscriptionInfo): String = when {
+private fun daysLeftText(info: SubscriptionInfo): String = when {
     info.daysLeft <= 1 -> "Dernier jour d'accès"
     else -> "${info.daysLeft} jours restants"
 }
 
+/** « Karim Benali », ou les jours restants pour une clé sans nom. */
+private fun subscriptionTitle(info: SubscriptionInfo): String = info.clientName ?: daysLeftText(info)
+
 private fun subscriptionDescription(info: SubscriptionInfo): String = buildString {
+    if (info.clientName != null) {
+        append(daysLeftText(info))
+        append(" · ")
+    }
     append("Accès jusqu'au ")
     append(info.endDateText)
     if (info.nextStartText != null) {

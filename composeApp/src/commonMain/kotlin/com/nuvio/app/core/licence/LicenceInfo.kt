@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Abonnement de Nuvio Pro, affiché dans les réglages. */
 data class SubscriptionInfo(
+    /** Nom du client écrit dans sa clé, ou null pour une clé sans nom. */
+    val clientName: String?,
     /** Jours d'accès restants, aujourd'hui compris (1 = dernier jour). */
     val daysLeft: Int,
     /** Dernier jour d'accès, déjà formaté (par exemple « 4 décembre 2026 »). */

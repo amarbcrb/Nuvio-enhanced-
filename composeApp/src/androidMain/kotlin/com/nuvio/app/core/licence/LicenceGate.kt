@@ -1,28 +1,15 @@
 package com.nuvio.app.core.licence
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -30,7 +17,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -96,6 +82,7 @@ private fun ProLicenceGate(manager: LicenceManager, content: @Composable () -> U
         LicenceInfo.update(
             (current as? LicenceStatus.Valid)?.let {
                 SubscriptionInfo(
+                    clientName = it.clientName,
                     daysLeft = it.daysLeft + 1,
                     endDateText = dayToText(it.expiryDay),
                     nextStartText = manager.nextStart()?.let(::dayToText),
@@ -121,8 +108,7 @@ private fun ProLicenceGate(manager: LicenceManager, content: @Composable () -> U
     if (status is LicenceStatus.Valid) {
         content()
         if (showKeyEntry) {
-            val dark = isSystemInDarkTheme()
-            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
+            MaterialTheme(colorScheme = darkColorScheme()) {
                 KeyEntryDialog(
                     deviceCode = manager.deviceCode,
                     onDismiss = { showKeyEntry = false },
@@ -148,68 +134,17 @@ private fun ProLicenceGate(manager: LicenceManager, content: @Composable () -> U
             }
         }
     } else {
-        val dark = isSystemInDarkTheme()
-        MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-            LicenceScreen(
-                deviceCode = manager.deviceCode,
-                status = status,
-                onActivate = { key -> status = manager.activate(key) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun LicenceScreen(
-    deviceCode: String,
-    status: LicenceStatus,
-    onActivate: (String) -> Unit,
-) {
-    val context = LocalContext.current
-    var input by remember { mutableStateOf("") }
-    var copied by remember { mutableStateOf(false) }
-    val error = messageFor(status)
-
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("Nuvio Pro", style = MaterialTheme.typography.headlineMedium)
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it },
-                label = { Text("Clé d'accès") },
-                isError = error != null,
-                supportingText = if (error != null) { { Text(error) } } else null,
-                minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(
-                onClick = { onActivate(input) },
-                enabled = input.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Activer")
-            }
-            Text(
-                if (copied) "Code copié : $deviceCode" else "Code du téléphone : $deviceCode",
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .clickable {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Code du téléphone", deviceCode))
-                        copied = true
-                    }
-                    .padding(8.dp),
-            )
-        }
+        LicenceScreen(
+            deviceCode = manager.deviceCode,
+            message = messageFor(status),
+            onActivate = { key ->
+                val result = manager.activate(key)
+                status = result
+                if (result is LicenceStatus.Valid && result.clientName != null) {
+                    Toast.makeText(context, "Bienvenue ${result.clientName}", Toast.LENGTH_SHORT).show()
+                }
+            },
+        )
     }
 }
 

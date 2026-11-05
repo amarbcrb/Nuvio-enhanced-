@@ -219,6 +219,45 @@ details[open] summary .chev { transform: rotate(180deg); }
 .settings { display: flex; flex-direction: column; gap: 16px; padding: 0 22px 22px; }
 .sub { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
 
+/* Champ + bouton Coller */
+.input-group { display: flex; gap: 8px; align-items: stretch; }
+.input-group input { flex: 1; min-width: 0; }
+.input-group .paste { flex: none; padding: 0 14px; border-radius: 14px; }
+
+/* Message bref (copié, collé) au-dessus de la barre du bas */
+.toast {
+  position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 88%, transparent); -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--glass-edge); color: var(--fg); font-weight: 600; font-size: 0.95rem; text-align: center;
+  box-shadow: 0 18px 40px -16px var(--glass-shade);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast:not([hidden]) { animation: toastIn 260ms cubic-bezier(.2, .9, .2, 1) both; }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+}
+
+/* Téléphone : une colonne, gros boutons, actions des clients sur toute la largeur */
+@media (max-width: 560px) {
+  body { padding-block: 14px calc(112px + env(safe-area-inset-bottom, 0px)); }
+  main { gap: 20px; }
+  h1 { font-size: 2rem; }
+  .lead { font-size: 0.95rem; }
+  .panel { padding: 18px; border-radius: 24px; }
+  .row { flex-direction: column; }
+  .row > * { flex: 1 1 auto; width: 100%; }
+  button, .btn { padding: 15px 18px; }
+  .ledger li { align-items: flex-start; }
+  .who { flex-basis: calc(100% - 60px); }
+  .actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .actions .pill { grid-column: 1 / -1; justify-self: start; }
+  .actions button, .actions .btn { width: 100%; padding: 11px 10px; }
+  .keybox { font-size: 0.86rem; padding: 13px; }
+  .result-meta { flex-direction: column; gap: 2px; }
+  #device { font-size: 1.2rem; }
+}
+
 /* Floating tab bar */
 .dock {
   position: fixed; z-index: 20; left: 0; right: 0; bottom: 0;
@@ -335,10 +374,13 @@ details[open] summary .chev { transform: rotate(180deg); }
       <h2><span class="ico-badge t-blue"><svg class="ico"><use href="#i-key"/></svg></span>Nouvelle licence</h2>
       <label for="device" class="t-blue"><span class="label-row"><svg class="ico"><use href="#i-phone"/></svg>Code appareil du client</span>
         <span class="hint">Affiché en bas de l'écran de Nuvio Pro.</span>
-        <input type="text" id="device" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7F3-92QX" maxlength="12">
+        <span class="input-group">
+          <input type="text" id="device" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7F3-92QX" maxlength="40">
+          <button type="button" id="pasteDevice" class="secondary paste"><svg class="ico"><use href="#i-copy"/></svg><span class="lbl">Coller</span></button>
+        </span>
       </label>
       <label for="client" class="t-purple"><span class="label-row"><svg class="ico"><use href="#i-user"/></svg>Nom du client</span>
-        <span class="hint">Pour toi seulement.</span>
+        <span class="hint">Affiché au client dans Nuvio Pro, avec ses jours restants.</span>
         <input type="text" id="client" autocomplete="off" placeholder="Karim, quartier des Pins">
       </label>
       <div class="row">
@@ -418,6 +460,8 @@ details[open] summary .chev { transform: rotate(180deg); }
   </section>
 </main>
 
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
 <nav class="dock" id="dock" hidden aria-label="Sections">
   <div class="dock-inner">
     <div class="tabbar">
@@ -433,10 +477,11 @@ details[open] summary .chev { transform: rotate(180deg); }
 var LicenceCore = (function () {
   "use strict";
   var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // base32 Crockford
-  var VERSION = 2;
+  var VERSION = 2;       // sans nom
+  var VERSION_NAMED = 3; // avec le nom du client : + longueur(1) + nom en UTF-8
   var PAYLOAD_LEN = 10;  // version(1) + appareil(5) + jour de début(2) + jour de fin(2)
   var SIG_LEN = 64;      // signature ECDSA P-256, r||s
-  var KEY_CHARS = 119;   // 74 octets en base32
+  var KEY_CHARS = 119;   // clé sans nom : 74 octets en base32 (avec un nom, elle est plus longue)
   var DEVICE_CHARS = 8;  // 5 octets en base32
   var DAY_MS = 86400000;
   var ALGO = { name: "ECDSA", namedCurve: "P-256" };
@@ -511,39 +556,56 @@ var LicenceCore = (function () {
   }
 
   // Les jours sont comptés depuis le 1er janvier 1970 (UTC). La clé est valable de startDay à endDay inclus.
-  async function createLicence(privateKey, deviceCode, startDay, endDay) {
+  var NAME_MAX_BYTES = 40;
+  // Nom du client en UTF-8, coupé proprement à NAME_MAX_BYTES octets.
+  function nameBytes(name) {
+    var text = String(name || "").trim(), out = new TextEncoder().encode(text);
+    while (out.length > NAME_MAX_BYTES) { text = Array.from(text).slice(0, -1).join(""); out = new TextEncoder().encode(text); }
+    return out;
+  }
+
+  // Version 2 : sans nom (10 octets). Version 3 : avec le nom du client, signé lui aussi.
+  async function createLicence(privateKey, deviceCode, startDay, endDay, clientName) {
     if (!(startDay >= 0 && startDay <= 65535 && endDay >= 0 && endDay <= 65535)) throw new Error("Date hors limites.");
     if (endDay < startDay) throw new Error("La fin est avant le début.");
-    var payload = new Uint8Array(PAYLOAD_LEN);
-    payload[0] = VERSION;
+    var nb = nameBytes(clientName);
+    var named = nb.length > 0;
+    var payload = new Uint8Array(named ? PAYLOAD_LEN + 1 + nb.length : PAYLOAD_LEN);
+    payload[0] = named ? VERSION_NAMED : VERSION;
     payload.set(deviceBytes(deviceCode), 1);
     payload[6] = (startDay >> 8) & 255;
     payload[7] = startDay & 255;
     payload[8] = (endDay >> 8) & 255;
     payload[9] = endDay & 255;
+    if (named) { payload[10] = nb.length; payload.set(nb, 11); }
     var sig = new Uint8Array(await subtle().sign(SIGN, privateKey, payload));
     if (sig.length !== SIG_LEN) throw new Error("Signature inattendue.");
-    var all = new Uint8Array(PAYLOAD_LEN + SIG_LEN);
+    var all = new Uint8Array(payload.length + SIG_LEN);
     all.set(payload, 0);
-    all.set(sig, PAYLOAD_LEN);
+    all.set(sig, payload.length);
     return encode(all);
   }
 
   // Même vérification que l'appli. Résultat : ok, ou reason = format | signature | device | notyet | expired.
   async function readLicence(publicKey, licence, deviceCode, todayDay) {
     var s = normalize(licence);
-    if (s.length !== KEY_CHARS) return { ok: false, reason: "format" };
     var all = decode(s);
-    var payload = all.slice(0, PAYLOAD_LEN), sig = all.slice(PAYLOAD_LEN, PAYLOAD_LEN + SIG_LEN);
-    if (payload[0] !== VERSION) return { ok: false, reason: "format" };
+    if (all.length < PAYLOAD_LEN + SIG_LEN || s.length !== Math.ceil(all.length * 8 / 5)) return { ok: false, reason: "format" };
+    var version = all[0], payloadLen;
+    if (version === VERSION) payloadLen = PAYLOAD_LEN;
+    else if (version === VERSION_NAMED) payloadLen = PAYLOAD_LEN + 1 + all[10];
+    else return { ok: false, reason: "format" };
+    if (all.length !== payloadLen + SIG_LEN) return { ok: false, reason: "format" };
+    var payload = all.slice(0, payloadLen), sig = all.slice(payloadLen, payloadLen + SIG_LEN);
     if (!(await subtle().verify(SIGN, publicKey, sig, payload))) return { ok: false, reason: "signature" };
     var dev = deviceBytes(deviceCode);
     for (var i = 0; i < dev.length; i++) if (payload[1 + i] !== dev[i]) return { ok: false, reason: "device" };
     var startDay = (payload[6] << 8) | payload[7];
     var expiryDay = (payload[8] << 8) | payload[9];
-    if (todayDay < startDay) return { ok: false, reason: "notyet", startDay: startDay, expiryDay: expiryDay };
-    if (todayDay > expiryDay) return { ok: false, reason: "expired", startDay: startDay, expiryDay: expiryDay };
-    return { ok: true, startDay: startDay, expiryDay: expiryDay, daysLeft: expiryDay - todayDay };
+    var name = version === VERSION_NAMED ? new TextDecoder().decode(payload.slice(11)) : null;
+    if (todayDay < startDay) return { ok: false, reason: "notyet", startDay: startDay, expiryDay: expiryDay, name: name };
+    if (todayDay > expiryDay) return { ok: false, reason: "expired", startDay: startDay, expiryDay: expiryDay, name: name };
+    return { ok: true, startDay: startDay, expiryDay: expiryDay, daysLeft: expiryDay - todayDay, name: name };
   }
 
   return {
@@ -641,23 +703,59 @@ var LicenceCore = (function () {
     show("work");
   }
 
-  // Copie : la presse-papiers peut être refusée, on sélectionne alors le texte.
+  var toastTimer = null;
+  function toast(text) {
+    var t = $("toast"); t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 2200);
+  }
+
+  // Copie fiable : presse-papiers moderne, sinon l'ancienne méthode (champ caché + copier),
+  // sinon le texte est sélectionné pour une copie à la main.
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0"; ta.style.opacity = "0"; ta.style.fontSize = "16px";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+  function copyText(text, el) {
+    function selectForHand() {
+      if (!el) return;
+      var r = document.createRange(); r.selectNodeContents(el);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    }
+    if (legacyCopy(text)) { toast("Copié"); return; }
+    try {
+      navigator.clipboard.writeText(text).then(function () { toast("Copié"); }, function () {
+        selectForHand(); toast("Le texte est sélectionné : appuie sur Copier");
+      });
+    } catch (e) { selectForHand(); toast("Le texte est sélectionné : appuie sur Copier"); }
+  }
   document.addEventListener("click", function (ev) {
     var btn = ev.target.closest("[data-copy]");
     if (!btn) return;
     var el = $(btn.getAttribute("data-copy"));
-    var text = el.textContent;
-    var lbl = btn.querySelector(".lbl") || btn;
-    var label = lbl.textContent;
-    function done(msg) { lbl.textContent = msg; setTimeout(function () { lbl.textContent = label; }, 1800); }
-    function fallback() {
-      var r = document.createRange(); r.selectNodeContents(el);
-      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
-      done("Texte sélectionné, copie-le");
-    }
+    copyText(el.textContent.trim(), el);
+  });
+
+  // Coller le code du téléphone envoyé par le client.
+  $("pasteDevice").addEventListener("click", function () {
+    var field = $("device");
+    function manual() { field.focus(); toast("Appuie longuement dans le champ, puis Coller"); }
     try {
-      navigator.clipboard.writeText(text).then(function () { done("Copié"); }, fallback);
-    } catch (e) { fallback(); }
+      navigator.clipboard.readText().then(function (text) {
+        // Le code copié depuis Nuvio Pro a la forme XXXX-XXXX : on le cherche dans le message reçu.
+        // Sinon, le texte entier doit faire exactement 8 caractères (le code tapé sans tiret).
+        var m = String(text).toUpperCase().match(/(^|[^0-9A-Z])([0-9A-Z]{4}-[0-9A-Z]{4})(?![0-9A-Z])/);
+        var code = m ? LicenceCore.normalize(m[2]) : LicenceCore.normalize(text);
+        if (LicenceCore.isDeviceCode(code)) { field.value = LicenceCore.formatDeviceCode(code); toast("Code collé"); }
+        else { field.value = text.trim(); toast("Ce texte ne ressemble pas à un code de 8 caractères"); }
+      }, manual);
+    } catch (e) { manual(); }
   });
 
   // --- Clé secrète ---
@@ -750,7 +848,7 @@ var LicenceCore = (function () {
     var name = typed || (entry && entry.name) || "Sans nom";
     $("genBtn").disabled = true;
     try {
-      var key = await LicenceCore.createLicence(keys.privateKey, code, start, expiry);
+      var key = await LicenceCore.createLicence(keys.privateKey, code, start, expiry, name === "Sans nom" ? "" : name);
       var check = await LicenceCore.readLicence(keys.publicKey, key, code, start);
       if (!check.ok) throw new Error(check.reason);
       if (entry) { entry.name = name; entry.start = start; entry.expiry = expiry; entry.key = key; }

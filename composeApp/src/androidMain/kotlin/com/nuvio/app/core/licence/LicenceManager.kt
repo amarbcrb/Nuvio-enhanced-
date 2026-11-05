@@ -43,7 +43,7 @@ internal class LicenceConfig(
 
 internal sealed interface LicenceStatus {
     data object Missing : LicenceStatus
-    data class Valid(val expiryDay: Int, val daysLeft: Int) : LicenceStatus
+    data class Valid(val expiryDay: Int, val daysLeft: Int, val clientName: String? = null) : LicenceStatus
     data class NotYetValid(val startDay: Int) : LicenceStatus
     data class Expired(val expiryDay: Int) : LicenceStatus
     data object Invalid : LicenceStatus
@@ -56,7 +56,8 @@ internal sealed interface LicenceStatus {
 /** Meme format que licence/generateur.html (bloc "licence-core"). */
 internal object LicenceFormat {
     const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-    const val VERSION = 2
+    const val VERSION = 2 // sans nom
+    const val VERSION_NAMED = 3 // avec le nom du client : + longueur(1) + nom en UTF-8
     const val PAYLOAD_LEN = 10 // version(1) + appareil(5) + jour de debut(2) + jour de fin(2)
     const val SIG_LEN = 64
     const val KEY_CHARS = 119
@@ -290,12 +291,24 @@ internal class LicenceManager(context: Context) {
 
     private fun check(key: PublicKey, text: String, nowMillis: Long): LicenceStatus {
         val normalized = LicenceFormat.normalize(text)
-        if (normalized.length != LicenceFormat.KEY_CHARS) return LicenceStatus.Invalid
         val bytes = LicenceFormat.decode(normalized)
-        val payload = bytes.copyOfRange(0, LicenceFormat.PAYLOAD_LEN)
-        val signature = bytes.copyOfRange(LicenceFormat.PAYLOAD_LEN, LicenceFormat.PAYLOAD_LEN + LicenceFormat.SIG_LEN)
-        if (payload[0].toInt() != LicenceFormat.VERSION) return LicenceStatus.Invalid
+        if (bytes.size < LicenceFormat.PAYLOAD_LEN + LicenceFormat.SIG_LEN) return LicenceStatus.Invalid
+        if (normalized.length != (bytes.size * 8 + 4) / 5) return LicenceStatus.Invalid
+        val version = bytes[0].toInt() and 0xFF
+        val payloadLen = when (version) {
+            LicenceFormat.VERSION -> LicenceFormat.PAYLOAD_LEN
+            LicenceFormat.VERSION_NAMED -> LicenceFormat.PAYLOAD_LEN + 1 + (bytes[LicenceFormat.PAYLOAD_LEN].toInt() and 0xFF)
+            else -> return LicenceStatus.Invalid
+        }
+        if (bytes.size != payloadLen + LicenceFormat.SIG_LEN) return LicenceStatus.Invalid
+        val payload = bytes.copyOfRange(0, payloadLen)
+        val signature = bytes.copyOfRange(payloadLen, payloadLen + LicenceFormat.SIG_LEN)
         if (!LicenceFormat.verifySignature(key, payload, signature)) return LicenceStatus.Invalid
+        val clientName = if (version == LicenceFormat.VERSION_NAMED) {
+            String(payload, LicenceFormat.PAYLOAD_LEN + 1, payloadLen - LicenceFormat.PAYLOAD_LEN - 1, Charsets.UTF_8).trim().ifEmpty { null }
+        } else {
+            null
+        }
 
         val device = LicenceFormat.decode(LicenceFormat.normalize(deviceCode))
         for (i in device.indices) {
@@ -311,7 +324,7 @@ internal class LicenceManager(context: Context) {
         val today = (effectiveNow / LicenceFormat.DAY_MS).toInt()
         if (today < startDay) return LicenceStatus.NotYetValid(startDay)
         if (today > expiryDay) return LicenceStatus.Expired(expiryDay)
-        return LicenceStatus.Valid(expiryDay, expiryDay - today)
+        return LicenceStatus.Valid(expiryDay, expiryDay - today, clientName)
     }
 
     /** Retient la date la plus recente vue, sans depasser la fin de la licence. */
