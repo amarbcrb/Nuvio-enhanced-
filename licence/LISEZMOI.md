@@ -40,10 +40,14 @@ Tant que la clé publique n'est pas collée, GitHub construit seulement Nuvio Pl
 
 ## 3. Récupérer les APK
 
-À chaque push sur `main`, GitHub Actions construit les deux APK :
+À chaque push sur `main`, GitHub Actions construit les deux APK et publie une release numérotée (par exemple `v0.6.42`) qui contient `NuvioPlus.apk` et `NuvioPro.apk`. Les 5 dernières releases sont gardées.
 
-- Nuvio Plus : release `nuvio-plus-latest`, fichier `NuvioPlus.apk`
-- Nuvio Pro : release `nuvio-pro-latest`, fichier `NuvioPro.apk`
+Liens qui pointent toujours vers la dernière version :
+
+- https://github.com/amarbcrb/Nuvio-enhanced-/releases/latest/download/NuvioPlus.apk
+- https://github.com/amarbcrb/Nuvio-enhanced-/releases/latest/download/NuvioPro.apk
+
+Dans l'appli, la mise à jour propose la dernière release : Nuvio Plus télécharge `NuvioPlus.apk`, Nuvio Pro télécharge `NuvioPro.apk`.
 
 Sur ton PC : `./gradlew :androidApp:assembleFullDebug -Pnuvio.android.distribution=full -Pnuvio.ios.distribution=appstore` donne Nuvio Plus. Ajoute `-Pnuvio.edition=pro` pour Nuvio Pro.
 

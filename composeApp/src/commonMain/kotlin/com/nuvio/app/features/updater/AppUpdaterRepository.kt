@@ -1,5 +1,6 @@
 package com.nuvio.app.features.updater
 
+import com.nuvio.app.core.build.AppVersionConfig
 import com.nuvio.app.features.addons.httpRequestRaw
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -33,8 +34,12 @@ internal data class GitHubAssetDto(
 internal class NoChannelReleaseException : IllegalStateException()
 
 internal const val GITHUB_API_BASE = "https://api.github.com"
-internal const val GITHUB_OWNER = "luqmanfadlli"
-internal const val GITHUB_REPO = "NuvioMobile-Enhanced"
+internal const val GITHUB_OWNER = "amarbcrb"
+internal const val GITHUB_REPO = "Nuvio-enhanced-"
+
+/** APK names published by CI for each edition (see licence/LISEZMOI.md). */
+internal const val PLUS_APK_PREFIX = "NuvioPlus"
+internal const val PRO_APK_PREFIX = "NuvioPro"
 
 internal object AppUpdaterRepository {
     private val json = Json {
@@ -70,13 +75,14 @@ internal object AppUpdaterRepository {
         responseBody: String,
         channel: UpdateChannel,
         supportedAbis: List<String>,
+        edition: String = AppVersionConfig.EDITION,
     ): AppUpdate? {
         val releases = when (channel) {
             UpdateChannel.STABLE -> listOf(json.decodeFromString<GitHubReleaseDto>(responseBody))
             UpdateChannel.BETA -> json.decodeFromString<List<GitHubReleaseDto>>(responseBody)
         }
         return ReleaseSelector.eligibleReleases(releases, channel).firstNotNullOfOrNull { release ->
-            val asset = chooseBestApkAsset(release.assets, supportedAbis) ?: return@firstNotNullOfOrNull null
+            val asset = chooseBestApkAsset(release.assets, supportedAbis, edition) ?: return@firstNotNullOfOrNull null
             val tag = release.tagName?.takeIf { VersionUtils.parse(it) != null }
                 ?: release.name.orEmpty()
             AppUpdate(
@@ -94,10 +100,22 @@ internal object AppUpdaterRepository {
     private fun chooseBestApkAsset(
         assets: List<GitHubAssetDto>,
         supportedAbis: List<String>,
+        edition: String,
     ): GitHubAssetDto? {
-        val apkAssets = assets.filter { asset ->
+        val allApks = assets.filter { asset ->
             asset.name.endsWith(".apk", ignoreCase = true) ||
                 asset.contentType == "application/vnd.android.package-archive"
+        }
+        // A release can hold both NuvioPlus and NuvioPro: each edition only takes its own APK.
+        val editionApks = allApks.filter { asset ->
+            asset.name.startsWith(PLUS_APK_PREFIX, ignoreCase = true) ||
+                asset.name.startsWith(PRO_APK_PREFIX, ignoreCase = true)
+        }
+        val ownPrefix = if (edition == "pro") PRO_APK_PREFIX else PLUS_APK_PREFIX
+        val apkAssets = if (editionApks.isEmpty()) {
+            allApks
+        } else {
+            editionApks.filter { it.name.startsWith(ownPrefix, ignoreCase = true) }
         }
         for (abi in supportedAbis) {
             apkAssets.firstOrNull { it.name.contains(abi, ignoreCase = true) }?.let { return it }

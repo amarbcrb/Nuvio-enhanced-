@@ -67,10 +67,30 @@ class AppUpdaterRepositoryTest {
         assertEquals("app-arm64-v8a.apk", select(response, UpdateChannel.STABLE)?.assetName)
         assertEquals(
             "app-universal.apk",
-            AppUpdaterRepository.selectUpdate(response, UpdateChannel.STABLE, listOf("armeabi-v7a"))?.assetName,
+            AppUpdaterRepository.selectUpdate(response, UpdateChannel.STABLE, listOf("armeabi-v7a"), "free")?.assetName,
         )
     }
 
+    @Test
+    fun eachEditionTakesOnlyItsOwnApk() {
+        val both = """{
+            "tag_name": "v0.6.40", "assets": [
+                {"name": "NuvioPlus.apk", "browser_download_url": "https://example.com/plus.apk"},
+                {"name": "NuvioPro.apk", "browser_download_url": "https://example.com/pro.apk"}
+            ]
+        }"""
+        assertEquals("NuvioPlus.apk", AppUpdaterRepository.selectUpdate(both, UpdateChannel.STABLE, listOf("arm64-v8a"), "free")?.assetName)
+        assertEquals("NuvioPro.apk", AppUpdaterRepository.selectUpdate(both, UpdateChannel.STABLE, listOf("arm64-v8a"), "pro")?.assetName)
+
+        val plusOnly = """{
+            "tag_name": "v0.6.41", "assets": [
+                {"name": "NuvioPlus.apk", "browser_download_url": "https://example.com/plus.apk"}
+            ]
+        }"""
+        assertEquals("NuvioPlus.apk", AppUpdaterRepository.selectUpdate(plusOnly, UpdateChannel.STABLE, listOf("arm64-v8a"), "free")?.assetName)
+        assertNull(AppUpdaterRepository.selectUpdate(plusOnly, UpdateChannel.STABLE, listOf("arm64-v8a"), "pro"))
+    }
+
     private fun select(response: String, channel: UpdateChannel): AppUpdate? =
-        AppUpdaterRepository.selectUpdate(response, channel, listOf("arm64-v8a"))
+        AppUpdaterRepository.selectUpdate(response, channel, listOf("arm64-v8a"), "free")
 }

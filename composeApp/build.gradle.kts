@@ -32,6 +32,9 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val buildLabel: Property<String>
 
     @get:Input
+    abstract val edition: Property<String>
+
+    @get:Input
     abstract val supabaseUrl: Property<String>
 
     @get:Input
@@ -191,6 +194,7 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |    const val VERSION_NAME = "${appVersionName.get()}"
                 |    const val VERSION_CODE = ${appVersionCode.get()}
                 |    const val BUILD_LABEL = "${buildLabel.get()}"
+                |    const val EDITION = "${edition.get()}"
                 |}
                 """.trimMargin()
             )
@@ -244,7 +248,8 @@ val appVersionConfigFile = rootProject.file("iosApp/Configuration/Version.xcconf
 val releaseAppVersionName = providers.gradleProperty("nuvio.app.versionName").orNull
     ?: readXcconfigValue(appVersionConfigFile, "MARKETING_VERSION")
     ?: error("MARKETING_VERSION is missing from ${appVersionConfigFile.path}")
-val releaseAppVersionCode = readXcconfigValue(appVersionConfigFile, "CURRENT_PROJECT_VERSION")
+val releaseAppVersionCode = (providers.gradleProperty("nuvio.app.versionCode").orNull
+    ?: readXcconfigValue(appVersionConfigFile, "CURRENT_PROJECT_VERSION"))
     ?.toIntOrNull()
     ?: error("CURRENT_PROJECT_VERSION is missing or invalid in ${appVersionConfigFile.path}")
 val iosDistribution = (
@@ -330,6 +335,8 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     localPropertiesFile.set(rootProject.layout.projectDirectory.file("local.properties"))
     appVersionName.set(releaseAppVersionName)
     appVersionCode.set(releaseAppVersionCode)
+    // "free" = Nuvio Plus, "pro" = Nuvio Pro (-Pnuvio.edition=pro). Picks the APK the updater offers.
+    edition.set(providers.gradleProperty("nuvio.edition").map { it.trim().lowercase() }.orElse("free"))
     // Identifies CI builds (e.g. "build 9 · 90604f4") in Settings, since they all share the same version.
     buildLabel.set(
         listOfNotNull(
