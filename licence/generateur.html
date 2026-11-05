@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Générateur de licences</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -219,6 +221,16 @@ details[open] summary .chev { transform: rotate(180deg); }
 .settings { display: flex; flex-direction: column; gap: 16px; padding: 0 22px 22px; }
 .sub { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
 
+/* Durée : pastilles */
+.duration-field { display: flex; flex-direction: column; gap: 8px; }
+.field-label { font-weight: 600; font-size: 0.95rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 10px 15px; border-radius: 999px; font-size: 0.92rem; font-weight: 700;
+  background: var(--card-2); color: var(--fg); border: 1px solid transparent;
+}
+.chip[aria-pressed="true"] { background: var(--blue); color: #fff; }
+
 /* Champ + bouton Coller */
 .input-group { display: flex; gap: 8px; align-items: stretch; }
 .input-group input { flex: 1; min-width: 0; }
@@ -387,8 +399,17 @@ details[open] summary .chev { transform: rotate(180deg); }
         <label for="start" class="t-green"><span class="label-row"><svg class="ico"><use href="#i-calendar"/></svg>Début</span>
           <input type="date" id="start">
         </label>
-        <label for="duration" class="t-orange"><span class="label-row"><svg class="ico"><use href="#i-clock"/></svg>Durée</span>
-          <select id="duration">
+        <div class="t-orange duration-field">
+          <span class="label-row field-label"><svg class="ico"><use href="#i-clock"/></svg>Durée</span>
+          <div class="chips" id="durationChips" role="group" aria-label="Durée">
+            <button type="button" class="chip" data-days="7">7 j</button>
+            <button type="button" class="chip" data-days="15">15 j</button>
+            <button type="button" class="chip" data-days="30">1 mois</button>
+            <button type="button" class="chip" data-days="90">3 mois</button>
+            <button type="button" class="chip" data-days="365">1 an</button>
+            <button type="button" class="chip" data-days="custom">Autre</button>
+          </div>
+          <select id="duration" class="sr" tabindex="-1" aria-hidden="true">
             <option value="7">7 jours</option>
             <option value="15">15 jours</option>
             <option value="30" selected>30 jours</option>
@@ -397,7 +418,7 @@ details[open] summary .chev { transform: rotate(180deg); }
             <option value="365">1 an</option>
             <option value="custom">Autre (choisir la fin)</option>
           </select>
-        </label>
+        </div>
         <label for="end" class="t-red"><span class="label-row"><svg class="ico"><use href="#i-calendar"/></svg>Fin (incluse)</span>
           <input type="date" id="end">
         </label>
@@ -799,19 +820,35 @@ var LicenceCore = (function () {
     if (LicenceCore.isDeviceCode(this.value)) this.value = LicenceCore.formatDeviceCode(this.value);
   });
   // Début, durée et fin restent cohérents : changer la durée recalcule la fin, changer la fin passe en « Autre ».
+  function updateChips() {
+    var v = $("duration").value;
+    Array.prototype.forEach.call(document.querySelectorAll("#durationChips .chip"), function (c) {
+      c.setAttribute("aria-pressed", c.getAttribute("data-days") === v ? "true" : "false");
+    });
+  }
   function setDates(startDay, days) {
     $("start").value = LicenceCore.dayToInput(startDay);
     $("duration").value = String(days);
     $("end").value = LicenceCore.dayToInput(startDay + days - 1);
+    updateChips();
   }
+  Array.prototype.forEach.call(document.querySelectorAll("#durationChips .chip"), function (c) {
+    c.addEventListener("click", function () {
+      var days = c.getAttribute("data-days");
+      $("duration").value = days;
+      if (days === "custom") { updateChips(); $("end").focus(); try { $("end").showPicker(); } catch (e) {} return; }
+      syncEnd();
+    });
+  });
   function syncEnd() {
     var start = LicenceCore.dayFromInput($("start").value);
     var days = parseInt($("duration").value, 10);
     if (start != null && days > 0) $("end").value = LicenceCore.dayToInput(start + days - 1);
+    updateChips();
   }
   $("start").addEventListener("change", syncEnd);
   $("duration").addEventListener("change", syncEnd);
-  $("end").addEventListener("change", function () { $("duration").value = "custom"; });
+  $("end").addEventListener("change", function () { $("duration").value = "custom"; updateChips(); });
 
   function showResult(e) {
     $("resClient").textContent = e.name;
