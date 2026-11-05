@@ -3,6 +3,5 @@
 <resources>
     <bool name="licence_required">false</bool>
     <string name="licence_public_key" translatable="false"></string>
-    <string name="licence_contact" translatable="false"></string>
     <string name="licence_blocklist_url" translatable="false"></string>
 </resources>

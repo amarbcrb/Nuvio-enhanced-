@@ -25,7 +25,6 @@ import java.util.UUID
 internal class LicenceConfig(
     val required: Boolean,
     val publicKeyBase64: String,
-    val contact: String,
     val blocklistUrl: String,
 ) {
     companion object {
@@ -36,7 +35,6 @@ internal class LicenceConfig(
             return LicenceConfig(
                 required = res.getBoolean(R.bool.licence_required),
                 publicKeyBase64 = res.getString(R.string.licence_public_key).trim(),
-                contact = res.getString(R.string.licence_contact).trim(),
                 blocklistUrl = res.getString(R.string.licence_blocklist_url).trim(),
             )
         }

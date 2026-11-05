@@ -9,14 +9,14 @@ Le même code donne deux applis :
 
 Les deux s'installent côte à côte sur le même téléphone.
 
-Nuvio Pro reste bloqué tant que le client n'a pas de clé valable. Une clé marche sur un seul téléphone et s'arrête à la date prévue. Pas de serveur, rien à payer.
+Au lancement, Nuvio Pro demande une clé d'accès : un champ, un bouton Activer, et en petit le code du téléphone. Une fois la clé acceptée, il marche exactement comme Nuvio Plus. Une clé marche sur un seul téléphone et s'arrête à la date prévue. Pas de serveur, rien à payer.
 
 ## Fichiers
 
 | Fichier | Rôle |
 |---------|------|
 | `licence/generateur.html` | Page pour créer les clés |
-| `androidApp/src/pro/res/values/licence.xml` | Réglages de Nuvio Pro : clé publique, contact, liste de blocage |
+| `androidApp/src/pro/res/values/licence.xml` | Réglages de Nuvio Pro : clé publique, liste de blocage |
 | `androidApp/src/pro/res/values*/strings.xml` | Nom « Nuvio Pro » |
 | `composeApp/src/androidMain/kotlin/com/nuvio/app/core/licence/` | Vérification des clés et écran d'abonnement |
 | `licence/test/` | Tests du format des clés |
@@ -34,7 +34,6 @@ La clé secrète reste dans ton navigateur. Ne la mets jamais sur GitHub.
 Dans `androidApp/src/pro/res/values/licence.xml` (modifiable depuis le site GitHub, bouton crayon) :
 
 - `licence_public_key` : colle la clé publique à la place de `COLLE_ICI_TA_CLE_PUBLIQUE`.
-- `licence_contact` : ton numéro WhatsApp, affiché au client.
 - `licence_blocklist_url` : optionnel, voir plus bas.
 
 Tant que la clé publique n'est pas collée, GitHub construit seulement Nuvio Plus et affiche un avertissement pour Nuvio Pro.
@@ -50,11 +49,11 @@ Sur ton PC : `./gradlew :androidApp:assembleFullDebug -Pnuvio.android.distributi
 
 ## 4. Vendre un mois
 
-1. Le client installe Nuvio Pro. L'appli affiche son **code appareil** (par exemple `K7F3-92QX`).
-2. Il te l'envoie sur WhatsApp avec son paiement (BaridiMob, CCP...).
+1. Le client installe Nuvio Pro. En bas de l'écran, il voit le **code du téléphone** (par exemple `K7F3-92QX`). Un appui dessus le copie.
+2. Il te l'envoie avec son paiement.
 3. Dans le générateur : tape le code, son nom, la durée, puis **Créer la licence**.
 4. Appuie sur **Envoyer par WhatsApp** ou **Copier la clé**, et envoie-la-lui.
-5. Il colle la clé dans l'appli et appuie sur **Activer**.
+5. Il colle la clé dans le champ **Clé d'accès** et appuie sur **Activer**.
 
 Pour renouveler, appuie sur **Renouveler** dans la liste des clients. Si la licence est encore active, les jours s'ajoutent à la date de fin actuelle.
 
