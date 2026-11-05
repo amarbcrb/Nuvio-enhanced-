@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reglages de Nuvio Pro. Voir licence/LISEZMOI.md. -->
+<resources>
+    <bool name="licence_required">true</bool>
+
+    <!-- Cle publique du generateur de licences (Reglages > Cle publique). -->
+    <string name="licence_public_key" translatable="false">COLLE_ICI_TA_CLE_PUBLIQUE</string>
+
+    <!-- Affiche au client sur l'ecran d'abonnement, par exemple : WhatsApp : 0555 12 34 56 -->
+    <string name="licence_contact" translatable="false">WhatsApp : 0X XX XX XX XX</string>
+
+    <!-- Optionnel : lien "Raw" d'un fichier texte avec un code appareil bloque par ligne. Vide = pas de liste. -->
+    <string name="licence_blocklist_url" translatable="false"></string>
+</resources>

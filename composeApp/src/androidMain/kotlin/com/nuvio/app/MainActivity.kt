@@ -15,6 +15,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nuvio.app.core.auth.AuthStorage
 import com.nuvio.app.core.network.ServerConfigurationStorage
 import com.nuvio.app.core.diagnostics.SentryInitializer
+import com.nuvio.app.core.licence.LicenceGate
 import com.nuvio.app.core.deeplink.handleAppUrl
 import com.nuvio.app.core.poster.CustomPosterUrlStorage
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
@@ -206,10 +207,12 @@ open class MainActivity : AppCompatActivity() {
     private fun showContent() {
         handleIncomingAppIntent(intent)
         setContent {
-            val sheetBackdropSource = rememberNuvioBackdrop()
-            val sheetBackdrop = remember(sheetBackdropSource) { NuvioSheetBackdrop(sheetBackdropSource) }
-            NuvioSheetBackdropHost(sheetBackdrop = sheetBackdrop) {
-                App()
+            LicenceGate {
+                val sheetBackdropSource = rememberNuvioBackdrop()
+                val sheetBackdrop = remember(sheetBackdropSource) { NuvioSheetBackdrop(sheetBackdropSource) }
+                NuvioSheetBackdropHost(sheetBackdrop = sheetBackdrop) {
+                    App()
+                }
             }
         }
         contentReady = true

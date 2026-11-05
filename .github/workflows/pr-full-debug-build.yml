@@ -79,3 +79,45 @@ jobs:
           else
             gh release create "$tag" NuvioPlus.apk --title "Nuvio Plus" --notes "$notes" --target "$GITHUB_SHA" --latest
           fi
+
+      # Nuvio Pro: same app with the licence screen. Built only once the public key from the
+      # licence generator is in androidApp/src/pro/res/values/licence.xml.
+      - name: Check Nuvio Pro licence key
+        id: pro
+        run: |
+          if grep -q 'COLLE_ICI_TA_CLE_PUBLIQUE' androidApp/src/pro/res/values/licence.xml; then
+            echo "::warning::Nuvio Pro not built: paste the public key from the licence generator into androidApp/src/pro/res/values/licence.xml"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build Nuvio Pro APK
+        if: steps.pro.outputs.build == 'true'
+        run: |
+          ./gradlew :androidApp:assembleFullDebug -Pnuvio.edition=pro -Pnuvio.android.distribution=full -Pnuvio.ios.distribution=appstore --stacktrace
+          cp androidApp/build/outputs/apk/full/debug/androidApp-full-debug.apk NuvioPro.apk
+
+      - name: Upload Nuvio Pro APK
+        if: steps.pro.outputs.build == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          path: NuvioPro.apk
+          archive: false
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish APK to the nuvio-pro-latest release
+        if: github.event_name == 'push' && steps.pro.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          tag=nuvio-pro-latest
+          notes="Build $RUN_NUMBER (${GITHUB_SHA::7})"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" NuvioPro.apk --clobber
+            gh release edit "$tag" --notes "$notes"
+          else
+            gh release create "$tag" NuvioPro.apk --title "Nuvio Pro" --notes "$notes" --target "$GITHUB_SHA" --latest=false
+          fi

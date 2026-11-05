@@ -1,0 +1,562 @@
+<title>Générateur de licences</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow working column; the key is the hero once generated, the client ledger sits below. */
+:root {
+  --bg: #f3f5f1;
+  --surface: #ffffff;
+  --fg: #18221d;
+  --muted: #5b6a62;
+  --line: #d8dfd9;
+  --accent: #11694a;
+  --accent-fg: #ffffff;
+  --accent-soft: #e2efe8;
+  --warn: #8a5a00;
+  --warn-soft: #fbefd5;
+  --danger: #a3261d;
+  --danger-soft: #f8e1de;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111714; --surface: #19211d; --fg: #e3ebe6; --muted: #98a89f; --line: #2c3832;
+    --accent: #4cc28f; --accent-fg: #0b1510; --accent-soft: #183326;
+    --warn: #f0c060; --warn-soft: #3a2e12; --danger: #f08a80; --danger-soft: #3d1c19;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111714; --surface: #19211d; --fg: #e3ebe6; --muted: #98a89f; --line: #2c3832;
+  --accent: #4cc28f; --accent-fg: #0b1510; --accent-soft: #183326;
+  --warn: #f0c060; --warn-soft: #3a2e12; --danger: #f08a80; --danger-soft: #3d1c19;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+main { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: 1.9rem; font-weight: 700; }
+h2 { font-size: 1.25rem; font-weight: 600; }
+p { margin: 0; }
+.lead { color: var(--muted); max-width: 60ch; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+section { display: flex; flex-direction: column; gap: 14px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+label { font-weight: 600; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
+.hint { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+input[type="text"], select, textarea {
+  font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%;
+}
+textarea { font-family: var(--font-mono); font-size: 0.9rem; resize: vertical; min-height: 76px; }
+#device { font-family: var(--font-mono); font-size: 1.25rem; letter-spacing: 0.08em; text-transform: uppercase; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.row > * { flex: 1 1 180px; min-width: 0; }
+button, .btn {
+  font: inherit; font-weight: 600; border-radius: 8px; padding: 11px 16px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg);
+  text-decoration: none; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+button.secondary, .btn.secondary { background: transparent; color: var(--accent); }
+button.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+button.small { padding: 6px 10px; font-size: 0.85rem; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.mono { font-family: var(--font-mono); overflow-wrap: anywhere; }
+.keybox {
+  font-family: var(--font-mono); font-size: 0.95rem; line-height: 1.6; letter-spacing: 0.04em;
+  background: var(--accent-soft); color: var(--fg); border-radius: 8px; padding: 14px; overflow-wrap: anywhere;
+  user-select: all;
+}
+.result { border: 2px solid var(--accent); }
+.result-meta { display: flex; gap: 8px 16px; flex-wrap: wrap; color: var(--muted); font-size: 0.9rem; }
+.result-meta strong { color: var(--fg); }
+.msg { font-size: 0.9rem; border-radius: 8px; padding: 10px 12px; }
+.msg.error { background: var(--danger-soft); color: var(--danger); }
+.msg.ok { background: var(--accent-soft); color: var(--accent); }
+.msg.warn { background: var(--warn-soft); color: var(--warn); }
+.check { flex-direction: row; align-items: flex-start; gap: 10px; font-weight: 500; }
+.check input { margin-top: 4px; width: 18px; height: 18px; flex: none; }
+.ledger { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ledger li { display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 12px 0; border-top: 1px solid var(--line); align-items: center; }
+.ledger li:first-child { border-top: 0; }
+.who { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.who .name { font-weight: 600; overflow-wrap: anywhere; }
+.who .code { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
+.who .until { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pill { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.pill.ok { background: var(--accent-soft); color: var(--accent); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.off { background: var(--danger-soft); color: var(--danger); }
+.empty { color: var(--muted); font-size: 0.95rem; }
+details { border-top: 1px solid var(--line); padding-top: 18px; }
+summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; }
+details[open] summary { margin-bottom: 14px; }
+.settings { display: flex; flex-direction: column; gap: 18px; }
+.field-title { font-weight: 600; font-size: 0.9rem; }
+.steps { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .result { animation: pop 220ms ease-out; }
+  @keyframes pop { from { transform: translateY(4px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+</style>
+
+<main>
+  <header>
+    <span class="eyebrow">Abonnements</span>
+    <h1>Générateur de licences</h1>
+    <p class="lead">Crée une clé de 30 jours pour le téléphone d'un client. La clé ne marche que sur ce téléphone et s'arrête toute seule à la date prévue.</p>
+  </header>
+
+  <div id="libError" class="msg error" hidden>Ce navigateur ne sait pas signer les licences. Ouvre cette page dans Chrome ou Safari à jour.</div>
+  <div id="storageWarn" class="msg warn" hidden>Ce navigateur ne garde pas ta clé secrète. À chaque visite, colle ta sauvegarde dans « J'ai déjà une sauvegarde ».</div>
+
+  <!-- Étape 1 : clé secrète -->
+  <section id="setup" hidden>
+    <div class="panel">
+      <h2>Première utilisation</h2>
+      <p class="lead">Ta clé secrète sert à signer les licences. Elle reste dans ce navigateur et n'est envoyée nulle part.</p>
+      <button id="createSeed" type="button">Créer ma clé secrète</button>
+    </div>
+    <div class="panel">
+      <h2>J'ai déjà une sauvegarde</h2>
+      <label for="importSeed">Clé secrète sauvegardée
+        <textarea id="importSeed" spellcheck="false" autocomplete="off" placeholder="Colle ici le texte que tu as sauvegardé"></textarea>
+      </label>
+      <button id="importBtn" type="button" class="secondary">Utiliser cette sauvegarde</button>
+      <div id="importMsg" class="msg error" hidden></div>
+    </div>
+  </section>
+
+  <!-- Étape 2 : sauvegarde obligatoire -->
+  <section id="backup" hidden>
+    <div class="panel">
+      <h2>Sauvegarde ta clé secrète</h2>
+      <p class="lead">Si tu la perds, tu ne pourras plus créer de licences pour l'appli actuelle. Copie-la dans un endroit privé : une note verrouillée, un message à toi-même, un papier.</p>
+      <div class="field-title">Clé secrète (ne la donne à personne)</div>
+      <div id="backupSecret" class="keybox"></div>
+      <button type="button" class="secondary" data-copy="backupSecret">Copier la clé secrète</button>
+      <div class="field-title">Clé publique (à mettre dans l'appli)</div>
+      <div id="backupPublic" class="keybox"></div>
+      <button type="button" class="secondary" data-copy="backupPublic">Copier la clé publique</button>
+      <label class="check" for="savedCheck"><input type="checkbox" id="savedCheck"> J'ai copié ma clé secrète dans un endroit sûr.</label>
+      <button id="finishBackup" type="button" disabled>Continuer</button>
+    </div>
+  </section>
+
+  <!-- Travail quotidien -->
+  <section id="work" hidden>
+    <form id="genForm" class="panel" novalidate>
+      <h2>Nouvelle licence</h2>
+      <label for="device">Code appareil du client
+        <span class="hint">Affiché dans l'appli sur l'écran « Abonnement requis ».</span>
+        <input type="text" id="device" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7F3-92QX" maxlength="12">
+      </label>
+      <div class="row">
+        <label for="client">Nom du client
+          <span class="hint">Pour toi seulement.</span>
+          <input type="text" id="client" autocomplete="off" placeholder="Karim, quartier des Pins">
+        </label>
+        <label for="duration">Durée
+          <span class="hint">Ajoutée à la date de fin actuelle.</span>
+          <select id="duration">
+            <option value="7">7 jours</option>
+            <option value="15">15 jours</option>
+            <option value="30" selected>30 jours</option>
+            <option value="60">60 jours</option>
+            <option value="90">90 jours</option>
+            <option value="365">1 an</option>
+          </select>
+        </label>
+      </div>
+      <div id="genMsg" class="msg error" hidden></div>
+      <button type="submit" id="genBtn">Créer la licence</button>
+    </form>
+
+    <div id="result" class="panel result" hidden>
+      <h2>Licence prête</h2>
+      <div class="result-meta">
+        <span>Client : <strong id="resClient"></strong></span>
+        <span>Code : <strong id="resCode" class="mono"></strong></span>
+        <span>Valable jusqu'au <strong id="resUntil"></strong></span>
+      </div>
+      <div id="resKey" class="keybox"></div>
+      <div class="row">
+        <button type="button" data-copy="resKey">Copier la clé</button>
+        <a id="resWa" class="btn secondary" href="#" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
+      </div>
+      <p class="hint">Le client colle la clé dans le champ « Clé d'activation », puis appuie sur Activer.</p>
+    </div>
+
+    <section>
+      <h2>Clients</h2>
+      <ul id="ledger" class="ledger"></ul>
+      <p id="ledgerEmpty" class="empty">Aucune licence pour l'instant. Chaque licence créée apparaît ici avec sa date de fin, pour savoir qui doit renouveler.</p>
+    </section>
+
+    <details id="settings">
+      <summary>Réglages</summary>
+      <div class="settings">
+        <div class="panel">
+          <div class="field-title">Clé publique (à mettre dans l'appli)</div>
+          <div id="setPublic" class="keybox"></div>
+          <button type="button" class="secondary" data-copy="setPublic">Copier la clé publique</button>
+        </div>
+        <div class="panel">
+          <div class="field-title">Clé secrète</div>
+          <div id="setSecret" class="keybox" hidden></div>
+          <div class="row">
+            <button type="button" id="toggleSecret" class="secondary">Afficher la clé secrète</button>
+            <button type="button" class="secondary" data-copy="setSecret" id="copySecret" hidden>Copier</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="field-title">Retirer la clé secrète de ce navigateur</div>
+          <p class="hint">Sans ta sauvegarde, tu ne pourras plus créer de licences valables pour l'appli. La liste des clients est gardée.</p>
+          <button type="button" id="forget" class="danger">Retirer la clé secrète</button>
+          <div id="forgetConfirm" class="row" hidden>
+            <button type="button" id="forgetYes" class="danger">Oui, retirer</button>
+            <button type="button" id="forgetNo" class="secondary">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<!-- Format des licences. LicenceManager.kt (appli Android) suit exactement ce format. -->
+<script id="licence-core">
+var LicenceCore = (function () {
+  "use strict";
+  var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // base32 Crockford
+  var VERSION = 1;
+  var PAYLOAD_LEN = 8;   // version(1) + appareil(5) + jour de fin(2)
+  var SIG_LEN = 64;      // signature ECDSA P-256, r||s
+  var KEY_CHARS = 116;   // 72 octets en base32
+  var DEVICE_CHARS = 8;  // 5 octets en base32
+  var DAY_MS = 86400000;
+  var ALGO = { name: "ECDSA", namedCurve: "P-256" };
+  var SIGN = { name: "ECDSA", hash: "SHA-256" };
+
+  function subtle() {
+    if (!(typeof crypto !== "undefined" && crypto.subtle)) throw new Error("WebCrypto indisponible");
+    return crypto.subtle;
+  }
+  function toB64(bytes) { var s = ""; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); }
+  function fromB64(text) { var s = atob(String(text).replace(/\s+/g, "")); var b = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; }
+
+  function normalize(text) {
+    return String(text == null ? "" : text).toUpperCase()
+      .replace(/O/g, "0").replace(/[IL]/g, "1")
+      .replace(/[^0-9A-HJKMNP-TV-Z]/g, "");
+  }
+  function encode(bytes) {
+    var out = "", bits = 0, val = 0;
+    for (var i = 0; i < bytes.length; i++) {
+      val = (val << 8) | bytes[i]; bits += 8;
+      while (bits >= 5) { out += ALPHABET[(val >>> (bits - 5)) & 31]; bits -= 5; }
+      val &= (1 << bits) - 1;
+    }
+    if (bits > 0) out += ALPHABET[(val << (5 - bits)) & 31];
+    return out;
+  }
+  function decode(normalized) {
+    var out = [], bits = 0, val = 0;
+    for (var i = 0; i < normalized.length; i++) {
+      val = (val << 5) | ALPHABET.indexOf(normalized[i]); bits += 5;
+      if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; val &= (1 << bits) - 1; }
+    }
+    return Uint8Array.from(out);
+  }
+  function isDeviceCode(text) { return normalize(text).length === DEVICE_CHARS; }
+  function formatDeviceCode(text) {
+    var s = normalize(text);
+    return s.length === DEVICE_CHARS ? s.slice(0, 4) + "-" + s.slice(4) : s;
+  }
+  function deviceBytes(text) {
+    var s = normalize(text);
+    if (s.length !== DEVICE_CHARS) throw new Error("Le code appareil doit contenir 8 caractères.");
+    return decode(s);
+  }
+  function today(nowMs) { return Math.floor((nowMs == null ? Date.now() : nowMs) / DAY_MS); }
+
+  // Charge une clé secrète sauvegardée (PKCS#8 en base64) et en déduit la clé publique (SPKI en base64).
+  async function loadSecret(secretB64) {
+    var pkcs8 = fromB64(secretB64);
+    var privateKey = await subtle().importKey("pkcs8", pkcs8, ALGO, true, ["sign"]);
+    var jwk = await subtle().exportKey("jwk", privateKey);
+    var publicKey = await subtle().importKey("jwk", { kty: "EC", crv: "P-256", x: jwk.x, y: jwk.y }, ALGO, true, ["verify"]);
+    var spki = new Uint8Array(await subtle().exportKey("spki", publicKey));
+    return { secret: toB64(pkcs8), privateKey: privateKey, publicKey: publicKey, publicB64: toB64(spki) };
+  }
+  async function createKeys() {
+    var pair = await subtle().generateKey(ALGO, true, ["sign", "verify"]);
+    return loadSecret(toB64(new Uint8Array(await subtle().exportKey("pkcs8", pair.privateKey))));
+  }
+  function importPublic(publicB64) {
+    return subtle().importKey("spki", fromB64(publicB64), ALGO, true, ["verify"]);
+  }
+
+  async function createLicence(privateKey, deviceCode, expiryDay) {
+    if (!(expiryDay >= 0 && expiryDay <= 65535)) throw new Error("Date de fin hors limites.");
+    var payload = new Uint8Array(PAYLOAD_LEN);
+    payload[0] = VERSION;
+    payload.set(deviceBytes(deviceCode), 1);
+    payload[6] = (expiryDay >> 8) & 255;
+    payload[7] = expiryDay & 255;
+    var sig = new Uint8Array(await subtle().sign(SIGN, privateKey, payload));
+    if (sig.length !== SIG_LEN) throw new Error("Signature inattendue.");
+    var all = new Uint8Array(PAYLOAD_LEN + SIG_LEN);
+    all.set(payload, 0);
+    all.set(sig, PAYLOAD_LEN);
+    return encode(all);
+  }
+
+  // Même vérification que l'appli. Résultat : ok, ou reason = format | signature | device | expired.
+  async function readLicence(publicKey, licence, deviceCode, todayDay) {
+    var s = normalize(licence);
+    if (s.length !== KEY_CHARS) return { ok: false, reason: "format" };
+    var all = decode(s);
+    var payload = all.slice(0, PAYLOAD_LEN), sig = all.slice(PAYLOAD_LEN, PAYLOAD_LEN + SIG_LEN);
+    if (payload[0] !== VERSION) return { ok: false, reason: "format" };
+    if (!(await subtle().verify(SIGN, publicKey, sig, payload))) return { ok: false, reason: "signature" };
+    var dev = deviceBytes(deviceCode);
+    for (var i = 0; i < dev.length; i++) if (payload[1 + i] !== dev[i]) return { ok: false, reason: "device" };
+    var expiryDay = (payload[6] << 8) | payload[7];
+    if (todayDay > expiryDay) return { ok: false, reason: "expired", expiryDay: expiryDay };
+    return { ok: true, expiryDay: expiryDay, daysLeft: expiryDay - todayDay };
+  }
+
+  return {
+    normalize: normalize, encode: encode, decode: decode, isDeviceCode: isDeviceCode,
+    formatDeviceCode: formatDeviceCode, today: today, loadSecret: loadSecret, createKeys: createKeys,
+    importPublic: importPublic, createLicence: createLicence, readLicence: readLicence,
+    supported: function () { try { subtle(); return true; } catch (e) { return false; } },
+    DAY_MS: DAY_MS, KEY_CHARS: KEY_CHARS
+  };
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var K_SECRET = "licence.secret.p256.v1", K_LEDGER = "licence.ledger.v2";
+  var $ = function (id) { return document.getElementById(id); };
+  var storageOk = true;
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { storageOk = false; return null; } }
+  function save(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { storageOk = false; return false; } }
+  function drop(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  var dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  function dayToText(day) { return dateFmt.format(new Date(day * LicenceCore.DAY_MS)); }
+
+  var keys = null, pending = null;
+
+  function readLedger() {
+    try { var v = JSON.parse(load(K_LEDGER) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  function writeLedger(list) { save(K_LEDGER, JSON.stringify(list)); }
+
+  function show(view) {
+    $("setup").hidden = view !== "setup";
+    $("backup").hidden = view !== "backup";
+    $("work").hidden = view !== "work";
+  }
+
+  function enterWork() {
+    $("setPublic").textContent = keys.publicB64;
+    $("setSecret").textContent = keys.secret;
+    $("storageWarn").hidden = storageOk;
+    renderLedger();
+    show("work");
+  }
+
+  // Copie : la presse-papiers peut être refusée, on sélectionne alors le texte.
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest("[data-copy]");
+    if (!btn) return;
+    var el = $(btn.getAttribute("data-copy"));
+    var text = el.textContent;
+    var label = btn.textContent;
+    function done(msg) { btn.textContent = msg; setTimeout(function () { btn.textContent = label; }, 1800); }
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents(el);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      done("Texte sélectionné, copie-le");
+    }
+    try {
+      navigator.clipboard.writeText(text).then(function () { done("Copié"); }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  // --- Clé secrète ---
+  $("createSeed").addEventListener("click", async function () {
+    this.disabled = true;
+    try {
+      pending = await LicenceCore.createKeys();
+      $("backupSecret").textContent = pending.secret;
+      $("backupPublic").textContent = pending.publicB64;
+      $("savedCheck").checked = false;
+      $("finishBackup").disabled = true;
+      show("backup");
+    } finally { this.disabled = false; }
+  });
+  $("savedCheck").addEventListener("change", function () { $("finishBackup").disabled = !this.checked; });
+  $("finishBackup").addEventListener("click", function () {
+    keys = pending; pending = null;
+    save(K_SECRET, keys.secret);
+    enterWork();
+  });
+  $("importBtn").addEventListener("click", async function () {
+    var msg = $("importMsg");
+    try {
+      keys = await LicenceCore.loadSecret($("importSeed").value.trim());
+    } catch (e) {
+      msg.textContent = "Ce texte n'est pas une clé secrète valable. Colle la sauvegarde complète, sans rien ajouter.";
+      msg.hidden = false;
+      return;
+    }
+    msg.hidden = true;
+    save(K_SECRET, keys.secret);
+    $("importSeed").value = "";
+    enterWork();
+  });
+
+  // --- Création d'une licence ---
+  $("device").addEventListener("blur", function () {
+    if (LicenceCore.isDeviceCode(this.value)) this.value = LicenceCore.formatDeviceCode(this.value);
+  });
+  function showResult(e) {
+    $("resClient").textContent = e.name;
+    $("resCode").textContent = e.code;
+    $("resUntil").textContent = dayToText(e.expiry);
+    $("resKey").textContent = e.key;
+    $("resWa").href = "https://wa.me/?text=" + encodeURIComponent(e.key);
+    $("result").hidden = false;
+    $("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  $("genForm").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var msg = $("genMsg");
+    var raw = $("device").value;
+    if (!LicenceCore.isDeviceCode(raw)) {
+      msg.textContent = "Le code appareil doit contenir 8 caractères, par exemple K7F3-92QX. Demande au client de te l'envoyer en copiant le code depuis l'appli.";
+      msg.hidden = false;
+      $("device").focus();
+      return;
+    }
+    msg.hidden = true;
+    var code = LicenceCore.formatDeviceCode(raw);
+    var typed = $("client").value.trim();
+    var days = parseInt($("duration").value, 10);
+    var today = LicenceCore.today();
+    var ledger = readLedger();
+    var entry = ledger.filter(function (e) { return e.code === code; })[0];
+    var name = typed || (entry && entry.name) || "Sans nom";
+    // Renouvellement avant la fin : on prolonge depuis la date de fin actuelle.
+    var expiry = entry && entry.expiry >= today ? entry.expiry + days : today + days - 1;
+    $("genBtn").disabled = true;
+    try {
+      var key = await LicenceCore.createLicence(keys.privateKey, code, expiry);
+      var check = await LicenceCore.readLicence(keys.publicKey, key, code, today);
+      if (!check.ok) throw new Error(check.reason);
+      if (entry) { entry.name = name; entry.expiry = expiry; entry.key = key; }
+      else { entry = { code: code, name: name, expiry: expiry, key: key }; ledger.push(entry); }
+      writeLedger(ledger);
+      $("genForm").reset();
+      $("duration").value = "30";
+      renderLedger();
+      showResult(entry);
+    } catch (e) {
+      msg.textContent = "La licence n'a pas pu être créée. Recharge la page et réessaie.";
+      msg.hidden = false;
+    } finally {
+      $("genBtn").disabled = false;
+    }
+  });
+
+  // --- Liste des clients ---
+  function renderLedger() {
+    var list = readLedger().slice().sort(function (a, b) { return a.expiry - b.expiry; });
+    var ul = $("ledger");
+    ul.textContent = "";
+    $("ledgerEmpty").hidden = list.length > 0;
+    var today = LicenceCore.today();
+    list.forEach(function (e) {
+      var left = e.expiry - today;
+      var li = document.createElement("li");
+      var who = document.createElement("div"); who.className = "who";
+      var n = document.createElement("span"); n.className = "name"; n.textContent = e.name;
+      var c = document.createElement("span"); c.className = "code"; c.textContent = e.code;
+      var u = document.createElement("span"); u.className = "until";
+      u.textContent = (left < 0 ? "Terminée le " : "Jusqu'au ") + dayToText(e.expiry);
+      who.append(n, c, u);
+      var act = document.createElement("div"); act.className = "actions";
+      var pill = document.createElement("span");
+      if (left < 0) { pill.className = "pill off"; pill.textContent = "Expirée"; }
+      else if (left <= 3) { pill.className = "pill warn"; pill.textContent = left === 0 ? "Dernier jour" : "Plus que " + (left + 1) + " j"; }
+      else { pill.className = "pill ok"; pill.textContent = (left + 1) + " j restants"; }
+      var renew = document.createElement("button");
+      renew.type = "button"; renew.className = "secondary small"; renew.textContent = "Renouveler";
+      renew.addEventListener("click", function () {
+        $("device").value = e.code; $("client").value = e.name === "Sans nom" ? "" : e.name;
+        $("genForm").scrollIntoView({ behavior: "smooth", block: "start" });
+        $("duration").focus();
+      });
+      act.append(pill, renew);
+      if (e.key && left >= 0) {
+        var again = document.createElement("button");
+        again.type = "button"; again.className = "secondary small"; again.textContent = "Revoir la clé";
+        again.addEventListener("click", function () { showResult(e); });
+        act.append(again);
+      }
+      li.append(who, act);
+      ul.append(li);
+    });
+  }
+
+  // --- Réglages ---
+  $("toggleSecret").addEventListener("click", function () {
+    var hidden = !$("setSecret").hidden;
+    $("setSecret").hidden = hidden; $("copySecret").hidden = hidden;
+    this.textContent = hidden ? "Afficher la clé secrète" : "Masquer la clé secrète";
+  });
+  $("forget").addEventListener("click", function () { $("forgetConfirm").hidden = false; this.hidden = true; });
+  $("forgetNo").addEventListener("click", function () { $("forgetConfirm").hidden = true; $("forget").hidden = false; });
+  $("forgetYes").addEventListener("click", function () {
+    drop(K_SECRET); keys = null;
+    $("forgetConfirm").hidden = true; $("forget").hidden = false;
+    $("setSecret").hidden = true; $("copySecret").hidden = true;
+    $("settings").open = false; $("result").hidden = true;
+    show("setup");
+  });
+
+  // --- Démarrage ---
+  if (!LicenceCore.supported()) {
+    $("libError").hidden = false;
+    show("setup");
+    $("createSeed").disabled = true; $("importBtn").disabled = true;
+    return;
+  }
+  var stored = load(K_SECRET);
+  $("storageWarn").hidden = storageOk;
+  if (!stored) { show("setup"); return; }
+  LicenceCore.loadSecret(stored).then(function (k) { keys = k; enterWork(); }, function () { show("setup"); });
+})();
+</script>

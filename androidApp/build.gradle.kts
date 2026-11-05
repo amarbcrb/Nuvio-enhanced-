@@ -50,6 +50,24 @@ val buildsReleaseApks = requestedTaskNames.any {
     it.startsWith("assemble", ignoreCase = true) && it.endsWith("Release", ignoreCase = true)
 }
 
+// Edition: "free" (Nuvio Plus, no licence) or "pro" (Nuvio Pro, needs a licence key).
+// Build Nuvio Pro with -Pnuvio.edition=pro. See licence/LISEZMOI.md.
+val nuvioEdition = providers.gradleProperty("nuvio.edition").orNull?.trim()?.lowercase() ?: "free"
+require(nuvioEdition == "free" || nuvioEdition == "pro") {
+    "nuvio.edition must be 'free' or 'pro'."
+}
+val isProEdition = nuvioEdition == "pro"
+if (isProEdition) {
+    val licenceXml = file("src/pro/res/values/licence.xml").readText()
+    val publicKey = Regex("""name="licence_public_key"[^>]*>([^<]*)<""")
+        .find(licenceXml)?.groupValues?.get(1)?.trim().orEmpty()
+    val decoded = runCatching { java.util.Base64.getDecoder().decode(publicKey) }.getOrNull()
+    require(decoded != null && decoded.size == 91) {
+        "Nuvio Pro: paste the public key from the licence generator into " +
+            "androidApp/src/pro/res/values/licence.xml (licence_public_key)."
+    }
+}
+
 android {
     namespace = "com.nuvio.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -76,6 +94,7 @@ android {
 
     defaultConfig {
         applicationId = "com.nuvio.media"
+        if (isProEdition) applicationIdSuffix = ".pro"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = releaseAppVersionCode
@@ -97,6 +116,12 @@ android {
     sourceSets.getByName("full") {
         manifest.srcFile("src/full/AndroidManifest.xml")
         jniLibs.directories.add("../composeApp/src/full/jniLibs")
+    }
+    if (isProEdition) {
+        // Nuvio Pro: app name and licence settings.
+        sourceSets.getByName("main") {
+            res.directories.add("src/pro/res")
+        }
     }
 
     packaging {
@@ -225,7 +250,7 @@ val rust = tasks.register<CargoNdkBuild>("buildRust") {
 
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
-        variant.applicationId.set("com.nuviodebug.com")
+        variant.applicationId.set(if (isProEdition) "com.nuviodebug.com.pro" else "com.nuviodebug.com")
     }
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(rust, CargoNdkBuild::jniLibs)
