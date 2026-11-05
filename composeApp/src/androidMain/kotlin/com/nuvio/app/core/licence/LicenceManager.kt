@@ -196,6 +196,12 @@ internal class LicenceManager(context: Context) {
 
     /** Lit l'heure reelle et la liste de blocage. Sans internet, ne fait rien. */
     suspend fun refreshOnline() {
+        refreshTime()
+        refreshBlocklist()
+    }
+
+    /** Heure reelle (en-tete HTTP Date), pour ne pas dependre de l'horloge du telephone. */
+    suspend fun refreshTime() {
         if (!config.required) return
         withContext(Dispatchers.IO) {
             runCatching {
@@ -212,25 +218,74 @@ internal class LicenceManager(context: Context) {
                     conn.disconnect()
                 }
             }
-            if (config.blocklistUrl.isNotBlank()) {
-                runCatching {
-                    val conn = URL(config.blocklistUrl).openConnection() as HttpURLConnection
-                    conn.connectTimeout = 8_000
-                    conn.readTimeout = 8_000
-                    try {
-                        if (conn.responseCode == 200) {
-                            val mine = LicenceFormat.normalize(deviceCode)
-                            val blocked = conn.inputStream.bufferedReader().useLines { lines ->
-                                lines.any { LicenceFormat.normalize(it) == mine }
-                            }
-                            prefs.edit().putBoolean(KEY_BLOCKED, blocked).apply()
-                        }
-                    } finally {
-                        conn.disconnect()
-                    }
-                }
-            }
         }
+    }
+
+    /**
+     * Relit la liste de blocage. Pour un fichier sur GitHub, passe par l'API GitHub, qui donne la
+     * version a jour tout de suite (le lien raw peut garder une ancienne copie quelques minutes).
+     * Avec l'ETag, une liste inchangee repond 304 : rien a telecharger, et GitHub ne le compte pas
+     * dans sa limite de requetes. Si l'API refuse (limite atteinte, panne), on lit le lien raw.
+     */
+    suspend fun refreshBlocklist() {
+        if (!config.required || config.blocklistUrl.isBlank()) return
+        withContext(Dispatchers.IO) {
+            val api = githubApiUrl(config.blocklistUrl)
+            val viaApi = api != null && runCatching { readBlocklistFromApi(api) }.getOrDefault(false)
+            if (!viaApi) runCatching { readBlocklistRaw() }
+        }
+    }
+
+    /** true si la reponse a ete utilisee (200 lu, ou 304 inchange). */
+    private fun readBlocklistFromApi(api: String): Boolean {
+        val conn = URL(api).openConnection() as HttpURLConnection
+        conn.connectTimeout = 8_000
+        conn.readTimeout = 8_000
+        conn.useCaches = false
+        conn.setRequestProperty("Accept", "application/vnd.github.raw")
+        conn.setRequestProperty("User-Agent", "NuvioPro")
+        prefs.getString(KEY_BLOCK_ETAG, null)?.let { conn.setRequestProperty("If-None-Match", it) }
+        try {
+            return when (conn.responseCode) {
+                304 -> true
+                200 -> {
+                    val blocked = conn.inputStream.bufferedReader().useLines { lines -> lines.any(::isMyCode) }
+                    prefs.edit()
+                        .putBoolean(KEY_BLOCKED, blocked)
+                        .putString(KEY_BLOCK_ETAG, conn.getHeaderField("ETag"))
+                        .apply()
+                    true
+                }
+                else -> false
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun readBlocklistRaw() {
+        val separator = if (config.blocklistUrl.contains('?')) '&' else '?'
+        val conn = URL(config.blocklistUrl + separator + "t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
+        conn.connectTimeout = 8_000
+        conn.readTimeout = 8_000
+        conn.useCaches = false
+        try {
+            if (conn.responseCode == 200) {
+                val blocked = conn.inputStream.bufferedReader().useLines { lines -> lines.any(::isMyCode) }
+                prefs.edit().putBoolean(KEY_BLOCKED, blocked).apply()
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun isMyCode(line: String): Boolean = LicenceFormat.normalize(line) == LicenceFormat.normalize(deviceCode)
+
+    /** https://raw.githubusercontent.com/<proprio>/<depot>/<branche>/<chemin> -> URL de l'API GitHub, sinon null. */
+    private fun githubApiUrl(raw: String): String? {
+        val match = Regex("""^https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.+)$""").find(raw.trim()) ?: return null
+        val (owner, repo, branch, path) = match.destructured
+        return "https://api.github.com/repos/$owner/$repo/contents/$path?ref=$branch"
     }
 
     private fun check(key: PublicKey, text: String, nowMillis: Long): LicenceStatus {
@@ -286,6 +341,7 @@ internal class LicenceManager(context: Context) {
         const val KEY_LAST_SEEN = "last_seen"
         const val KEY_NETWORK_TIME = "network_time"
         const val KEY_BLOCKED = "blocked"
+        const val KEY_BLOCK_ETAG = "blocklist_etag"
         const val KEY_FALLBACK_ID = "fallback_id"
         const val CLOCK_TOLERANCE_MS = 36L * 60 * 60 * 1000
     }

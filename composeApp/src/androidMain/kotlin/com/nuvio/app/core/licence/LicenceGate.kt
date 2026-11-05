@@ -35,6 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -62,11 +65,28 @@ private fun ProLicenceGate(manager: LicenceManager, content: @Composable () -> U
     var status by remember { mutableStateOf(manager.status()) }
     var showKeyEntry by remember { mutableStateOf(false) }
     var renewals by remember { mutableStateOf(0) }
-    LaunchedEffect(manager) {
+    // Liste de blocage : relue à chaque retour sur l'appli, puis toutes les minutes tant qu'elle est
+    // à l'écran. Un blocage ou un déblocage arrive donc en une minute environ. Rien en arrière-plan.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var resumed by remember { mutableStateOf(true) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> resumed = true
+                Lifecycle.Event.ON_PAUSE -> resumed = false
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(manager, resumed) {
+        if (!resumed) return@LaunchedEffect
+        manager.refreshTime()
         while (true) {
-            manager.refreshOnline()
+            manager.refreshBlocklist()
             status = manager.status()
-            delay(30L * 60 * 1000)
+            delay(BLOCKLIST_CHECK_MS)
         }
     }
 
@@ -243,6 +263,8 @@ private fun messageFor(status: LicenceStatus): String? = when (status) {
     LicenceStatus.Blocked -> "Accès suspendu."
     LicenceStatus.NotConfigured -> "Nuvio Pro n'est pas encore configuré."
 }
+
+private const val BLOCKLIST_CHECK_MS = 60_000L
 
 private fun dayToText(day: Int): String {
     val format = SimpleDateFormat("d MMMM yyyy", Locale.FRENCH)

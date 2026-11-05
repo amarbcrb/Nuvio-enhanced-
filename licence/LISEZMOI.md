@@ -74,7 +74,7 @@ La liste de blocage est `licence/bloques.txt`, déjà branchée dans Nuvio Pro.
 
 1. Dans le générateur, liste **Clients**, appuie sur **Bloquer** à côté du client. Son code est copié et la page GitHub de `bloques.txt` s'ouvre.
 2. Colle le code sur une nouvelle ligne, puis **Commit changes**.
-3. Le téléphone est bloqué à sa prochaine connexion : à l'ouverture de l'appli, ou au plus 30 minutes après s'il est déjà ouvert. Il reste bloqué même hors ligne ensuite.
+3. Le téléphone est bloqué en une minute environ s'il est en train d'utiliser l'appli, sinon dès qu'il la rouvre avec internet. Le déblocage marche pareil. Il reste bloqué même hors ligne ensuite.
 
 Pour débloquer, supprime la ligne. Modifier ce fichier ne relance pas la construction de l'appli.
 
@@ -83,7 +83,7 @@ Pour débloquer, supprime la ligne. Modifier ce fichier ne relance pas la constr
 - Vérifie la signature de la clé : personne ne peut fabriquer de clé sans ta clé secrète.
 - Vérifie que la clé correspond au code de ce téléphone.
 - Bloque si la date du téléphone a été reculée, et utilise l'heure d'internet quand elle est disponible.
-- Revérifie toutes les 30 minutes : l'appli se bloque d'elle-même à l'expiration, même si elle est ouverte.
+- Revérifie toutes les minutes tant qu'elle est à l'écran (blocage, date de fin), et à chaque retour sur l'appli. Rien ne tourne en arrière-plan.
 
 ## Limites
 
