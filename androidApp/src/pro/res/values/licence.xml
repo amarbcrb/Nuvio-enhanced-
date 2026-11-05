@@ -4,7 +4,7 @@
     <bool name="licence_required">true</bool>
 
     <!-- Cle publique du generateur de licences (Reglages > Cle publique). -->
-    <string name="licence_public_key" translatable="false">MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE kmH+260Fj1jKLidJ96XTqx872T48kmoPU2oI 18BU/XhoXH0iVPhRNkcljNpy/UFUmekn9vxb zFs7klj4VVn4Vg==</string>
+    <string name="licence_public_key" translatable="false">MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1sGuyCfe5ptm1SHjT6PUKrInbwPLVqrBqPm53uPO1vReEw6n31c7/oHdvF4H5Em7djzPH0Gd4zuUXj7rLwzbaw==</string>
 
     <!-- Liste de blocage : un code de telephone par ligne dans licence/bloques.txt. Vide = pas de liste. -->
     <string name="licence_blocklist_url" translatable="false">https://raw.githubusercontent.com/amarbcrb/Nuvio-enhanced-/main/licence/bloques.txt</string>
