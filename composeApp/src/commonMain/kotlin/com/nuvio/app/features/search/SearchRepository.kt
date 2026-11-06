@@ -26,6 +26,9 @@ import com.nuvio.app.features.cloudstream.CloudStreamSearchRouteIndex
 import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.streams.isAllowedByLanguagePreferences
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
+import com.nuvio.app.features.home.addonCatalogSourceId
+import com.nuvio.app.features.home.buildCatalogSourceOptions
+import com.nuvio.app.features.streams.cloudStreamAddonId
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.filterReleasedItems
@@ -106,10 +109,19 @@ object SearchRepository {
             .filter(CloudStreamPluginItem::isRunnable)
             .filter { it.isAllowedByLanguagePreferences() }
             .filterNot { it.searchSourceKey() in searchScreenSettings.hiddenSources }
-        // Search always covers every source; the Home catalog source choice does not apply here.
-        val activeAddons = enabledAddons.filter { addon -> addon.manifest != null }
+        // Only the sources chosen on the Search tab (all of them when none is chosen); the Home
+        // catalog source choice does not apply here.
+        val chosenSourceIds = SearchScreenSettingsRepository.resolveSelectedSourceIds(
+            buildCatalogSourceOptions(enabledAddons, runnableCloudPlugins).map { it.id },
+        )
+        val activeAddons = enabledAddons.filter { addon ->
+            addon.manifest != null &&
+                (chosenSourceIds == null || addonCatalogSourceId(addon.manifestUrl) in chosenSourceIds)
+        }
         val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
-            runnableCloudPlugins
+            runnableCloudPlugins.filter { plugin ->
+                chosenSourceIds == null || cloudStreamAddonId(plugin.metadata.id.value) in chosenSourceIds
+            }
         } else {
             emptyList()
         }
@@ -321,7 +333,18 @@ object SearchRepository {
         val enabledAddons = addons.enabledAddons()
         val hasPendingAddonManifests = enabledAddons.hasPendingEnabledManifests()
         val addonManifestErrorMessage = enabledAddons.firstEnabledManifestError()
-        val activeAddons = enabledAddons.filter { it.manifest != null }
+        CloudStreamRepository.initialize()
+        val chosenSourceIds = SearchScreenSettingsRepository.resolveSelectedSourceIds(
+            buildCatalogSourceOptions(
+                enabledAddons,
+                CloudStreamRepository.uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable),
+            ).map { it.id },
+        )
+        // Discover browses the catalogs of the sources chosen on the Search tab, or of every source.
+        val activeAddons = enabledAddons.filter { addon ->
+            addon.manifest != null &&
+                (chosenSourceIds == null || addonCatalogSourceId(addon.manifestUrl) in chosenSourceIds)
+        }
         val serverLibraries = ServerCatalog.titleLibraries()
         if (activeAddons.isEmpty() && serverLibraries.isEmpty()) {
             activeDiscoverJob?.cancel()

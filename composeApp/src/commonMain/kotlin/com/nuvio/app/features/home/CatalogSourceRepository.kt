@@ -4,9 +4,12 @@ import com.nuvio.app.features.addons.ManagedAddon
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.streams.StreamBadgeSettingsStorage
 import com.nuvio.app.features.streams.cloudStreamAddonId
+import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.streams.BingeGroupCacheStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.time.Clock
 
 /** An addon or CloudStream extension whose catalogs can fill the Home tab. */
 data class CatalogSourceOption(
@@ -66,6 +69,7 @@ object CatalogSourceRepository {
     /** Records the sources that currently offer catalogs, for the source choice. */
     internal fun updateAvailable(options: List<CatalogSourceOption>) {
         if (options.isNotEmpty()) _available.value = options
+        SourceAddedOrder.record(options.map { it.id })
     }
 
     /** Ids of the sources to show among [options], or null to show all of them. */
@@ -112,3 +116,49 @@ internal fun buildCatalogSourceOptions(
                 )
             }
         ).distinctBy { it.id }
+
+/**
+ * When each source (addon or CloudStream extension) was first seen, for the « last added » order of
+ * the source pickers. Sources already installed when this started are dated in their list order.
+ */
+internal object SourceAddedOrder {
+    private const val STORAGE_KEY = "catalog_source_first_seen_v1"
+    private const val FIELD_SEPARATOR = "\u001F"
+    private const val ENTRY_SEPARATOR = "\n"
+
+    private var loadedProfileId: Int? = null
+    private var firstSeen: Map<String, Long> = emptyMap()
+
+    private fun ensureLoaded() {
+        val profileId = ProfileRepository.activeProfileId
+        if (loadedProfileId == profileId) return
+        loadedProfileId = profileId
+        firstSeen = BingeGroupCacheStorage.load(STORAGE_KEY).orEmpty()
+            .split(ENTRY_SEPARATOR)
+            .mapNotNull { entry ->
+                val id = entry.substringBefore(FIELD_SEPARATOR).takeIf(String::isNotBlank) ?: return@mapNotNull null
+                val time = entry.substringAfter(FIELD_SEPARATOR, "").toLongOrNull() ?: return@mapNotNull null
+                id to time
+            }
+            .toMap()
+    }
+
+    /** Dates the [ids] not seen before; the later in the list, the more recent. */
+    fun record(ids: List<String>) {
+        ensureLoaded()
+        val unseen = ids.distinct().filterNot { it in firstSeen }
+        if (unseen.isEmpty()) return
+        val now = Clock.System.now().toEpochMilliseconds()
+        firstSeen = firstSeen + unseen.mapIndexed { index, id -> id to now + index }
+        BingeGroupCacheStorage.save(
+            STORAGE_KEY,
+            firstSeen.entries.joinToString(ENTRY_SEPARATOR) { (id, time) -> "$id$FIELD_SEPARATOR$time" },
+        )
+    }
+
+    /** When [id] was first seen, or null if never. */
+    fun firstSeen(id: String): Long? {
+        ensureLoaded()
+        return firstSeen[id]
+    }
+}

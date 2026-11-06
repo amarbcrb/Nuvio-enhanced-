@@ -1,0 +1,4 @@
+<resources>
+    <string name="streams_favorites_only">Favoris</string>
+    <string name="streams_favorites_only_none">Aucune source favorite : appuie sur l’étoile à côté d’une source pour l’ajouter.</string>
+</resources>

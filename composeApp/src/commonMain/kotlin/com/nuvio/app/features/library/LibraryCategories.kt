@@ -19,6 +19,10 @@ data class LibraryCategory(
 data class LibraryCategoriesState(
     val favorites: Set<String> = emptySet(),
     val categories: List<LibraryCategory> = emptyList(),
+    /** Titles put by hand in a built-in section (Anime, Movies, Series...), by section type. */
+    val addedToSection: Map<String, Set<String>> = emptyMap(),
+    /** Titles taken out by hand of the built-in section their kind puts them in, by section type. */
+    val removedFromSection: Map<String, Set<String>> = emptyMap(),
 )
 
 /** Key of a saved title in [LibraryCategoriesState], stable across saves. */
@@ -62,6 +66,27 @@ object LibraryCategoriesRepository {
         return category
     }
 
+    /**
+     * Puts [item] in, or takes it out of, the built-in [section] (Anime, Movies, Series or another
+     * kind). A title is in the section of its kind unless taken out, and in any other one put in by hand.
+     */
+    fun setInSection(section: String, item: LibraryItem, inSection: Boolean) = update { current ->
+        val key = item.categoryKey()
+        val natural = item.librarySectionType() == section
+        val added = current.addedToSection[section].orEmpty()
+        val removed = current.removedFromSection[section].orEmpty()
+        current.copy(
+            addedToSection = current.addedToSection.withSet(
+                section,
+                if (inSection && !natural) added + key else added - key,
+            ),
+            removedFromSection = current.removedFromSection.withSet(
+                section,
+                if (!inSection && natural) removed + key else removed - key,
+            ),
+        )
+    }
+
     fun deleteCategory(categoryId: String) = update { current ->
         current.copy(categories = current.categories.filterNot { it.id == categoryId })
     }
@@ -97,6 +122,9 @@ object LibraryCategoriesRepository {
     }
 }
 
+private fun Map<String, Set<String>>.withSet(key: String, value: Set<String>): Map<String, Set<String>> =
+    if (value.isEmpty()) this - key else this + (key to value)
+
 /** Titles of the built-in Library categories, in the app language. */
 internal data class LibraryCategoryTitles(
     val favorites: String,
@@ -110,6 +138,21 @@ internal const val LIBRARY_ANIME_SECTION = "nuvio:anime"
 internal const val LIBRARY_CATEGORY_SECTION_PREFIX = "nuvio:category:"
 
 private val seriesTypes = setOf("series", "tv")
+
+/** Built-in section a title goes to by its kind: Anime, Movies, Series, or its own type. */
+internal fun LibraryItem.librarySectionType(): String = when {
+    isAnimeTitle() -> LIBRARY_ANIME_SECTION
+    type.equals("movie", ignoreCase = true) -> "movie"
+    type.lowercase() in seriesTypes -> "series"
+    else -> type
+}
+
+/** Whether [item] is in the built-in [section], counting the titles put in or taken out by hand. */
+internal fun LibraryCategoriesState.isInSection(item: LibraryItem, section: String): Boolean {
+    val key = item.categoryKey()
+    if (key in removedFromSection[section].orEmpty()) return false
+    return item.librarySectionType() == section || key in addedToSection[section].orEmpty()
+}
 
 internal fun LibraryItem.isAnimeTitle(): Boolean =
     mediaCategory.equals("anime", ignoreCase = true) ||
@@ -132,15 +175,15 @@ internal fun buildLocalLibraryCategories(
     }
 
     add(LIBRARY_FAVORITES_SECTION, titles.favorites, sorted.filter { it.categoryKey() in state.favorites })
-    val (anime, others) = sorted.partition { it.isAnimeTitle() }
-    add(LIBRARY_ANIME_SECTION, titles.anime, anime)
-    add("movie", titles.movies, others.filter { it.type.equals("movie", ignoreCase = true) })
-    add("series", titles.series, others.filter { it.type.lowercase() in seriesTypes })
-    others
-        .filterNot { it.type.equals("movie", ignoreCase = true) || it.type.lowercase() in seriesTypes }
-        .groupBy { it.type }
-        .forEach { (type, typeItems) ->
-            add(type, type.replaceFirstChar { char -> char.titlecase() }, typeItems)
+    add(LIBRARY_ANIME_SECTION, titles.anime, sorted.filter { state.isInSection(it, LIBRARY_ANIME_SECTION) })
+    add("movie", titles.movies, sorted.filter { state.isInSection(it, "movie") })
+    add("series", titles.series, sorted.filter { state.isInSection(it, "series") })
+    // Other kinds (channels...), in the order their titles were saved.
+    (sorted.map { it.librarySectionType() } + state.addedToSection.keys)
+        .distinct()
+        .filterNot { it == LIBRARY_ANIME_SECTION || it == "movie" || it == "series" }
+        .forEach { type ->
+            add(type, type.replaceFirstChar { char -> char.titlecase() }, sorted.filter { state.isInSection(it, type) })
         }
     state.categories.forEach { category ->
         add(LIBRARY_CATEGORY_SECTION_PREFIX + category.id, category.name, sorted.filter { it.categoryKey() in category.itemKeys })

@@ -150,6 +150,7 @@ object StreamsRepository {
         val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
             "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}" +
             "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}" +
+            "::${StreamSearchScopeRepository.favoritesSignature()}" +
             "::lang=${StreamLanguagePreferencesRepository.requestSignature()}"
         val currentState = _uiState.value
         if (
@@ -317,7 +318,9 @@ object StreamsRepository {
             serverGroups = allServerSources.map { it.loadingGroup() },
         )
         val searchScopeId = StreamSearchScopeRepository.resolveScopeId(sourceOptions)
-        fun isInSearchScope(addonId: String): Boolean = searchScopeId == null || addonId == searchScopeId
+        // The single chosen source, else the favorites when only favorites are searched, else every source.
+        val searchFilter = StreamSearchScopeRepository.searchFilter(sourceOptions)
+        fun isInSearchScope(addonId: String): Boolean = searchFilter(addonId)
         val streamAddons = allStreamAddons.filter { isInSearchScope(it.addonId) }
         val pluginProviderGroups = allPluginProviderGroups.filter { isInSearchScope(it.addonId) }
         val cloudStreamProviderGroups = allCloudStreamProviderGroups.filter { isInSearchScope(it.addonId) }

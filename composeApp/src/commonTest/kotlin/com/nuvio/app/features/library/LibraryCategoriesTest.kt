@@ -35,6 +35,23 @@ class LibraryCategoriesTest {
     }
 
     @Test
+    fun `a title put in or taken out of a built-in section by hand moves with it`() {
+        val dune = item("dune", "movie", 2)
+        val got = item("got", "series", 1)
+        val state = LibraryCategoriesState(
+            addedToSection = mapOf(LIBRARY_ANIME_SECTION to setOf(got.categoryKey())),
+            removedFromSection = mapOf("movie" to setOf(dune.categoryKey())),
+        )
+
+        val sections = buildLocalLibraryCategories(listOf(got, dune), state, titles)
+
+        assertEquals(
+            listOf(LIBRARY_ANIME_SECTION to listOf("got"), "series" to listOf("got")),
+            sections.map { section -> section.type to section.items.map { it.id } },
+        )
+    }
+
+    @Test
     fun `empty categories are not shown`() {
         val sections = buildLocalLibraryCategories(
             items = listOf(item("dune", "movie", 1)),

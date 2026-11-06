@@ -216,6 +216,10 @@ private fun MiniPlayerFrame(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val runtime = MiniPlayerController.hostedRuntime
+    // Leaving the app while the mini player plays puts the video in the system picture-in-picture
+    // window: it then fills that window alone, over a black background hiding the app.
+    val isInPip = rememberIsInPictureInPicture()
+    val showMiniCard = mini && !isInPip
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val containerWidthPx = constraints.maxWidth.toFloat()
@@ -267,7 +271,7 @@ private fun MiniPlayerFrame(
             IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt())
         }
 
-        if (mini) {
+        if (showMiniCard) {
             Box(
                 modifier = Modifier
                     .offset { cardOffset() }
@@ -279,11 +283,15 @@ private fun MiniPlayerFrame(
         }
 
         Box(
-            modifier = if (mini) {
+            modifier = if (showMiniCard) {
                 Modifier
                     .offset { cardOffset() }
                     .size(width = cardWidth, height = videoHeight)
                     .clip(MiniPlayerVideoShape)
+            } else if (isInPip) {
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
             } else {
                 Modifier.fillMaxSize()
             },
@@ -291,7 +299,7 @@ private fun MiniPlayerFrame(
             CompositionLocalProvider(LocalPlayerMiniPresentation provides mini) {
                 content(route)
             }
-            if (mini) {
+            if (showMiniCard) {
                 if (runtime != null && runtime.playbackSnapshot.isLoading && runtime.errorMessage == null) {
                     CircularProgressIndicator(
                         modifier = Modifier
@@ -312,7 +320,7 @@ private fun MiniPlayerFrame(
             }
         }
 
-        if (mini) {
+        if (showMiniCard) {
             val snapshot = runtime?.playbackSnapshot
             val durationMs = snapshot?.durationMs ?: 0L
             val progressFraction = if (snapshot != null && durationMs > 0L) {

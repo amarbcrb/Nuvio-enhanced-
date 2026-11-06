@@ -21,6 +21,8 @@ internal data class SearchScreenSettings(
     val showDiscover: Boolean = true,
     val hiddenSources: Set<String> = emptySet(),
     val sourceOrder: List<String> = emptyList(),
+    /** Addons and extensions (catalog source ids) the Search tab uses; empty means every one. */
+    val selectedSources: List<String> = emptyList(),
 )
 
 /** One row of search results that can be shown, hidden or moved. */
@@ -70,6 +72,20 @@ internal object SearchScreenSettingsRepository {
         // Keep the place of sources that are not installed right now (an addon turned off for a while).
         val missing = current.sourceOrder.filterNot { it in ordered }
         current.copy(sourceOrder = ordered + missing)
+    }
+
+    fun toggleSelectedSource(id: String) = update { current ->
+        current.copy(
+            selectedSources = if (id in current.selectedSources) current.selectedSources - id else current.selectedSources + id,
+        )
+    }
+
+    fun showAllSources() = update { it.copy(selectedSources = emptyList()) }
+
+    /** Ids of the chosen sources among [availableIds], or null to use every source. */
+    fun resolveSelectedSourceIds(availableIds: Collection<String>): Set<String>? {
+        val available = availableIds.toSet()
+        return snapshot().selectedSources.filter { it in available }.toSet().takeIf { it.isNotEmpty() }
     }
 
     fun reset() = update { SearchScreenSettings() }

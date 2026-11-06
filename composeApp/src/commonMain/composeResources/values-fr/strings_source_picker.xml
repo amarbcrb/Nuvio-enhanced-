@@ -1,0 +1,8 @@
+<resources>
+    <string name="source_picker_search_hint">Chercher une source</string>
+    <string name="source_picker_sort_default">Ordre des addons</string>
+    <string name="source_picker_sort_az">A à Z</string>
+    <string name="source_picker_sort_recent">Derniers ajoutés</string>
+    <string name="source_picker_no_match">Aucune source ne correspond à « %1$s »</string>
+    <string name="search_sources_title">Sources de la recherche</string>
+</resources>

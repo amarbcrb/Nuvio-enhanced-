@@ -17,9 +17,15 @@ data class StreamSourceOption(
  */
 object StreamSearchScopeRepository {
     private const val SEPARATOR = "\n"
+    private const val FAVORITES_ONLY_KEY = "stream_favorites_only_v1"
 
     private val _scope = MutableStateFlow<StreamSourceOption?>(null)
     val scope: StateFlow<StreamSourceOption?> = _scope.asStateFlow()
+
+    private val _favoritesOnly = MutableStateFlow(false)
+
+    /** Only the favorite (starred) sources are searched, when one of them can serve the title. */
+    val favoritesOnly: StateFlow<Boolean> = _favoritesOnly.asStateFlow()
 
     private var hasLoaded = false
 
@@ -41,6 +47,34 @@ object StreamSearchScopeRepository {
         )
     }
 
+    fun setFavoritesOnly(enabled: Boolean) {
+        ensureLoaded()
+        if (enabled == _favoritesOnly.value) return
+        _favoritesOnly.value = enabled
+        BingeGroupCacheStorage.save(FAVORITES_ONLY_KEY, enabled.toString())
+    }
+
+    /** Part of the stream request key: changes when the favorites-only search or the favorites change. */
+    fun favoritesSignature(): String {
+        ensureLoaded()
+        if (!_favoritesOnly.value) return "all"
+        PinnedStreamSourcesRepository.ensureLoaded()
+        return "fav:" + PinnedStreamSourcesRepository.pinnedSourceIds.value.sorted().joinToString(",")
+    }
+
+    /**
+     * Which sources (by id) a stream search covers among [available]: the single chosen source, else the
+     * favorites when only favorites are searched and one of them can serve the title, else every source.
+     */
+    fun searchFilter(available: List<StreamSourceOption>): (String) -> Boolean {
+        val scopeId = resolveScopeId(available)
+        if (scopeId != null) return { id -> id == scopeId }
+        if (_favoritesOnly.value && available.any { PinnedStreamSourcesRepository.isFavoriteGroup(it.id) }) {
+            return { id -> PinnedStreamSourcesRepository.isFavoriteGroup(id) }
+        }
+        return { true }
+    }
+
     /** Id of the source to search alone among [available], or null to search all of them. */
     fun resolveScopeId(available: List<StreamSourceOption>): String? {
         ensureLoaded()
@@ -50,6 +84,7 @@ object StreamSearchScopeRepository {
 
     private fun loadFromDisk() {
         hasLoaded = true
+        _favoritesOnly.value = BingeGroupCacheStorage.load(FAVORITES_ONLY_KEY) == "true"
         val stored = StreamBadgeSettingsStorage.loadStreamSearchScope()?.takeIf { it.isNotBlank() }
         _scope.value = stored?.let { raw ->
             val id = raw.substringBefore(SEPARATOR).trim()

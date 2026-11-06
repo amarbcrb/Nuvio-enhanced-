@@ -310,6 +310,7 @@ object PlayerStreamsRepository {
         val requestKey = "$type::$videoId::$season::$episode::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
             "::cloudstream=$cloudStreamRegistryRevision::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}" +
             "::scope=${StreamSearchScopeRepository.scope.value?.id.orEmpty()}" +
+            "::${StreamSearchScopeRepository.favoritesSignature()}" +
             "::lang=${StreamLanguagePreferencesRepository.requestSignature()}" +
             "::only=${onlySourceId.orEmpty()}"
         PluginRepository.setLocalPluginSearchPaused(false)
@@ -433,7 +434,13 @@ object PlayerStreamsRepository {
         )
         val searchScopeId = onlySourceId?.takeIf { id -> sourceOptions.any { it.id == id } }
             ?: StreamSearchScopeRepository.resolveScopeId(sourceOptions)
-        fun isInSearchScope(addonId: String): Boolean = searchScopeId == null || addonId == searchScopeId
+        // The single chosen source, else the favorites when only favorites are searched, else every source.
+        val searchFilter: (String) -> Boolean = if (searchScopeId != null) {
+            { addonId -> addonId == searchScopeId }
+        } else {
+            StreamSearchScopeRepository.searchFilter(sourceOptions)
+        }
+        fun isInSearchScope(addonId: String): Boolean = searchFilter(addonId)
         val streamAddons = allStreamAddons.filter { isInSearchScope(it.addonId) }
         val pluginProviderGroups = allPluginProviderGroups.filter { isInSearchScope(it.addonId) }
         val cloudStreamProviderGroups = allCloudStreamProviderGroups.filter { isInSearchScope(it.addonId) }

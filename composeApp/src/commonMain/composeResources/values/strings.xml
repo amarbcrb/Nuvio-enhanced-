@@ -1960,7 +1960,7 @@
     <string name="settings_language_any">All</string>
     <string name="settings_catalog_source_section">HOME CATALOG</string>
     <string name="settings_catalog_source_title">Catalog source</string>
-    <string name="settings_catalog_source_description">Home shows the films and series of this source only. Search and link searches always use every source.</string>
+    <string name="settings_catalog_source_description">Home shows the films and series of these sources only. The Search tab has its own source choice, and link searches use every source.</string>
     <string name="settings_catalog_source_all">All sources</string>
     <string name="settings_stream_dub_title">Dubbed versions</string>
     <string name="settings_stream_dub_description">Dubbed and multi-language links come first. \"Dubbed only\" hides links that are only subtitled (VOSTFR, SUB) and loads the dubbed episode when a CloudStream extension offers both.</string>

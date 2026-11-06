@@ -1,0 +1,8 @@
+<resources>
+    <string name="source_picker_search_hint">Search a source</string>
+    <string name="source_picker_sort_default">Addon order</string>
+    <string name="source_picker_sort_az">A to Z</string>
+    <string name="source_picker_sort_recent">Last added</string>
+    <string name="source_picker_no_match">No source matches ‘%1$s’</string>
+    <string name="search_sources_title">Search sources</string>
+</resources>

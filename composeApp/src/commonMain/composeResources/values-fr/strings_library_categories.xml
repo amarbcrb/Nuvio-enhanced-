@@ -1,0 +1,5 @@
+<resources>
+    <string name="library_categories_section_library">Bibliothèque</string>
+    <string name="library_categories_section_mine">Mes catégories</string>
+    <string name="library_categories_empty">Pas encore de catégorie à toi. Crées-en une ci-dessous.</string>
+</resources>

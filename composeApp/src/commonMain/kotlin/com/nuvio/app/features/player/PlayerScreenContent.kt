@@ -176,11 +176,13 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
         }
         if (!runtime.isMiniPresentation) {
             EnterImmersivePlayerMode(keepScreenAwake = keepScreenAwake)
-            ManagePlayerPictureInPicture(
-                isPlaying = pipIsPlaying,
-                videoSize = pipVideoSize,
-            )
         }
+        // Full screen or in the mini player, leaving the app while the video plays opens the system
+        // picture-in-picture window, so watching goes on outside the app.
+        ManagePlayerPictureInPicture(
+            isPlaying = pipIsPlaying,
+            videoSize = pipVideoSize,
+        )
         runtime.BindMiniPlayerEffects(miniPresentation)
         runtime.BindPlayerRuntimeEffects()
         CompositionLocalProvider(

@@ -1351,7 +1351,7 @@
     <string name="settings_language_any">Toutes</string>
     <string name="settings_catalog_source_section">CATALOGUE DE L\'ACCUEIL</string>
     <string name="settings_catalog_source_title">Source du catalogue</string>
-    <string name="settings_catalog_source_description">L\'Accueil n\'affiche que les films et séries de cette source. La recherche et la recherche de liens utilisent toujours toutes les sources.</string>
+    <string name="settings_catalog_source_description">L\'Accueil n\'affiche que les films et séries de ces sources. L\'onglet Recherche a son propre choix de sources, et la recherche de liens utilise toutes les sources.</string>
     <string name="settings_catalog_source_all">Toutes les sources</string>
     <string name="settings_stream_dub_title">Versions doublées</string>
     <string name="settings_stream_dub_description">Les liens doublés et MULTI passent en premier. \"Doublé uniquement\" masque les liens seulement sous-titrés (VOSTFR, SUB) et charge l\'épisode doublé quand une extension CloudStream propose les deux.</string>

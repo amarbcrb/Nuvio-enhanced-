@@ -53,7 +53,11 @@ import com.nuvio.app.core.ui.ScreenActivityEffect
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.firstEnabledManifestError
 import com.nuvio.app.features.addons.hasPendingEnabledManifests
+import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
+import com.nuvio.app.features.home.SourceAddedOrder
+import com.nuvio.app.features.home.SourcePickerField
+import com.nuvio.app.features.home.buildCatalogSourceOptions
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
@@ -75,6 +79,7 @@ import nuvio.composeapp.generated.resources.action_retry
 import nuvio.composeapp.generated.resources.compose_nav_search
 import nuvio.composeapp.generated.resources.home_empty_no_sources_title
 import nuvio.composeapp.generated.resources.search_empty_no_sources_message
+import nuvio.composeapp.generated.resources.search_sources_title
 import nuvio.composeapp.generated.resources.compose_search_clear
 import nuvio.composeapp.generated.resources.compose_search_discover_title
 import nuvio.composeapp.generated.resources.compose_search_empty_failed_message
@@ -167,7 +172,12 @@ fun SearchScreen(
     }
     val addonManifestsLoading = addonsUiState.addons.hasPendingEnabledManifests()
 
-    ScreenActivityEffect(addonRefreshKey, homeCatalogSettingsUiState.hideUnreleasedContent, showDiscover) { screenActive ->
+    ScreenActivityEffect(
+        addonRefreshKey,
+        homeCatalogSettingsUiState.hideUnreleasedContent,
+        showDiscover,
+        searchScreenSettings.selectedSources,
+    ) { screenActive ->
         // Discover hidden in Settings > Search screen: nothing to load while the search bar is empty.
         if (!screenActive || !showDiscover) return@ScreenActivityEffect
         SearchRepository.refreshDiscover(addonsUiState.addons)
@@ -179,6 +189,7 @@ fun SearchScreen(
         homeCatalogSettingsUiState.hideUnreleasedContent,
         searchScreenSettings.hiddenSources,
         searchScreenSettings.sourceOrder,
+        searchScreenSettings.selectedSources,
     ) { screenActive ->
         if (!screenActive) return@ScreenActivityEffect
         val normalizedQuery = query.trim()
@@ -299,6 +310,25 @@ fun SearchScreen(
                             } else {
                                 null
                             },
+                        )
+                    }
+                    // Which addons and extensions the Search tab uses, like the Home source choice.
+                    val searchSources = remember(addonsUiState.addons, cloudStreamUiState.plugins) {
+                        buildCatalogSourceOptions(
+                            addonsUiState.addons.enabledAddons(),
+                            cloudStreamUiState.plugins.filter { it.isRunnable },
+                        ).also { options -> SourceAddedOrder.record(options.map { it.id }) }
+                    }
+                    if (searchSources.size > 1) {
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(10.dp))
+                        SourcePickerField(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            sheetTitle = stringResource(Res.string.search_sources_title),
+                            sources = searchSources,
+                            selectedIds = searchScreenSettings.selectedSources.toSet(),
+                            onToggle = { SearchScreenSettingsRepository.toggleSelectedSource(it.id) },
+                            onShowAll = SearchScreenSettingsRepository::showAllSources,
+                            compact = true,
                         )
                     }
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(14.dp))
