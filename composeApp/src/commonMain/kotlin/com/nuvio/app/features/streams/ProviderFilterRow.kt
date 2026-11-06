@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -16,6 +17,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,7 +30,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
@@ -48,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +66,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.Menu
 import com.nuvio.app.core.ui.MenuItem
 import com.nuvio.app.core.ui.NuvioToastController
+import com.nuvio.app.core.ui.GlassCheckRow
+import com.nuvio.app.core.ui.GlassPill
+import com.nuvio.app.core.ui.GlassSheetSectionLabel
+import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
@@ -84,6 +95,7 @@ import nuvio.composeapp.generated.resources.streams_language_menu
 import nuvio.composeapp.generated.resources.settings_stream_dub_any
 import nuvio.composeapp.generated.resources.settings_stream_dub_prefer
 import nuvio.composeapp.generated.resources.settings_stream_dub_only
+import nuvio.composeapp.generated.resources.settings_stream_dub_title
 import nuvio.composeapp.generated.resources.streams_unpin_source
 import org.jetbrains.compose.resources.stringResource
 import com.nuvio.app.core.ui.glass.ambientLiquidGlass
@@ -154,44 +166,22 @@ internal fun ProviderFilterRow(
                     onLongClick = selectedGroup?.let { group -> { pinSheetTarget = group.favoriteTarget() } },
                 )
             }
-            Menu(
-                expanded = sourceMenuExpanded,
-                onDismissRequest = { sourceMenuExpanded = false },
-            ) {
-                MenuItem(
-                    text = stringResource(Res.string.collections_tab_all),
-                    selected = selectedFilter == null,
-                    onClick = {
-                        sourceMenuExpanded = false
-                        onFilterSelected(null)
-                    },
-                )
-                addonGroups.forEach { group ->
-                    MenuItem(
-                        text = sourceMenuLabel(
-                            group = group,
-                            isFavorite = group.favoriteTarget()?.key in pinnedSourceIds,
-                        ),
-                        selected = selectedFilter == group.addonId,
-                        onClick = {
-                            sourceMenuExpanded = false
-                            onFilterSelected(group.addonId)
-                        },
-                    )
-                }
-                if (showSearchScopeChip) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    val scopedName = sourceOptions.firstOrNull { it.id == searchScopeId }?.name
-                    MenuItem(
-                        text = stringResource(Res.string.streams_search_scope_title) + " : " +
-                            (scopedName ?: stringResource(Res.string.streams_search_scope_all)),
-                        onClick = {
-                            sourceMenuExpanded = false
-                            showSearchScopeSheet = true
-                        },
-                    )
-                }
-            }
+        }
+        if (sourceMenuExpanded) {
+            StreamSourcesSheet(
+                groups = addonGroups,
+                selectedFilter = selectedFilter,
+                pinnedSourceIds = pinnedSourceIds,
+                scopeLabel = if (showSearchScopeChip) {
+                    sourceOptions.firstOrNull { it.id == searchScopeId }?.name
+                        ?: stringResource(Res.string.streams_search_scope_all)
+                } else {
+                    null
+                },
+                onFilterSelected = onFilterSelected,
+                onOpenSearchScope = { showSearchScopeSheet = true },
+                onDismiss = { sourceMenuExpanded = false },
+            )
         }
         if (onRefresh != null) {
             LanguageMenuChip(
@@ -236,7 +226,6 @@ internal fun ProviderFilterRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StreamSearchScopeSheet(
     options: List<StreamSourceOption>,
@@ -245,56 +234,37 @@ private fun StreamSearchScopeSheet(
     onSelected: (StreamSourceOption?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val coroutineScope = rememberCoroutineScope()
-    fun select(option: StreamSourceOption?) {
-        coroutineScope.launch {
-            dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = { onSelected(option) })
-        }
-    }
-
-    NuvioModalBottomSheet(
-        onDismissRequest = {
-            coroutineScope.launch {
-                dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
-            }
+    var chosen by remember { mutableStateOf<StreamSourceOption?>(null) }
+    var picked by remember { mutableStateOf(false) }
+    GlassStreamSheet(
+        title = stringResource(Res.string.streams_search_scope_title),
+        subtitle = if (storedScope != null && appliedScopeId == null) {
+            stringResource(Res.string.streams_search_scope_unavailable, storedScope.name)
+        } else {
+            null
         },
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = nuvioSafeBottomPadding(16.dp)),
-        ) {
-            Text(
-                text = stringResource(Res.string.streams_search_scope_title),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
+        // The choice is applied once the sheet has closed, as before.
+        onDismiss = { if (picked) onSelected(chosen) else onDismiss() },
+    ) { close ->
+        GlassCheckRow(
+            title = stringResource(Res.string.streams_search_scope_all),
+            checked = storedScope == null,
+            onCheckedChange = {
+                chosen = null
+                picked = true
+                close()
+            },
+        )
+        options.forEach { option ->
+            GlassCheckRow(
+                title = option.name,
+                checked = storedScope?.id == option.id,
+                onCheckedChange = {
+                    chosen = option
+                    picked = true
+                    close()
+                },
             )
-            if (storedScope != null && appliedScopeId == null) {
-                Text(
-                    text = stringResource(Res.string.streams_search_scope_unavailable, storedScope.name),
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            NuvioBottomSheetDivider()
-            NuvioBottomSheetActionRow(
-                title = stringResource(Res.string.streams_search_scope_all),
-                selected = storedScope == null,
-                onClick = { select(null) },
-            )
-            options.forEach { option ->
-                NuvioBottomSheetActionRow(
-                    title = option.name,
-                    selected = storedScope?.id == option.id,
-                    onClick = { select(option) },
-                )
-            }
         }
     }
 }
@@ -341,44 +311,51 @@ private fun LanguageMenuChip(
             trailingIcon = Icons.Rounded.KeyboardArrowDown,
             onClick = { expanded = true },
         )
-        Menu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    }
+    if (expanded) {
+        GlassStreamSheet(
+            title = stringResource(Res.string.streams_language_filter_title),
+            onDismiss = { expanded = false },
+        ) { close ->
             if (hasLanguages) {
-                MenuItem(
-                    text = stringResource(Res.string.streams_languages_menu, savedLanguages),
-                    selected = !filterPaused,
-                    onClick = {
-                        expanded = false
+                GlassCheckRow(
+                    title = stringResource(Res.string.streams_languages_menu, savedLanguages),
+                    checked = !filterPaused,
+                    icon = Icons.Rounded.Translate,
+                    onCheckedChange = {
+                        close()
                         if (filterPaused) {
                             StreamLanguagePreferencesRepository.setLinkFilterPaused(false)
                             onChanged()
                         }
                     },
                 )
-                MenuItem(
-                    text = stringResource(Res.string.streams_language_filter_all),
-                    selected = filterPaused,
-                    onClick = {
-                        expanded = false
+                GlassCheckRow(
+                    title = stringResource(Res.string.streams_language_filter_all),
+                    checked = filterPaused,
+                    icon = Icons.Rounded.Language,
+                    onCheckedChange = {
+                        close()
                         if (!filterPaused) {
                             StreamLanguagePreferencesRepository.setLinkFilterPaused(true)
                             onChanged()
                         }
                     },
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             }
+            GlassSheetSectionLabel(stringResource(Res.string.settings_stream_dub_title))
             StreamDubMode.entries.forEach { mode ->
-                MenuItem(
-                    text = stringResource(
+                GlassCheckRow(
+                    title = stringResource(
                         when (mode) {
                             StreamDubMode.Any -> Res.string.settings_stream_dub_any
                             StreamDubMode.PreferDubbed -> Res.string.settings_stream_dub_prefer
                             StreamDubMode.DubbedOnly -> Res.string.settings_stream_dub_only
                         },
                     ),
-                    selected = preferences.dubMode == mode,
-                    onClick = {
-                        expanded = false
+                    checked = preferences.dubMode == mode,
+                    onCheckedChange = {
+                        close()
                         if (preferences.dubMode != mode) {
                             StreamLanguagePreferencesRepository.update { it.copy(dubMode = mode) }
                             onChanged()
@@ -386,6 +363,116 @@ private fun LanguageMenuChip(
                     },
                 )
             }
+        }
+    }
+}
+
+/** Liquid glass sheet listing the stream sources: pick one to filter, star it as a favorite. */
+@Composable
+private fun StreamSourcesSheet(
+    groups: List<AddonStreamGroup>,
+    selectedFilter: String?,
+    pinnedSourceIds: List<String>,
+    scopeLabel: String?,
+    onFilterSelected: (String?) -> Unit,
+    onOpenSearchScope: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    GlassStreamSheet(
+        title = stringResource(Res.string.streams_sources_menu),
+        onDismiss = onDismiss,
+    ) { close ->
+        GlassCheckRow(
+            title = stringResource(Res.string.collections_tab_all),
+            checked = selectedFilter == null,
+            onCheckedChange = {
+                close()
+                onFilterSelected(null)
+            },
+        )
+        groups.forEach { group ->
+            val target = group.favoriteTarget()
+            GlassCheckRow(
+                title = sourceMenuLabel(group = group, isFavorite = false),
+                checked = selectedFilter == group.addonId,
+                onCheckedChange = {
+                    close()
+                    onFilterSelected(group.addonId)
+                },
+                trailing = if (target != null) {
+                    { FavoriteSourceStar(target = target, isFavorite = target.key in pinnedSourceIds, size = 20.dp) }
+                } else {
+                    null
+                },
+            )
+        }
+        if (scopeLabel != null) {
+            GlassSheetSectionLabel(stringResource(Res.string.streams_search_scope_title))
+            GlassPill(onClick = {
+                close()
+                onOpenSearchScope()
+            }) {
+                Text(
+                    text = scopeLabel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.nuvio.colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.nuvio.colors.textMuted,
+                )
+            }
+        }
+    }
+}
+
+/** Liquid glass bottom sheet with a title; [content] gets a function that closes the sheet. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun GlassStreamSheet(
+    title: String,
+    onDismiss: () -> Unit,
+    subtitle: String? = null,
+    content: @Composable ColumnScope.(close: () -> Unit) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+    val close: () -> Unit = {
+        coroutineScope.launch { dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss) }
+    }
+    NuvioModalBottomSheet(onDismissRequest = close, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 620.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp)
+                .padding(bottom = nuvioSafeBottomPadding(16.dp)),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.nuvio.colors.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp, bottom = if (subtitle == null) 4.dp else 0.dp),
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.nuvio.colors.textMuted,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            content(close)
         }
     }
 }
@@ -429,55 +516,25 @@ internal fun FavoriteSourceStar(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun StreamSourcePinSheet(
     target: PinTarget?,
     onDismiss: () -> Unit,
 ) {
     if (target == null) return
-
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val coroutineScope = rememberCoroutineScope()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
     val isPinned = target.key in pinnedSourceIds
 
-    NuvioModalBottomSheet(
-        onDismissRequest = {
-            coroutineScope.launch {
-                dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
-            }
-        },
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = nuvioSafeBottomPadding(16.dp)),
-        ) {
-            Text(
-                text = target.label,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            NuvioBottomSheetDivider()
-            NuvioBottomSheetActionRow(
-                icon = Icons.Rounded.Star,
-                title = stringResource(
-                    if (isPinned) Res.string.streams_unpin_source else Res.string.streams_pin_source,
-                ),
-                onClick = {
-                    PinnedStreamSourcesRepository.setPinned(target.key, !isPinned)
-                    coroutineScope.launch {
-                        dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
-                    }
-                },
-            )
-        }
+    GlassStreamSheet(title = target.label, onDismiss = onDismiss) { close ->
+        GlassCheckRow(
+            title = stringResource(Res.string.streams_pin_source),
+            checked = isPinned,
+            icon = Icons.Rounded.Star,
+            onCheckedChange = { pinned ->
+                PinnedStreamSourcesRepository.setPinned(target.key, pinned)
+                close()
+            },
+        )
     }
 }
 
@@ -541,24 +598,19 @@ private fun FilterChip(
         animationSpec = tween(durationMillis = 140),
         label = "filter_chip_scale",
     )
+    // Liquid glass: a translucent pill with a light edge, tinted with the accent when selected.
+    val accent = MaterialTheme.nuvio.colors.accent
     val containerColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        },
+        targetValue = if (isSelected) accent.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.10f),
         animationSpec = tween(durationMillis = 180),
         label = "filter_chip_container",
     )
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.onPrimary
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
+    val edgeColor by animateColorAsState(
+        targetValue = if (isSelected) accent.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.16f),
         animationSpec = tween(durationMillis = 180),
-        label = "filter_chip_content",
+        label = "filter_chip_edge",
     )
+    val contentColor = Color.White
     Box(
         modifier = Modifier
             .graphicsLayer {
@@ -574,6 +626,7 @@ private fun FilterChip(
                 blurRadius = 14.dp,
                 refractionHeight = 8.dp,
             )
+            .border(1.dp, edgeColor, RoundedCornerShape(16.dp))
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,

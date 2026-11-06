@@ -34,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -106,13 +107,15 @@ internal fun SourcePickerField(
     val allLabel = stringResource(Res.string.settings_catalog_source_all)
     val chosen = sources.filter { it.id in selectedIds }
     val valueLabel = if (chosen.isEmpty()) allLabel else chosen.joinToString(", ") { it.name }
+    // Liquid glass pill, like the categories and source sheets: translucent, light edge, accent when filtered.
+    val shape = if (compact) RoundedCornerShape(50) else RoundedCornerShape(NuvioTokens.Radius.lg)
     Surface(
         modifier = modifier.then(if (compact) Modifier else Modifier.fillMaxWidth()).clickable { open = true },
-        shape = if (compact) RoundedCornerShape(50) else RoundedCornerShape(NuvioTokens.Radius.lg),
-        color = if (chosen.isEmpty()) tokens.colors.surfaceCard else tokens.colors.accent.copy(alpha = 0.18f),
+        shape = shape,
+        color = if (chosen.isEmpty()) Color.White.copy(alpha = 0.08f) else tokens.colors.accent.copy(alpha = 0.22f),
         border = BorderStroke(
-            NuvioTokens.Border.thin,
-            if (chosen.isEmpty()) tokens.colors.borderSubtle else tokens.colors.accent.copy(alpha = 0.6f),
+            1.dp,
+            if (chosen.isEmpty()) Color.White.copy(alpha = 0.14f) else tokens.colors.accent.copy(alpha = 0.7f),
         ),
     ) {
         Row(
