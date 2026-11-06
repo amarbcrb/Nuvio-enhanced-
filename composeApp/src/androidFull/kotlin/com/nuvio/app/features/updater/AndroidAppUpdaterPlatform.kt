@@ -16,6 +16,7 @@ import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.updates_download_failed_http
 import nuvio.composeapp.generated.resources.updates_downloaded_file_missing
 import nuvio.composeapp.generated.resources.updates_empty_download_body
+import nuvio.composeapp.generated.resources.updates_download_incomplete
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jetbrains.compose.resources.getString
@@ -103,10 +104,10 @@ object AndroidAppUpdaterPlatform {
 
                 val body = response.body ?: error(runBlocking { getString(Res.string.updates_empty_download_body) })
                 val totalBytes = body.contentLength().takeIf { it > 0L }
+                var downloadedBytes = 0L
                 body.byteStream().use { input ->
                     FileOutputStream(destination).use { output ->
                         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                        var downloadedBytes = 0L
                         while (true) {
                             currentCoroutineContext().ensureActive()
                             val read = input.read(buffer)
@@ -118,6 +119,12 @@ object AndroidAppUpdaterPlatform {
                         }
                         output.flush()
                     }
+                }
+                // A cut connection can leave a partial file, which Android then refuses as
+                // "App not installed": never hand an incomplete APK to the installer.
+                if (totalBytes != null && downloadedBytes != totalBytes) {
+                    destination.delete()
+                    error(runBlocking { getString(Res.string.updates_download_incomplete) })
                 }
             }
 

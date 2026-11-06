@@ -1,0 +1,3 @@
+<resources>
+    <string name="updates_download_incomplete">The download was cut off before the end. Check your connection and try again.</string>
+</resources>
