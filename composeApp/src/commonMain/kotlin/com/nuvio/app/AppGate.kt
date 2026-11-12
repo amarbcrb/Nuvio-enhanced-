@@ -463,12 +463,10 @@ internal fun AppGate(
                 if (allowCachedProfileAccess) {
                     enterProfileGate(cachedProfiles, syncOnEnter = false)
                 } else {
-                    // Pas de compte Nuvio (nuvio.tv) dans Nuvio Plus / Nuvio Pro : on entre
-                    // directement en mode local, comme « Continuer sans compte ».
                     ProfileRepository.clearInMemory()
                     profileSelectionLoading = false
                     profileSelectionTransitionActive = false
-                    AuthRepository.signInAnonymously()
+                    gateScreen = AppGateScreen.Auth.name
                 }
             }
             is AuthState.Authenticated -> {
@@ -599,8 +597,7 @@ internal fun AppGate(
                                 profileState.profiles.isEmpty() &&
                                 (authState as? AuthState.Authenticated)?.isAnonymous == true
                         if (isForcedGuestProfileCreation) {
-                            // Sans écran de connexion, il n'y a rien avant : on reste sur la création du profil.
-                            Unit
+                            gateScope.launch { AuthRepository.signOut() }
                         } else {
                             gateScreen = profileEditReturnScreen
                         }
@@ -721,8 +718,11 @@ internal fun AppGate(
                         profileEditReturnScreen = AppGateScreen.ProfileSelection.name
                         gateScreen = AppGateScreen.ProfileEdit.name
                     },
-                    // Pas de compte Nuvio : pas de bouton « Se connecter avec un compte ».
-                    onSignInWithAccount = null,
+                    onSignInWithAccount = if ((authState as? AuthState.Authenticated)?.isAnonymous == true) {
+                        { gateScope.launch { AuthRepository.signOut() } }
+                    } else {
+                        null
+                    },
                     interactionEnabled = !profileSelectionLoading,
                     onBack = onBack,
                     activeProfileIndex = if (autoSkipProfileSelection) null else profileState.activeProfile?.profileIndex,

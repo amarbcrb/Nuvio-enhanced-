@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Groups
@@ -51,6 +52,8 @@ import com.nuvio.app.core.licence.SubscriptionInfo
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_about_made_with
 import nuvio.composeapp.generated.resources.compose_about_version_format
+import nuvio.composeapp.generated.resources.compose_settings_page_account
+import nuvio.composeapp.generated.resources.compose_settings_root_account_description
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
 import nuvio.composeapp.generated.resources.compose_settings_page_appearance
 import nuvio.composeapp.generated.resources.compose_settings_page_integrations
@@ -95,6 +98,7 @@ internal fun LazyListScope.settingsRootContent(
     onConfigBackupClick: () -> Unit,
     onSwitchProfileClick: (() -> Unit)? = null,
     onWatchPartyClick: (() -> Unit)? = null,
+    onAccountClick: () -> Unit = {},
     showAccountSection: Boolean = true,
     showGeneralSection: Boolean = true,
     showAboutSection: Boolean = true,
@@ -124,8 +128,7 @@ internal fun LazyListScope.settingsRootContent(
             SettingsProfileCard(isTablet = isTablet, onClick = onSwitchProfileClick)
         }
     }
-    // Pas de compte Nuvio (nuvio.tv) ni de suivi (Trakt, Simkl...) dans cette appli : seulement la Watch Party.
-    if (showAccountSection && onWatchPartyClick != null) {
+    if (showAccountSection) {
         item {
             SettingsSection(
                 title = stringResource(Res.string.compose_settings_root_account_section),
@@ -133,12 +136,22 @@ internal fun LazyListScope.settingsRootContent(
             ) {
                 SettingsGroup(isTablet = isTablet) {
                     SettingsNavigationRow(
-                        title = stringResource(Res.string.party_title),
-                        description = stringResource(Res.string.party_settings_description),
-                        icon = Icons.Rounded.Groups,
+                        title = stringResource(Res.string.compose_settings_page_account),
+                        description = stringResource(Res.string.compose_settings_root_account_description),
+                        icon = Icons.Rounded.AccountCircle,
                         isTablet = isTablet,
-                        onClick = onWatchPartyClick,
+                        onClick = onAccountClick,
                     )
+                    if (onWatchPartyClick != null) {
+                        SettingsGroupDivider(isTablet = isTablet)
+                        SettingsNavigationRow(
+                            title = stringResource(Res.string.party_title),
+                            description = stringResource(Res.string.party_settings_description),
+                            icon = Icons.Rounded.Groups,
+                            isTablet = isTablet,
+                            onClick = onWatchPartyClick,
+                        )
+                    }
                 }
             }
         }

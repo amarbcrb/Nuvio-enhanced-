@@ -815,6 +815,7 @@ private fun MobileSettingsScreen(
                                 null
                             },
                             onWatchPartyClick = watchPartyRowClick,
+                            onAccountClick = { onPageChange(SettingsPage.Account) },
                         )
                     }
                 }
@@ -1317,6 +1318,7 @@ private fun TabletSettingsScreen(
                                     null
                                 },
                                 onWatchPartyClick = watchPartyRowClick,
+                                onAccountClick = { openInlinePage(SettingsPage.Account) },
                                 showAccountSection = activeCategory == SettingsCategory.Account,
                                 showGeneralSection = activeCategory == SettingsCategory.General,
                                 showAboutSection = activeCategory == SettingsCategory.About,
