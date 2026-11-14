@@ -59,7 +59,7 @@ data class PlayerSettingsUiState(
     val preferredSubtitleLanguage: String = SubtitleLanguageOption.NONE,
     val secondaryPreferredSubtitleLanguage: String? = null,
     val subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT,
-    val streamReuseLastLinkEnabled: Boolean = false,
+    val streamReuseLastLinkEnabled: Boolean = true,
     val streamReuseLastLinkCacheHours: Int = 24,
     val androidPlaybackEngine: AndroidPlaybackEngine = AndroidPlaybackEngine.Auto,
     val androidLibmpvVideoOutput: AndroidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext,
@@ -85,7 +85,7 @@ data class PlayerSettingsUiState(
     val streamAutoPlaySelectedAddons: Set<String> = emptySet(),
     val streamAutoPlaySelectedPlugins: Set<String> = emptySet(),
     val streamAutoPlayRegex: String = "",
-    val streamAutoPlayTimeoutSeconds: Int = 3,
+    val streamAutoPlayTimeoutSeconds: Int = 0,
     val skipIntroEnabled: Boolean = true,
     val autoSkipSegmentTypes: Set<AutoSkipSegmentType> = emptySet(),
     val animeSkipEnabled: Boolean = false,
@@ -154,7 +154,7 @@ object PlayerSettingsRepository {
     private var preferredSubtitleLanguage = SubtitleLanguageOption.NONE
     private var secondaryPreferredSubtitleLanguage: String? = null
     private var subtitleStyle = SubtitleStyleState.DEFAULT
-    private var streamReuseLastLinkEnabled = false
+    private var streamReuseLastLinkEnabled = true
     private var streamReuseLastLinkCacheHours = 24
     private var androidPlaybackEngine = AndroidPlaybackEngine.Auto
     private var androidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext
@@ -180,7 +180,7 @@ object PlayerSettingsRepository {
     private var streamAutoPlaySelectedAddons: Set<String> = emptySet()
     private var streamAutoPlaySelectedPlugins: Set<String> = emptySet()
     private var streamAutoPlayRegex = ""
-    private var streamAutoPlayTimeoutSeconds = 3
+    private var streamAutoPlayTimeoutSeconds = 0
     private var skipIntroEnabled = true
     private var autoSkipSegmentTypes: Set<AutoSkipSegmentType> = emptySet()
     private var animeSkipEnabled = false
@@ -254,7 +254,7 @@ object PlayerSettingsRepository {
         preferredSubtitleLanguage = SubtitleLanguageOption.NONE
         secondaryPreferredSubtitleLanguage = null
         subtitleStyle = SubtitleStyleState.DEFAULT
-        streamReuseLastLinkEnabled = false
+        streamReuseLastLinkEnabled = true
         streamReuseLastLinkCacheHours = 24
         androidPlaybackEngine = AndroidPlaybackEngine.Auto
         androidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext
@@ -280,7 +280,7 @@ object PlayerSettingsRepository {
         streamAutoPlaySelectedAddons = emptySet()
         streamAutoPlaySelectedPlugins = emptySet()
         streamAutoPlayRegex = ""
-        streamAutoPlayTimeoutSeconds = 3
+        streamAutoPlayTimeoutSeconds = 0
         skipIntroEnabled = true
         autoSkipSegmentTypes = emptySet()
         animeSkipEnabled = false
@@ -385,7 +385,7 @@ object PlayerSettingsRepository {
             showOnlyPreferredLanguages = PlayerSettingsStorage.loadSubtitleShowOnlyPreferredLanguages()
                 ?: SubtitleStyleState.DEFAULT.showOnlyPreferredLanguages,
         )
-        streamReuseLastLinkEnabled = PlayerSettingsStorage.loadStreamReuseLastLinkEnabled() ?: false
+        streamReuseLastLinkEnabled = PlayerSettingsStorage.loadStreamReuseLastLinkEnabled() ?: true
         streamReuseLastLinkCacheHours = PlayerSettingsStorage.loadStreamReuseLastLinkCacheHours() ?: 24
         androidPlaybackEngine = PlayerSettingsStorage.loadAndroidPlaybackEngine()
             ?.let { runCatching { AndroidPlaybackEngine.valueOf(it) }.getOrNull() }
@@ -430,7 +430,7 @@ object PlayerSettingsRepository {
             }
         }
         streamAutoPlayRegex = PlayerSettingsStorage.loadStreamAutoPlayRegex() ?: ""
-        streamAutoPlayTimeoutSeconds = PlayerSettingsStorage.loadStreamAutoPlayTimeoutSeconds() ?: 3
+        streamAutoPlayTimeoutSeconds = PlayerSettingsStorage.loadStreamAutoPlayTimeoutSeconds() ?: 0
         // Legacy migration: 11 was the old sentinel for "unlimited"
         if (streamAutoPlayTimeoutSeconds == 11) {
             streamAutoPlayTimeoutSeconds = Int.MAX_VALUE

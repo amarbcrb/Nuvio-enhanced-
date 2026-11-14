@@ -1,5 +1,6 @@
 <resources>
     <string name="details_change_background">Changer le fond</string>
     <string name="details_background_automatic">Automatique</string>
-    <string name="details_background_none">Aucun autre fond trouvé pour ce titre. TMDB doit être activé avec une clé.</string>
+    <string name="details_background_none">Aucun autre fond ni affiche trouvé pour ce titre. TMDB doit être activé avec une clé.</string>
+    <string name="details_change_poster">Changer l’affiche</string>
 </resources>

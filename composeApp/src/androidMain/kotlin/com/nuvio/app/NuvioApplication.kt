@@ -36,7 +36,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .components {
-                add(CustomPosterFallbackInterceptor())
+                add(com.nuvio.app.core.poster.PosterOverrideInterceptor())
+                    add(CustomPosterFallbackInterceptor())
                 add(SvgDecoder.Factory())
                 add(
                     KtorNetworkFetcherFactory(

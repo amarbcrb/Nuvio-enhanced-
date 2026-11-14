@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.filled.Add
@@ -112,6 +113,7 @@ import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadSubtitles
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.home.CatalogSourceRepository
+import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeRepository
@@ -303,6 +305,7 @@ internal fun MainAppContent(
         val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         var selectedPosterActionTarget by remember { mutableStateOf<PosterActionTarget?>(null) }
+        var posterPickerTarget by remember { mutableStateOf<Pair<MetaPreview, String?>?>(null) }
         var selectedPosterAnchor by remember { mutableStateOf<PosterZoomAnchor?>(null) }
         var libraryCategoryPickerItem by remember { mutableStateOf<LibraryItem?>(null) }
         val posterOverlayBackdrop = rememberNuvioBackdrop()
@@ -2079,6 +2082,15 @@ internal fun MainAppContent(
                 )
             }
 
+            posterPickerTarget?.let { (preview, posterUrl) ->
+                com.nuvio.app.features.details.PosterPickerSheet(
+                    type = preview.type,
+                    id = preview.id,
+                    currentPosterUrl = posterUrl,
+                    onDismiss = { posterPickerTarget = null },
+                )
+            }
+
             selectedPosterActionTarget?.let { posterActionTarget ->
                 key(posterActionTarget) {
                     val preview = posterActionTarget.preview
@@ -2230,6 +2242,14 @@ internal fun MainAppContent(
                                     coroutineScope.launch {
                                         WatchingActions.togglePosterWatched(preview)
                                     }
+                                },
+                            ),
+                            // Pick another poster among the ones TMDB has for this title.
+                            PosterZoomOverlayAction(
+                                icon = Icons.Rounded.Image,
+                                label = stringResource(Res.string.details_change_poster),
+                                onSelected = {
+                                    posterPickerTarget = preview to (selectedPosterAnchor?.imageUrl ?: preview.poster)
                                 },
                             ),
                         ) + if (!isRemoteLibrarySource) {

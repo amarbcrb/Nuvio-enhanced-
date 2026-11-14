@@ -382,6 +382,7 @@ object StreamsRepository {
             val debridAvailabilityJobs = mutableListOf<Job>()
             var autoSelectTriggered = false
             var timeoutElapsed = false
+            var favoriteWaitElapsed = false
             var rememberedSourceGaveUp = false
             fun evaluateAutoPlay(
                 bingeGroupOnly: Boolean = false,
@@ -484,19 +485,18 @@ object StreamsRepository {
                     }
                 }
 
-                val earlyEvaluation = when {
-                    timeoutElapsed -> evaluateAutoPlay()
-                    persistedBingeGroup != null -> evaluateAutoPlay(bingeGroupOnly = true)
-                    else -> null
-                }
-                if (earlyEvaluation?.stream != null) {
-                    settleAutoPlay(earlyEvaluation)
-                    return
+                // Same release as the last episode (binge group) first.
+                if (persistedBingeGroup != null && !timeoutElapsed) {
+                    val bingeEvaluation = evaluateAutoPlay(bingeGroupOnly = true)
+                    if (bingeEvaluation.stream != null) {
+                        settleAutoPlay(bingeEvaluation)
+                        return
+                    }
                 }
 
                 // Favorites in the order they were starred: start the first one that has a playable
                 // link as soon as it answers, without waiting for the other sources. A favorite still
-                // searching is waited for only when no favorite above it had a link.
+                // searching is waited for (up to FAVORITE_WAIT_MS) only when no favorite above it had a link.
                 val pinnedOrder = PinnedStreamSourcesRepository.pinnedSourceIds.value
                 val favoriteGroups = _uiState.value.groups
                     .filter { group -> PinnedStreamSourcesRepository.isFavoriteGroup(group.addonId) }
@@ -504,11 +504,25 @@ object StreamsRepository {
                         pinnedOrder.indexOfFirst { key -> key == group.addonId || key.startsWith(group.addonId + "|") }
                             .let { if (it < 0) Int.MAX_VALUE else it }
                     }
+                var waitingOnFavorite = false
                 for (group in favoriteGroups) {
-                    if (group.isLoading) break
+                    if (group.isLoading) {
+                        waitingOnFavorite = !favoriteWaitElapsed
+                        break
+                    }
                     val favoriteEvaluation = evaluateAutoPlay(streams = group.streams)
                     if (favoriteEvaluation.stream != null) {
                         settleAutoPlay(favoriteEvaluation)
+                        return
+                    }
+                }
+                if (waitingOnFavorite) return
+
+                // No favorite could play it: the first playable link of any source.
+                if (timeoutElapsed) {
+                    val earlyEvaluation = evaluateAutoPlay()
+                    if (earlyEvaluation.stream != null) {
+                        settleAutoPlay(earlyEvaluation)
                         return
                     }
                 }
@@ -593,6 +607,15 @@ object StreamsRepository {
             }
 
             updateAutoPlayAfterStreamsChanged()
+
+            // Favorites that take too long no longer hold the start back.
+            val favoriteWaitJob = if (!isDirectAutoPlayFlow) null else {
+                launch {
+                    delay(FAVORITE_WAIT_MS)
+                    favoriteWaitElapsed = true
+                    updateAutoPlayAfterStreamsChanged()
+                }
+            }
 
             val timeoutJob = if (isDirectAutoPlayFlow) {
                 val timeoutSeconds = playerSettings.streamAutoPlayTimeoutSeconds
@@ -866,6 +889,7 @@ object StreamsRepository {
                 "Finished loading streams type=$type id=$videoId groups=${_uiState.value.groups.size} streams=${_uiState.value.groups.sumOf { it.streams.size }}",
             )
             timeoutJob?.cancel()
+            favoriteWaitJob?.cancel()
             rememberedSourceTimeoutJob?.cancel()
         }
     }
@@ -1022,3 +1046,6 @@ object StreamsRepository {
 
 private const val CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY = 18
 private const val REMEMBERED_SOURCE_WAIT_MS = 15_000L
+
+/** How long the automatic start waits for a favorite source still searching before taking any source. */
+private const val FAVORITE_WAIT_MS = 5_000L

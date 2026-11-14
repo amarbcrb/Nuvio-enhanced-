@@ -79,6 +79,7 @@ internal fun AppEnvironment(content: @Composable () -> Unit) {
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .memoryCachePolicy(CachePolicy.ENABLED)
                 .components {
+                    add(com.nuvio.app.core.poster.PosterOverrideInterceptor())
                     add(CustomPosterFallbackInterceptor())
                     add(SvgDecoder.Factory())
                     add(

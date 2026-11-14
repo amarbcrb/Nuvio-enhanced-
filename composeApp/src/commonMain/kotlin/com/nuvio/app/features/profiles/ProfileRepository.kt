@@ -185,6 +185,7 @@ object ProfileRepository {
         WatchProgressRepository.onProfileChanged(profileIndex)
         com.nuvio.app.features.library.LibraryHistoryHiddenStore.reload()
         com.nuvio.app.features.details.DetailBackdropOverrideRepository.reload()
+        com.nuvio.app.core.poster.PosterOverrideRepository.reload()
         AddonRepository.onProfileChanged(profileIndex)
         if (com.nuvio.app.core.build.AppFeaturePolicy.pluginsEnabled) {
             PluginRepository.onProfileChanged(profileIndex)

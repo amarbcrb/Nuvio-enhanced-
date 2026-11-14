@@ -9,6 +9,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -77,6 +79,7 @@ fun DetailHero(
     onHeroTrailerReady: () -> Unit = {},
     onHeroTrailerEnded: () -> Unit = {},
     onHeroTrailerError: () -> Unit = {},
+    onBackdropLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -123,6 +126,16 @@ fun DetailHero(
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
                             .height(heroHeight)
+                            // Long press on the background: pick another one.
+                            .then(
+                                if (onBackdropLongClick != null) {
+                                    Modifier.pointerInput(onBackdropLongClick) {
+                                        detectTapGestures(onLongPress = { onBackdropLongClick() })
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .heroStretchZoom(stretchPx)
                             .graphicsLayer {
                                 translationY = scrollOffset() * 0.5f

@@ -69,6 +69,23 @@ object TmdbMetadataService {
             }.take(40)
         }
 
+    /** Every poster TMDB has for the title (all languages), best first: thumbnail and full-size URLs. */
+    suspend fun fetchPosterOptions(id: String, type: String): List<Pair<String, String>> =
+        withContext(Dispatchers.Default) {
+            val mediaType = TmdbService.normalizeMediaType(type)
+            if (mediaType != "movie" && mediaType != "tv") return@withContext emptyList()
+            val tmdbId = TmdbService.ensureTmdbId(id, mediaType) ?: return@withContext emptyList()
+            val images = fetch<TmdbImagesResponse>(
+                endpoint = "$mediaType/$tmdbId/images",
+                query = mapOf("include_image_language" to "null,en,fr,ja,ko,zh,es,de,it"),
+            ) ?: return@withContext emptyList()
+            images.posters.mapNotNull { image ->
+                val thumb = buildImageUrl(image.filePath, "w185") ?: return@mapNotNull null
+                val full = buildImageUrl(image.filePath, "w500") ?: return@mapNotNull null
+                thumb to full
+            }.take(40)
+        }
+
     suspend fun fetchLocalizedBackdrop(id: String, type: String, language: String): String? =
         withContext(Dispatchers.Default) {
             val mediaType = TmdbService.normalizeMediaType(type)

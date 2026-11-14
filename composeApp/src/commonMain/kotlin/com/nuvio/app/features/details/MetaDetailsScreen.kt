@@ -108,7 +108,6 @@ import com.nuvio.app.core.ui.glass.nuvioBackdropSource
 import com.nuvio.app.core.ui.glass.rememberNuvioBackdrop
 import com.nuvio.app.features.downloads.DownloadsSettingsRepository
 import com.nuvio.app.features.details.components.DetailActions
-import com.nuvio.app.features.details.components.LocalDetailBackdropAction
 import com.nuvio.app.features.details.components.LocalDetailCategoriesAction
 import com.nuvio.app.features.library.LibraryCategoryPickerDialog
 import com.nuvio.app.features.library.LibraryItem
@@ -439,7 +438,7 @@ fun MetaDetailsScreen(
     val openCategoryPicker: (() -> Unit)? = displayedMeta
         ?.takeIf { libraryUiState.sourceMode == LibrarySourceMode.LOCAL }
         ?.let { meta -> { categoryPickerItem = meta.toLibraryItem(savedAtEpochMs = 0L) } }
-    // Bouton « Changer le fond » : choisit l'image d'arrière-plan parmi celles de TMDB.
+    // Appui long sur l'image du haut : choisit l'image d'arrière-plan parmi celles de TMDB.
     var showBackdropPicker by remember(type, id) { mutableStateOf(false) }
     val openBackdropPicker: (() -> Unit)? = displayedMeta?.let { { showBackdropPicker = true } }
     if (showBackdropPicker) {
@@ -450,10 +449,7 @@ fun MetaDetailsScreen(
             onDismiss = { showBackdropPicker = false },
         )
     }
-    CompositionLocalProvider(
-        LocalDetailCategoriesAction provides openCategoryPicker,
-        LocalDetailBackdropAction provides openBackdropPicker,
-    ) {
+    CompositionLocalProvider(LocalDetailCategoriesAction provides openCategoryPicker) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -1346,6 +1342,7 @@ fun MetaDetailsScreen(
                                             DetailHero(
                                                 meta = meta,
                                                 isTablet = isTablet,
+                                                onBackdropLongClick = openBackdropPicker,
                                                 contentMaxWidth = contentMaxWidth,
                                                 scrollOffset = heroScrollOffset,
                                                 stretchPx = { heroStretchState.stretchPx },

@@ -1,5 +1,6 @@
 <resources>
     <string name="details_change_background">Change background</string>
     <string name="details_background_automatic">Automatic</string>
-    <string name="details_background_none">No other background found for this title. TMDB must be enabled with a key.</string>
+    <string name="details_background_none">No other background or poster found for this title. TMDB must be enabled with a key.</string>
+    <string name="details_change_poster">Change poster</string>
 </resources>

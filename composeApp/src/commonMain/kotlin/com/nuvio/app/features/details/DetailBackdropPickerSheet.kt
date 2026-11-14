@@ -32,6 +32,8 @@ import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.details_background_automatic
 import nuvio.composeapp.generated.resources.details_background_none
 import nuvio.composeapp.generated.resources.details_change_background
+import nuvio.composeapp.generated.resources.details_change_poster
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Lists the backgrounds TMDB has for the title (all languages) and keeps the one the user taps for
@@ -44,22 +46,81 @@ internal fun DetailBackdropPickerSheet(
     currentBackground: String?,
     onDismiss: () -> Unit,
 ) {
-    var options by remember(type, id) { mutableStateOf<List<Pair<String, String>>?>(null) }
-    LaunchedEffect(type, id) {
-        options = runCatching { TmdbMetadataService.fetchBackdropOptions(id, type) }.getOrDefault(emptyList())
-    }
     val chosen = remember(type, id) { DetailBackdropOverrideRepository.get(type, id) }
-    GlassStreamSheet(
-        title = org.jetbrains.compose.resources.stringResource(Res.string.details_change_background),
+    ArtworkPickerSheet(
+        title = stringResource(Res.string.details_change_background),
+        loadOptions = { TmdbMetadataService.fetchBackdropOptions(id, type) },
+        selectedUrl = chosen ?: currentBackground,
+        automaticSelected = chosen == null,
+        columns = 2,
+        aspectRatio = 16f / 9f,
+        onAutomatic = {
+            DetailBackdropOverrideRepository.set(type, id, null)
+            MetaDetailsRepository.load(type, id)
+            MetaDetailsRepository.refreshChosenBackdrop()
+        },
+        onPick = { full ->
+            DetailBackdropOverrideRepository.set(type, id, full)
+            MetaDetailsRepository.refreshChosenBackdrop()
+        },
         onDismiss = onDismiss,
-    ) { close ->
+    )
+}
+
+/**
+ * Lists the posters TMDB has for the title; the one tapped replaces [currentPosterUrl] on every
+ * screen. "Automatic" goes back to the original poster.
+ */
+@Composable
+internal fun PosterPickerSheet(
+    type: String,
+    id: String,
+    currentPosterUrl: String?,
+    onDismiss: () -> Unit,
+) {
+    val originalUrl = remember(currentPosterUrl) {
+        currentPosterUrl?.let { com.nuvio.app.core.poster.PosterOverrideRepository.originalOf(it) }
+    }
+    val chosen = remember(originalUrl) {
+        originalUrl?.let { com.nuvio.app.core.poster.PosterOverrideRepository.replacementFor(it) }
+    }
+    ArtworkPickerSheet(
+        title = stringResource(Res.string.details_change_poster),
+        loadOptions = { TmdbMetadataService.fetchPosterOptions(id, type) },
+        selectedUrl = chosen ?: originalUrl,
+        automaticSelected = chosen == null,
+        columns = 3,
+        aspectRatio = 2f / 3f,
+        onAutomatic = { originalUrl?.let { com.nuvio.app.core.poster.PosterOverrideRepository.set(it, null) } },
+        onPick = { full ->
+            originalUrl?.let { com.nuvio.app.core.poster.PosterOverrideRepository.set(it, full) }
+        },
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+private fun ArtworkPickerSheet(
+    title: String,
+    loadOptions: suspend () -> List<Pair<String, String>>,
+    selectedUrl: String?,
+    automaticSelected: Boolean,
+    columns: Int,
+    aspectRatio: Float,
+    onAutomatic: () -> Unit,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var options by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
+    LaunchedEffect(Unit) {
+        options = runCatching { loadOptions() }.getOrDefault(emptyList())
+    }
+    GlassStreamSheet(title = title, onDismiss = onDismiss) { close ->
         GlassCheckRow(
-            title = org.jetbrains.compose.resources.stringResource(Res.string.details_background_automatic),
-            checked = chosen == null,
+            title = stringResource(Res.string.details_background_automatic),
+            checked = automaticSelected,
             onCheckedChange = {
-                DetailBackdropOverrideRepository.set(type, id, null)
-                MetaDetailsRepository.load(type, id)
-                MetaDetailsRepository.refreshChosenBackdrop()
+                onAutomatic()
                 close()
             },
         )
@@ -69,21 +130,21 @@ internal fun DetailBackdropPickerSheet(
                 NuvioLoadingIndicator()
             }
             list.isEmpty() -> Text(
-                text = org.jetbrains.compose.resources.stringResource(Res.string.details_background_none),
+                text = stringResource(Res.string.details_background_none),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.nuvio.colors.textMuted,
             )
-            else -> list.chunked(2).forEach { pair ->
+            else -> list.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    pair.forEach { (thumb, full) ->
-                        val selected = full == (chosen ?: currentBackground)
+                    row.forEach { (thumb, full) ->
+                        val selected = full == selectedUrl
                         AsyncImage(
                             model = thumb,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .weight(1f)
-                                .aspectRatio(16f / 9f)
+                                .aspectRatio(aspectRatio)
                                 .clip(RoundedCornerShape(10.dp))
                                 .border(
                                     width = if (selected) 3.dp else 0.dp,
@@ -91,13 +152,12 @@ internal fun DetailBackdropPickerSheet(
                                     shape = RoundedCornerShape(10.dp),
                                 )
                                 .clickable {
-                                    DetailBackdropOverrideRepository.set(type, id, full)
-                                    MetaDetailsRepository.refreshChosenBackdrop()
+                                    onPick(full)
                                     close()
                                 },
                         )
                     }
-                    if (pair.size == 1) Box(Modifier.weight(1f))
+                    repeat(columns - row.size) { Box(Modifier.weight(1f)) }
                 }
             }
         }
