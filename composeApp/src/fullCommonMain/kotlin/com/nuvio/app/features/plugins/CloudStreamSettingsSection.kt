@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +34,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -61,7 +63,9 @@ import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.NuvioSurfaceCard
 import com.nuvio.app.features.cloudstream.AddCloudStreamRepositoryResult
 import com.nuvio.app.features.cloudstream.CloudStreamBulkInstallResult
+import com.nuvio.app.features.cloudstream.CloudStreamExtensionSettings
 import com.nuvio.app.features.cloudstream.CloudStreamInstallResult
+import com.nuvio.app.features.cloudstream.CloudStreamSettingsOpenResult
 import com.nuvio.app.features.cloudstream.CloudStreamPlatformSupport
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
@@ -865,6 +869,31 @@ private fun CloudStreamPluginCard(
                     onClick = { showSites = !showSites },
                 )
             }
+            // The extension's own settings window (CloudStream's settings button), e.g. M3U playlists.
+            val settingsOpener = CloudStreamExtensionSettings.opener
+            val withoutSettings by CloudStreamExtensionSettings.withoutSettings.collectAsState()
+            if (settingsOpener != null && plugin.isRunnable && plugin.metadata.id.value !in withoutSettings) {
+                NuvioIconActionButton(
+                    icon = Icons.Rounded.Tune,
+                    contentDescription = copy.extensionSettings,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = {
+                        scope.launch {
+                            when (settingsOpener(plugin)) {
+                                CloudStreamSettingsOpenResult.Opened -> Unit
+                                CloudStreamSettingsOpenResult.NoSettings -> {
+                                    CloudStreamExtensionSettings.markWithoutSettings(plugin.metadata.id.value)
+                                    onMessage(copy.extensionHasNoSettings(plugin.metadata.name))
+                                }
+                                CloudStreamSettingsOpenResult.NotLoaded ->
+                                    onMessage(copy.extensionSettingsNotLoaded(plugin.metadata.name))
+                                CloudStreamSettingsOpenResult.Failed ->
+                                    onMessage(copy.extensionSettingsFailed(plugin.metadata.name))
+                            }
+                        }
+                    },
+                )
+            }
             NuvioIconActionButton(
                 icon = Icons.Rounded.PushPin,
                 contentDescription = if (isPinnedSource) copy.unpinSource else copy.pinSource,
@@ -1126,6 +1155,30 @@ private class CloudStreamSettingsCopy private constructor(
         english = "$count extensions removed.",
         french = "$count extensions supprimées.",
         turkish = "$count eklenti kaldırıldı.",
+    )
+
+    val extensionSettings: String = text(
+        english = "Extension settings",
+        french = "Réglages de l'extension",
+        turkish = "Eklenti ayarları",
+    )
+
+    fun extensionHasNoSettings(name: String): String = text(
+        english = "$name has no settings.",
+        french = "$name n'a pas de réglages.",
+        turkish = "$name için ayar yok.",
+    )
+
+    fun extensionSettingsNotLoaded(name: String): String = text(
+        english = "$name could not be loaded. Check that it is installed and enabled.",
+        french = "$name n'a pas pu être chargée. Vérifie qu'elle est installée et activée.",
+        turkish = "$name yüklenemedi. Kurulu ve etkin olduğunu kontrol edin.",
+    )
+
+    fun extensionSettingsFailed(name: String): String = text(
+        english = "The settings of $name could not open in Nuvio.",
+        french = "Les réglages de $name n'ont pas pu s'ouvrir dans Nuvio.",
+        turkish = "$name ayarları Nuvio'da açılamadı.",
     )
 
     val siteAddressTitle: String = text(

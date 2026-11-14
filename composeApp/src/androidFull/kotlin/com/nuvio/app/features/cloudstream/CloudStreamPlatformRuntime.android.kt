@@ -80,6 +80,29 @@ internal actual object CloudStreamPlatformRuntime {
         appContext = androidContext.applicationContext
         activityReference = (androidContext as? Activity)?.let(::WeakReference)
         prepareExtensionNetwork(androidContext.applicationContext)
+        CloudStreamExtensionSettings.opener = ::openExtensionSettings
+    }
+
+    /**
+     * Opens the extension's own settings window, as CloudStream's settings button does. The
+     * extension is loaded first if needed; it draws its window itself on the current screen.
+     */
+    private suspend fun openExtensionSettings(plugin: CloudStreamPluginItem): CloudStreamSettingsOpenResult {
+        val pluginId = plugin.metadata.id.value
+        runCatching { provider(plugin) }.getOrNull() ?: return CloudStreamSettingsOpenResult.NotLoaded
+        val open = synchronized(loadedLock) { (loaded[pluginId]?.instance as? Plugin)?.openSettings }
+            ?: return CloudStreamSettingsOpenResult.NoSettings
+        val activity = activityReference?.get()?.takeUnless { it.isFinishing || it.isDestroyed }
+            ?: return CloudStreamSettingsOpenResult.Failed
+        return withContext(Dispatchers.Main) {
+            runCatching { open(activity) }.fold(
+                onSuccess = { CloudStreamSettingsOpenResult.Opened },
+                onFailure = { error ->
+                    log.w(error) { "Settings window of $pluginId could not open" }
+                    CloudStreamSettingsOpenResult.Failed
+                },
+            )
+        }
     }
 
     private var extensionNetworkPrepared = false
