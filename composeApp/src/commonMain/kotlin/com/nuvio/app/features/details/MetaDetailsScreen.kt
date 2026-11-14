@@ -108,6 +108,7 @@ import com.nuvio.app.core.ui.glass.nuvioBackdropSource
 import com.nuvio.app.core.ui.glass.rememberNuvioBackdrop
 import com.nuvio.app.features.downloads.DownloadsSettingsRepository
 import com.nuvio.app.features.details.components.DetailActions
+import com.nuvio.app.features.details.components.LocalDetailBackdropAction
 import com.nuvio.app.features.details.components.LocalDetailCategoriesAction
 import com.nuvio.app.features.library.LibraryCategoryPickerDialog
 import com.nuvio.app.features.library.LibraryItem
@@ -438,7 +439,21 @@ fun MetaDetailsScreen(
     val openCategoryPicker: (() -> Unit)? = displayedMeta
         ?.takeIf { libraryUiState.sourceMode == LibrarySourceMode.LOCAL }
         ?.let { meta -> { categoryPickerItem = meta.toLibraryItem(savedAtEpochMs = 0L) } }
-    CompositionLocalProvider(LocalDetailCategoriesAction provides openCategoryPicker) {
+    // Bouton « Changer le fond » : choisit l'image d'arrière-plan parmi celles de TMDB.
+    var showBackdropPicker by remember(type, id) { mutableStateOf(false) }
+    val openBackdropPicker: (() -> Unit)? = displayedMeta?.let { { showBackdropPicker = true } }
+    if (showBackdropPicker) {
+        DetailBackdropPickerSheet(
+            type = type,
+            id = id,
+            currentBackground = displayedMeta?.background,
+            onDismiss = { showBackdropPicker = false },
+        )
+    }
+    CompositionLocalProvider(
+        LocalDetailCategoriesAction provides openCategoryPicker,
+        LocalDetailBackdropAction provides openBackdropPicker,
+    ) {
     Box(
         modifier = modifier
             .fillMaxSize()

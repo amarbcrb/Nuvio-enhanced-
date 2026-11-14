@@ -763,6 +763,8 @@ object MetaDetailsRepository {
             append("|mdblist_account=${settings.accountScope.takeUnless { settings.hasApiKey }}")
             append("|more_like=${trackingSettings.moreLikeThisSource}:$traktAuthMode")
             append("|tmdb=${tmdbSettings.enabled}:${tmdbSettings.useMoreLikeThis}:${tmdbSettings.language}")
+            // Artwork and text modules: turning one off must rebuild titles already opened.
+            append("|tmdb_modules=${tmdbSettings.useArtwork}:${tmdbSettings.useBasicInfo}:${tmdbSettings.titleLanguage}")
             append("|omdb=${OmdbEpisodeRatingsService.hasApiKey}:${tmdbSettings.useEpisodeRatings}")
         }
     }
@@ -783,12 +785,25 @@ object MetaDetailsRepository {
             else -> null
         }
 
+    /** The background the user picked for this title (long-press / "Change background"), if any. */
+    private fun MetaDetails.withChosenBackdrop(): MetaDetails {
+        val chosen = DetailBackdropOverrideRepository.get(type, id) ?: return this
+        return copy(background = chosen)
+    }
+
+    /** Re-applies the chosen background to the title on screen, after the user picked one. */
+    fun refreshChosenBackdrop() {
+        val current = _uiState.value
+        val meta = current.meta ?: return
+        _uiState.value = current.copy(meta = meta.withChosenBackdrop())
+    }
+
     private fun MetaDetails.withUnreleasedFilter(): MetaDetails {
         val posterPattern = com.nuvio.app.core.poster.CustomPosterUrlRepository.let {
             it.ensureLoaded()
             it.patternForScreen(com.nuvio.app.core.poster.CustomPosterScreen.DETAILS)
         }
-        val base = withCustomPosterUrls(posterPattern)
+        val base = withCustomPosterUrls(posterPattern).withChosenBackdrop()
         if (!HomeCatalogSettingsRepository.snapshot().hideUnreleasedContent) return base
         val todayIsoDate = CurrentDateProvider.todayIsoDate()
         val releasedMoreLikeThis = base.moreLikeThis.filterReleasedItems(todayIsoDate)

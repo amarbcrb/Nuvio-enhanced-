@@ -59,6 +59,7 @@ import com.nuvio.app.core.ui.themePalette
 import com.nuvio.app.core.ui.appIconPainter
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_play
+import nuvio.composeapp.generated.resources.details_change_background
 import nuvio.composeapp.generated.resources.details_download_action
 import nuvio.composeapp.generated.resources.details_actions_menu_label
 import nuvio.composeapp.generated.resources.hero_add_to_library
@@ -76,6 +77,7 @@ import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Wallpaper
 import nuvio.composeapp.generated.resources.details_action_start_from_beginning
 import nuvio.composeapp.generated.resources.sidebar_library
 import nuvio.composeapp.generated.resources.streams_open_external_player
@@ -88,6 +90,9 @@ import com.nuvio.app.core.ui.glass.isAmbientLiquidGlassActive
  * Null (the default) hides the « Catégories » action.
  */
 val LocalDetailCategoriesAction = staticCompositionLocalOf<(() -> Unit)?> { null }
+
+/** Opens the background picker of the title on screen. Null hides the "Change background" action. */
+val LocalDetailBackdropAction = staticCompositionLocalOf<(() -> Unit)?> { null }
 
 data class DetailSecondaryAction(
     val label: String,
@@ -463,6 +468,7 @@ private fun detailActionSet(
         onLongClick = onSaveLongClick,
     )
     val categoriesLabel = stringResource(Res.string.library_categories_title)
+    val backdropLabel = stringResource(Res.string.details_change_background)
     val categoriesAction = LocalDetailCategoriesAction.current?.let { openCategories ->
         DetailSecondaryAction(
             label = categoriesLabel,
@@ -493,6 +499,9 @@ private fun detailActionSet(
         add(watchedAction)
         add(saveAction)
         categoriesAction?.let(::add)
+        LocalDetailBackdropAction.current?.let { openBackdrops ->
+            add(DetailSecondaryAction(label = backdropLabel, icon = Icons.Rounded.Wallpaper, onClick = openBackdrops))
+        }
     }
     return DetailActionSet(shuffleAction, watchedAction, saveAction, categoriesAction, iconActions)
 }
