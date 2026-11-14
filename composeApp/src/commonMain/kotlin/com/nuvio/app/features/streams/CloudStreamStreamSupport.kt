@@ -40,6 +40,8 @@ internal data class CloudStreamSearchRequest(
     val episodeTitle: String? = null,
     val externalId: String? = null,
     val genres: List<String> = emptyList(),
+    /** Episode number counted across every season (1034 for S30 E2 of Detective Conan), when known. */
+    val absoluteEpisode: Int? = null,
 ) {
     val titleCandidates: List<String> =
         (listOf(title) + aliases)
@@ -335,7 +337,41 @@ internal fun buildCloudStreamSearchRequest(
         episodeTitle = episodeTitle,
         externalId = externalId,
         genres = meta?.genres.orEmpty(),
+        absoluteEpisode = absoluteEpisodeNumber(
+            videos = meta?.videos.orEmpty().mapNotNull { video ->
+                val videoSeason = video.season ?: return@mapNotNull null
+                val videoEpisode = video.episode ?: return@mapNotNull null
+                Triple(videoSeason, videoEpisode, video.title)
+            },
+            season = season,
+            episode = episode,
+        ),
     )
+}
+
+/**
+ * Episode number counted across every season, for sources that list a long show as one season
+ * (anime such as Detective Conan). A number at the start of the episode title ("1034. ...") wins;
+ * otherwise the regular episodes before it are counted. Specials (season 0) are not counted.
+ */
+internal fun absoluteEpisodeNumber(
+    videos: List<Triple<Int, Int, String?>>,
+    season: Int?,
+    episode: Int?,
+): Int? {
+    if (season == null || episode == null || season <= 1) return null
+    val current = videos.firstOrNull { (videoSeason, videoEpisode, _) -> videoSeason == season && videoEpisode == episode }
+    current?.third?.trim()
+        ?.let { title -> Regex("^(\\d{1,5})[.\\s:-]").find(title)?.groupValues?.get(1)?.toIntOrNull() }
+        ?.takeIf { it > episode }
+        ?.let { return it }
+    val regular = videos
+        .filter { (videoSeason, _, _) -> videoSeason > 0 }
+        .map { (videoSeason, videoEpisode, _) -> videoSeason to videoEpisode }
+        .distinct()
+        .sortedWith(compareBy({ it.first }, { it.second }))
+    val index = regular.indexOf(season to episode)
+    return if (index >= 0) index + 1 else null
 }
 
 private fun List<String>.cleanCloudStreamRequestAliases(primaryTitle: String): List<String> {
@@ -578,6 +614,7 @@ internal fun CloudStreamLoadItem.linkDataForCloudStreamRequest(
         return exactEpisodes.bestEpisodeTitleMatch(request)?.data
             ?: exactEpisodes.firstOrNull()?.data
             ?: titledEpisode?.takeIf { item -> item.episode == request.episode }?.data
+            ?: sortedEpisodes.absoluteEpisodeMatch(request)?.data
             ?: sortedEpisodes.safeUnknownSeasonEpisodeMatch(request)?.data
     }
 
@@ -610,6 +647,20 @@ private fun List<CloudStreamEpisode>.bestEpisodeTitleMatch(
         val candidateTitle = item.name.normalizedCloudStreamSearchTitle()
         candidateTitle.matchesRequestedCloudStreamEpisodeTitle(requestedTitle)
     }
+}
+
+/**
+ * The episode with the absolute number of the request, when the source does not have the requested
+ * season and numbers its episodes across the whole show (one season, or no season).
+ */
+private fun List<CloudStreamEpisode>.absoluteEpisodeMatch(
+    request: CloudStreamSearchRequest,
+): CloudStreamEpisode? {
+    val absolute = request.absoluteEpisode ?: return null
+    val requestedSeason = request.season ?: return null
+    if (any { it.season == requestedSeason }) return null
+    val matches = filter { item -> item.episode == absolute && (item.season == null || item.season == 1) }
+    return matches.bestEpisodeTitleMatch(request) ?: matches.firstOrNull()
 }
 
 private fun List<CloudStreamEpisode>.safeUnknownSeasonEpisodeMatch(
