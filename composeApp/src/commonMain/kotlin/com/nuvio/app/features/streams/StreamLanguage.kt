@@ -327,8 +327,11 @@ object StreamLanguagePreferencesRepository {
         _preferences.value = if (profileKey == null) {
             StreamLanguagePreferences.decode(StreamBadgeSettingsStorage.loadStreamLanguagePreferences())
         } else {
-            BingeGroupCacheStorage.load(profileKey)?.let(StreamLanguagePreferences::decode)
-                ?: ArabicProfileDefaultLanguages
+            // The other profiles have fixed link languages, keeping the extension languages of French.
+            val french = StreamLanguagePreferences.decode(StreamBadgeSettingsStorage.loadStreamLanguagePreferences())
+            StreamProfileRepository.active.value.fixedLanguages()
+                ?.copy(extensionLanguages = french.extensionLanguages)
+                ?: french
         }
     }
 

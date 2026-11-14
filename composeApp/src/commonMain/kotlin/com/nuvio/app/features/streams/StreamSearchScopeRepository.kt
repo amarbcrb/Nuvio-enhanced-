@@ -57,6 +57,7 @@ object StreamSearchScopeRepository {
     /** Part of the stream request key: changes when the favorites-only search or the favorites change. */
     fun favoritesSignature(): String {
         ensureLoaded()
+        if (!StreamProfileRepository.active.value.hasPreferences) return "all-profile"
         if (!_favoritesOnly.value) return "all"
         PinnedStreamSourcesRepository.ensureLoaded()
         return "fav:" + PinnedStreamSourcesRepository.pinnedSourceIds.value.sorted().joinToString(",")
@@ -67,6 +68,8 @@ object StreamSearchScopeRepository {
      * favorites when only favorites are searched and one of them can serve the title, else every source.
      */
     fun searchFilter(available: List<StreamSourceOption>): (String) -> Boolean {
+        // The "All" profile searches every source, whatever the scope.
+        if (!StreamProfileRepository.active.value.hasPreferences) return { true }
         val scopeId = resolveScopeId(available)
         if (scopeId != null) return { id -> id == scopeId }
         if (_favoritesOnly.value && available.any { PinnedStreamSourcesRepository.isFavoriteGroup(it.id) }) {
@@ -78,6 +81,7 @@ object StreamSearchScopeRepository {
     /** Id of the source to search alone among [available], or null to search all of them. */
     fun resolveScopeId(available: List<StreamSourceOption>): String? {
         ensureLoaded()
+        if (!StreamProfileRepository.active.value.hasPreferences) return null
         val scopeId = _scope.value?.id ?: return null
         return scopeId.takeIf { id -> available.any { it.id == id } }
     }

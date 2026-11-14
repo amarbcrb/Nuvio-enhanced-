@@ -1,12 +1,12 @@
 <resources>
     <string name="stream_profile_title">Profil pour ce titre</string>
     <string name="stream_profile_note">Mémorisé pour ce titre (tous les épisodes). Français doublé par défaut.</string>
-    <string name="stream_profile_french">Français doublé</string>
+    <string name="stream_profile_french">Français</string>
     <string name="stream_profile_french_short">VF</string>
-    <string name="stream_profile_french_hint">Tes favoris français, liens doublés d’abord</string>
-    <string name="stream_profile_arabic">Arabe sous-titré</string>
-    <string name="stream_profile_arabic_short">Arabe</string>
-    <string name="stream_profile_arabic_hint">Tes favoris arabes, liens et sous-titres en arabe</string>
+    <string name="stream_profile_french_hint">VF, doublé d’abord</string>
+    <string name="stream_profile_arabic">Arabe</string>
+    <string name="stream_profile_arabic_short">AR</string>
+    <string name="stream_profile_arabic_hint">Sous-titré arabe</string>
     <string name="stream_profile_saved">%1$s mémorisé pour ce titre</string>
     <string name="settings_stream_dub_subtitled_first">Sous-titrés d’abord</string>
     <string name="stream_search_title">Recherche pour ce titre</string>
@@ -21,4 +21,14 @@
     <string name="stream_display_all">Afficher : Tout</string>
     <string name="stream_display_one">Afficher : %1$s</string>
     <string name="stream_search_no_favorites">Aucun favori. Ouvre « Afficher » et appuie sur l’étoile à côté d’une source pour l’ajouter.</string>
+    <string name="stream_profile_english">Anglais</string>
+    <string name="stream_profile_english_short">EN</string>
+    <string name="stream_profile_english_hint">VO, sous-titres français</string>
+    <string name="stream_profile_all">Tout</string>
+    <string name="stream_profile_all_short">Tout</string>
+    <string name="stream_profile_all_hint">Aucun filtre, toutes les sources</string>
+    <string name="stream_search_this_profile">Ce profil</string>
+    <string name="stream_search_all_profile_info">Toutes les sources, toutes les langues, dans l’ordre où elles répondent. Pas de favoris, pas de filtre.</string>
+    <string name="stream_search_default_profile_label">Profil par défaut</string>
+    <string name="stream_search_default_profile">%1$s pour les nouveaux titres</string>
 </resources>

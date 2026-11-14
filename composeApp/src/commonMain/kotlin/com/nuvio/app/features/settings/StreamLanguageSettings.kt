@@ -45,7 +45,9 @@ import org.jetbrains.compose.resources.stringResource
 internal fun StreamLinkLanguageSettings(isTablet: Boolean) {
     val preferences by remember {
         // Settings edit the default (French) profile; the Arabic one is edited from the links screen.
-        com.nuvio.app.features.streams.StreamProfileRepository.activateForTitle(null)
+        com.nuvio.app.features.streams.StreamProfileRepository.activateTemporarily(
+            com.nuvio.app.features.streams.StreamProfile.FRENCH,
+        )
         StreamLanguagePreferencesRepository.ensureLoaded()
         StreamLanguagePreferencesRepository.preferences
     }.collectAsStateWithLifecycle()
@@ -121,7 +123,9 @@ internal fun CloudStreamExtensionLanguageSettings(
 ) {
     val preferences by remember {
         // Settings edit the default (French) profile; the Arabic one is edited from the links screen.
-        com.nuvio.app.features.streams.StreamProfileRepository.activateForTitle(null)
+        com.nuvio.app.features.streams.StreamProfileRepository.activateTemporarily(
+            com.nuvio.app.features.streams.StreamProfile.FRENCH,
+        )
         StreamLanguagePreferencesRepository.ensureLoaded()
         StreamLanguagePreferencesRepository.preferences
     }.collectAsStateWithLifecycle()

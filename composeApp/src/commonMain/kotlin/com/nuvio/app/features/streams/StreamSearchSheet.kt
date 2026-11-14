@@ -1,14 +1,16 @@
 package com.nuvio.app.features.streams
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FilterAlt
-import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.MaterialTheme
@@ -19,10 +21,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.GlassCheckRow
-import com.nuvio.app.core.ui.GlassChip
 import com.nuvio.app.core.ui.GlassSheetSectionLabel
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.nuvio
@@ -33,16 +36,16 @@ import nuvio.composeapp.generated.resources.settings_stream_dub_any
 import nuvio.composeapp.generated.resources.settings_stream_dub_only
 import nuvio.composeapp.generated.resources.settings_stream_dub_prefer
 import nuvio.composeapp.generated.resources.settings_stream_dub_subtitled_first
-import nuvio.composeapp.generated.resources.settings_stream_dub_title
 import nuvio.composeapp.generated.resources.stream_profile_saved
+import nuvio.composeapp.generated.resources.stream_search_all_profile_info
+import nuvio.composeapp.generated.resources.stream_search_default_profile
+import nuvio.composeapp.generated.resources.stream_search_default_profile_label
 import nuvio.composeapp.generated.resources.stream_search_favorites_first
 import nuvio.composeapp.generated.resources.stream_search_favorites_of
-import nuvio.composeapp.generated.resources.stream_search_languages_all
-import nuvio.composeapp.generated.resources.stream_search_languages_of
-import nuvio.composeapp.generated.resources.stream_search_once_all_languages
-import nuvio.composeapp.generated.resources.stream_search_profile_label
-import nuvio.composeapp.generated.resources.stream_search_title
 import nuvio.composeapp.generated.resources.stream_search_no_favorites
+import nuvio.composeapp.generated.resources.stream_search_profile_label
+import nuvio.composeapp.generated.resources.stream_search_this_profile
+import nuvio.composeapp.generated.resources.stream_search_title
 import nuvio.composeapp.generated.resources.streams_favorites_only_search
 import nuvio.composeapp.generated.resources.streams_search_scope_title
 import nuvio.composeapp.generated.resources.streams_search_scope_unavailable
@@ -69,12 +72,11 @@ private fun searchSignature(titleKey: String?): String = listOf(
 ).joinToString("|")
 
 /**
- * Everything that decides the link search of the title on screen, in one sheet: its watching profile
- * (remembered for the title), that profile's link languages, where to search, that profile's favorite
- * sources, and a one-time "every language". Changes apply at once; [onDismiss] says whether the links
- * must be searched again.
+ * Everything that decides the link search of the title on screen: its profile (French, Arabic,
+ * English or All, remembered for the title), where to search and that profile's favorites, and the
+ * profile of new titles. The link languages are set by the profile. Changes apply at once;
+ * [onDismiss] says whether the links must be searched again.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun StreamSearchSheet(
     sourceOptions: List<StreamSourceOption>,
@@ -86,12 +88,8 @@ internal fun StreamSearchSheet(
     val titleKey = StreamProfileRepository.currentTitleKey
     val initialSignature = remember { searchSignature(titleKey) }
     val titleProfiles by StreamProfileRepository.titleProfiles.collectAsStateWithLifecycle()
-    val profile = remember(titleProfiles, titleKey) { StreamProfileRepository.profileFor(titleKey) }
-    val preferences by remember {
-        StreamLanguagePreferencesRepository.ensureLoaded()
-        StreamLanguagePreferencesRepository.preferences
-    }.collectAsStateWithLifecycle()
-    val filterPaused by StreamLanguagePreferencesRepository.linkFilterPaused.collectAsStateWithLifecycle()
+    val defaultProfile by StreamProfileRepository.defaultProfile.collectAsStateWithLifecycle()
+    val profile = remember(titleProfiles, defaultProfile, titleKey) { StreamProfileRepository.profileFor(titleKey) }
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
     val favoritesOnly by StreamSearchScopeRepository.favoritesOnly.collectAsStateWithLifecycle()
     val scope by StreamSearchScopeRepository.scope.collectAsStateWithLifecycle()
@@ -100,7 +98,7 @@ internal fun StreamSearchSheet(
 
     GlassStreamSheet(
         title = stringResource(Res.string.stream_search_title),
-        subtitle = if (scope != null && appliedScopeId == null) {
+        subtitle = if (profile.hasPreferences && scope != null && appliedScopeId == null) {
             stringResource(Res.string.streams_search_scope_unavailable, scope?.name.orEmpty())
         } else {
             null
@@ -112,143 +110,149 @@ internal fun StreamSearchSheet(
             onDismiss(searchSignature(titleKey) != initialSignature)
         },
     ) {
-        // 1. Profile of the title, remembered.
+        // 1. Profile of the title, remembered: a 2 x 2 grid.
         GlassSheetSectionLabel(stringResource(Res.string.stream_search_profile_label))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            StreamProfile.entries.forEach { option ->
-                val optionName = stringResource(option.label)
-                GlassChip(
-                    label = optionName,
-                    selected = option == profile,
-                    onClick = {
-                        if (option != profile && titleKey != null) {
-                            StreamProfileRepository.setForTitle(titleKey, option)
-                            MainScope().launch {
-                                NuvioToastController.show(getString(Res.string.stream_profile_saved, optionName))
+        StreamProfile.entries.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { option ->
+                    val optionName = stringResource(option.label)
+                    ProfileTile(
+                        title = optionName,
+                        hint = stringResource(option.hint),
+                        selected = option == profile,
+                        onClick = {
+                            if (option != profile && titleKey != null) {
+                                StreamProfileRepository.setForTitle(titleKey, option)
+                                MainScope().launch {
+                                    NuvioToastController.show(getString(Res.string.stream_profile_saved, optionName))
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        // 2. Link languages of that profile.
-        GlassSheetSectionLabel(stringResource(Res.string.stream_search_languages_of, profileName))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            GlassChip(
-                label = stringResource(Res.string.stream_search_languages_all),
-                selected = preferences.linkLanguages.isEmpty(),
-                onClick = { StreamLanguagePreferencesRepository.update { it.copy(linkLanguages = emptySet()) } },
-            )
-            // Only the languages of the two profiles and English.
-            SearchSheetLanguages.forEach { code ->
-                GlassChip(
-                    label = code.uppercase(),
-                    selected = code in preferences.linkLanguages,
-                    onClick = { StreamLanguagePreferencesRepository.toggleLinkLanguage(code) },
-                )
-            }
-        }
-        Text(
-            text = stringResource(Res.string.settings_stream_dub_title),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.nuvio.colors.textMuted,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            StreamDubMode.entries.forEach { mode ->
-                GlassChip(
-                    label = stringResource(mode.labelRes),
-                    selected = preferences.dubMode == mode,
-                    onClick = { StreamLanguagePreferencesRepository.update { it.copy(dubMode = mode) } },
-                )
-            }
-        }
-
-        // 3. Where to search.
-        GlassSheetSectionLabel(stringResource(Res.string.streams_search_scope_title))
-        GlassCheckRow(
-            title = stringResource(Res.string.stream_search_favorites_first),
-            checked = scope == null && !favoritesOnly,
-            icon = Icons.Rounded.Public,
-            onCheckedChange = {
-                StreamSearchScopeRepository.setScope(null)
-                StreamSearchScopeRepository.setFavoritesOnly(false)
-                showSingleSources = false
-            },
-        )
-        GlassCheckRow(
-            title = stringResource(Res.string.streams_favorites_only_search),
-            checked = scope == null && favoritesOnly,
-            icon = Icons.Rounded.Star,
-            onCheckedChange = {
-                StreamSearchScopeRepository.setScope(null)
-                StreamSearchScopeRepository.setFavoritesOnly(true)
-                showSingleSources = false
-            },
-        )
-        if (searchOptions.isNotEmpty() || scope != null) {
-            GlassCheckRow(
-                title = stringResource(Res.string.streams_search_single_source),
-                subtitle = scope?.name ?: stringResource(Res.string.streams_search_single_source_hint),
-                checked = scope != null,
-                icon = Icons.Rounded.FilterAlt,
-                onCheckedChange = { showSingleSources = !showSingleSources },
-            )
-            if (showSingleSources) {
-                searchOptions.forEach { option ->
-                    GlassCheckRow(
-                        title = option.name,
-                        checked = scope?.id == option.id,
-                        modifier = Modifier.padding(start = 24.dp),
-                        onCheckedChange = {
-                            StreamSearchScopeRepository.setFavoritesOnly(false)
-                            StreamSearchScopeRepository.setScope(option)
-                            showSingleSources = false
                         },
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
 
-        // 4. Favorite sources of that profile; new favorites are added with the star in "Afficher".
-        GlassSheetSectionLabel(stringResource(Res.string.stream_search_favorites_of, profileName))
-        val sources = favoriteSheetSources(sourceOptions, groups, pinnedSourceIds)
-            .filter { it.key in pinnedSourceIds }
-        if (sources.isEmpty()) {
+        if (!profile.hasPreferences) {
+            // 2. "All": nothing to set.
+            GlassSheetSectionLabel(stringResource(Res.string.stream_search_this_profile))
             Text(
-                text = stringResource(Res.string.stream_search_no_favorites),
+                text = stringResource(Res.string.stream_search_all_profile_info),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.nuvio.colors.textMuted,
             )
-        }
-        sources.forEach { source ->
+        } else {
+            // 2. Where to search.
+            GlassSheetSectionLabel(stringResource(Res.string.streams_search_scope_title))
             GlassCheckRow(
-                title = source.label,
-                checked = source.key in pinnedSourceIds,
-                onCheckedChange = { checked -> PinnedStreamSourcesRepository.setPinned(source.key, checked) },
+                title = stringResource(Res.string.stream_search_favorites_first),
+                checked = scope == null && !favoritesOnly,
+                icon = Icons.Rounded.Public,
+                onCheckedChange = {
+                    StreamSearchScopeRepository.setScope(null)
+                    StreamSearchScopeRepository.setFavoritesOnly(false)
+                    showSingleSources = false
+                },
             )
+            GlassCheckRow(
+                title = stringResource(Res.string.streams_favorites_only_search),
+                checked = scope == null && favoritesOnly,
+                icon = Icons.Rounded.Star,
+                onCheckedChange = {
+                    StreamSearchScopeRepository.setScope(null)
+                    StreamSearchScopeRepository.setFavoritesOnly(true)
+                    showSingleSources = false
+                },
+            )
+            if (searchOptions.isNotEmpty() || scope != null) {
+                GlassCheckRow(
+                    title = stringResource(Res.string.streams_search_single_source),
+                    subtitle = scope?.name ?: stringResource(Res.string.streams_search_single_source_hint),
+                    checked = scope != null,
+                    icon = Icons.Rounded.FilterAlt,
+                    onCheckedChange = { showSingleSources = !showSingleSources },
+                )
+                if (showSingleSources) {
+                    searchOptions.forEach { option ->
+                        GlassCheckRow(
+                            title = option.name,
+                            checked = scope?.id == option.id,
+                            modifier = Modifier.padding(start = 24.dp),
+                            onCheckedChange = {
+                                StreamSearchScopeRepository.setFavoritesOnly(false)
+                                StreamSearchScopeRepository.setScope(option)
+                                showSingleSources = false
+                            },
+                        )
+                    }
+                }
+            }
+
+            // 3. Favorite sources of that profile; new ones are added with the star in "Afficher".
+            GlassSheetSectionLabel(stringResource(Res.string.stream_search_favorites_of, profileName))
+            val sources = favoriteSheetSources(sourceOptions, groups, pinnedSourceIds)
+                .filter { it.key in pinnedSourceIds }
+            if (sources.isEmpty()) {
+                Text(
+                    text = stringResource(Res.string.stream_search_no_favorites),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.nuvio.colors.textMuted,
+                )
+            }
+            sources.forEach { source ->
+                GlassCheckRow(
+                    title = source.label,
+                    checked = source.key in pinnedSourceIds,
+                    onCheckedChange = { checked -> PinnedStreamSourcesRepository.setPinned(source.key, checked) },
+                )
+            }
         }
 
-        // 5. One-time help: every language, without changing the profile.
+        // 4. Profile of the titles that have none of their own.
+        GlassSheetSectionLabel(stringResource(Res.string.stream_search_default_profile_label))
         GlassCheckRow(
-            title = stringResource(Res.string.stream_search_once_all_languages),
-            checked = filterPaused,
-            icon = Icons.Rounded.Language,
-            onCheckedChange = { paused -> StreamLanguagePreferencesRepository.setLinkFilterPaused(paused) },
-            modifier = Modifier.padding(top = 8.dp),
+            title = stringResource(Res.string.stream_search_default_profile, profileName),
+            checked = defaultProfile == profile,
+            onCheckedChange = { StreamProfileRepository.setDefault(profile) },
         )
     }
 }
 
-/** Link languages offered in the search sheet: French, Arabic and English. */
-private val SearchSheetLanguages = listOf("fr", "ar", "en")
+@Composable
+private fun ProfileTile(
+    title: String,
+    hint: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = MaterialTheme.nuvio
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(if (selected) tokens.colors.accent.copy(alpha = 0.22f) else androidx.compose.ui.graphics.Color.White.copy(alpha = 0.06f))
+            .border(
+                1.dp,
+                if (selected) tokens.colors.accent.copy(alpha = 0.7f) else androidx.compose.ui.graphics.Color.White.copy(alpha = 0.14f),
+                shape,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = tokens.colors.textPrimary,
+            maxLines = 1,
+        )
+        Text(
+            text = hint,
+            style = MaterialTheme.typography.bodySmall,
+            color = tokens.colors.textMuted,
+            maxLines = 2,
+        )
+    }
+}

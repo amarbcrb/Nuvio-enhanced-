@@ -177,7 +177,8 @@ internal fun ProviderFilterRow(
         if (onRefresh != null) {
             // One chip for everything that decides the search: profile, languages, where to search, favorites.
             val titleProfiles by StreamProfileRepository.titleProfiles.collectAsStateWithLifecycle()
-            val titleProfile = remember(titleProfiles) {
+            val defaultProfile by StreamProfileRepository.defaultProfile.collectAsStateWithLifecycle()
+            val titleProfile = remember(titleProfiles, defaultProfile) {
                 StreamProfileRepository.profileFor(StreamProfileRepository.currentTitleKey)
             }
             val scopedSource = storedScope?.takeIf { searchScopeId != null }
@@ -187,7 +188,11 @@ internal fun ProviderFilterRow(
                 else -> stringResource(Res.string.stream_search_chip_favorites)
             }
             FilterChip(
-                label = stringResource(titleProfile.shortLabel) + " · " + scopeLabel,
+                label = if (titleProfile.hasPreferences) {
+                    stringResource(titleProfile.shortLabel) + " · " + scopeLabel
+                } else {
+                    stringResource(titleProfile.shortLabel)
+                },
                 isSelected = true,
                 trailingIcon = Icons.Rounded.KeyboardArrowDown,
                 onClick = { showSearchSheet = true },
@@ -262,7 +267,7 @@ private fun StreamSourcesSheet(
                     onFilterSelected(group.addonId)
                 },
                 // The star adds the source to (or removes it from) the favorites of the current profile.
-                trailing = if (target != null) {
+                trailing = if (target != null && StreamProfileRepository.active.value.hasPreferences) {
                     { FavoriteSourceStar(target = target, isFavorite = target.key in pinnedSourceIds, size = 22.dp) }
                 } else {
                     null

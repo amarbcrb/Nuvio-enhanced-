@@ -107,7 +107,9 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
             )
         }
         // The Arabic subtitled profile of this title picks Arabic subtitles.
-        val profileSubtitleLanguage = streamTitleProfiles[args.parentMetaId]?.subtitleLanguage
+        val profileSubtitleLanguage = streamTitleProfiles.let {
+            com.nuvio.app.features.streams.StreamProfileRepository.profileFor(args.parentMetaId).subtitleLanguage
+        }
         runtime.playerSettingsUiState = if (profileSubtitleLanguage != null) {
             playerSettingsUiState.copy(preferredSubtitleLanguage = profileSubtitleLanguage)
         } else {

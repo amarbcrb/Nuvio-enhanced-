@@ -44,8 +44,6 @@ object StreamsRepository {
     private var activeJob: Job? = null
     private var activeRequestKey: String? = null
 
-    /** The language filter was paused by the last-resort profile fallback, and is resumed on the next title. */
-    private var languageFilterPausedByProfileFallback = false
     /** Request whose automatic pick the user cancelled to choose the source themselves. */
     private var dismissedAutoPlayToken: String? = null
 
@@ -118,25 +116,13 @@ object StreamsRepository {
         forceRefresh: Boolean,
         profileFallbackStage: Int = 0,
     ) {
-        // Watching profile of the title: its favorites and link languages first. When nothing plays,
-        // the search is run again with the other profile (stage 1), then with every language (stage 2).
+        // Watching profile of the title: its favorites and link language first. When nothing plays,
+        // the search is run again with the "All" profile (every source, every language).
         val profileTitleKey = parentMetaId ?: videoId
-        when (profileFallbackStage) {
-            0 -> {
-                StreamProfileRepository.activateForTitle(profileTitleKey)
-                if (languageFilterPausedByProfileFallback) {
-                    languageFilterPausedByProfileFallback = false
-                    StreamLanguagePreferencesRepository.setLinkFilterPaused(false)
-                }
-            }
-            1 -> StreamProfileRepository.activateTemporarily(StreamProfileRepository.profileFor(profileTitleKey).other)
-            else -> {
-                StreamProfileRepository.activateForTitle(profileTitleKey)
-                if (!StreamLanguagePreferencesRepository.linkFilterPaused.value) {
-                    languageFilterPausedByProfileFallback = true
-                    StreamLanguagePreferencesRepository.setLinkFilterPaused(true)
-                }
-            }
+        if (profileFallbackStage == 0) {
+            StreamProfileRepository.activateForTitle(profileTitleKey)
+        } else {
+            StreamProfileRepository.activateTemporarily(StreamProfile.ALL)
         }
         val pluginUiState = if (AppFeaturePolicy.pluginsEnabled) {
             PluginRepository.initialize()
@@ -433,7 +419,9 @@ object StreamsRepository {
                 // The user asked for the stream list: never pick a link for them on this request.
                 if (dismissedAutoPlayToken == requestToken) return
                 // Nothing playable with this profile: search with the other profile, then every language.
-                if (evaluation.stream == null && isAutoPlayEnabled && profileFallbackStage < 2) {
+                if (evaluation.stream == null && isAutoPlayEnabled && profileFallbackStage < 1 &&
+                    StreamProfileRepository.profileFor(profileTitleKey).hasPreferences
+                ) {
                     InAppLogger.info(
                         "Streams/StreamsRepository",
                         "No playable link with profile stage=$profileFallbackStage, trying the next one for id=$videoId",

@@ -1,12 +1,12 @@
 <resources>
     <string name="stream_profile_title">Profile for this title</string>
     <string name="stream_profile_note">Remembered for this title (every episode). French dubbed is the default.</string>
-    <string name="stream_profile_french">French dubbed</string>
+    <string name="stream_profile_french">French</string>
     <string name="stream_profile_french_short">VF</string>
-    <string name="stream_profile_french_hint">Your French favorites, dubbed links first</string>
-    <string name="stream_profile_arabic">Arabic subtitled</string>
-    <string name="stream_profile_arabic_short">Arabic</string>
-    <string name="stream_profile_arabic_hint">Your Arabic favorites, Arabic subtitled links and subtitles</string>
+    <string name="stream_profile_french_hint">French, dubbed first</string>
+    <string name="stream_profile_arabic">Arabic</string>
+    <string name="stream_profile_arabic_short">AR</string>
+    <string name="stream_profile_arabic_hint">Arabic subtitled</string>
     <string name="stream_profile_saved">%1$s remembered for this title</string>
     <string name="settings_stream_dub_subtitled_first">Subtitled first</string>
     <string name="stream_search_title">Search for this title</string>
@@ -21,4 +21,14 @@
     <string name="stream_display_all">Show: All</string>
     <string name="stream_display_one">Show: %1$s</string>
     <string name="stream_search_no_favorites">No favorite yet. Open “Show” and tap the star next to a source to add it.</string>
+    <string name="stream_profile_english">English</string>
+    <string name="stream_profile_english_short">EN</string>
+    <string name="stream_profile_english_hint">English, French subtitles</string>
+    <string name="stream_profile_all">All</string>
+    <string name="stream_profile_all_short">All</string>
+    <string name="stream_profile_all_hint">No filter, every source</string>
+    <string name="stream_search_this_profile">This profile</string>
+    <string name="stream_search_all_profile_info">Every source, every language, in the order they answer. No favorites, no filter.</string>
+    <string name="stream_search_default_profile_label">Default profile</string>
+    <string name="stream_search_default_profile">%1$s for new titles</string>
 </resources>
