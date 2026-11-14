@@ -93,6 +93,7 @@ import nuvio.composeapp.generated.resources.streams_language_menu
 import nuvio.composeapp.generated.resources.settings_stream_dub_any
 import nuvio.composeapp.generated.resources.settings_stream_dub_prefer
 import nuvio.composeapp.generated.resources.settings_stream_dub_only
+import nuvio.composeapp.generated.resources.settings_stream_dub_subtitled_first
 import nuvio.composeapp.generated.resources.settings_stream_dub_title
 import nuvio.composeapp.generated.resources.streams_unpin_source
 import org.jetbrains.compose.resources.stringResource
@@ -130,6 +131,7 @@ internal fun ProviderFilterRow(
     val languageFilterPaused by StreamLanguagePreferencesRepository.linkFilterPaused.collectAsStateWithLifecycle()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
     var showFavoritesSheet by remember { mutableStateOf(false) }
+    var showProfileSheet by remember { mutableStateOf(false) }
     LaunchedEffect(addonGroups, selectedFilter) {
         if (selectedFilter != null && addonGroups.none { it.addonId == selectedFilter }) {
             onFilterSelected(null)
@@ -186,7 +188,27 @@ internal fun ProviderFilterRow(
                 isSelected = favoritesOnly || scopedSource != null,
                 onClick = { showFavoritesSheet = true },
             )
+            // Watching profile of this title (French dubbed or Arabic subtitled), remembered per title.
+            val titleProfiles by StreamProfileRepository.titleProfiles.collectAsStateWithLifecycle()
+            val titleProfile = remember(titleProfiles) {
+                StreamProfileRepository.profileFor(StreamProfileRepository.currentTitleKey)
+            }
+            FilterChip(
+                label = stringResource(titleProfile.shortLabel),
+                icon = Icons.Rounded.Translate,
+                isSelected = titleProfile != StreamProfile.DEFAULT,
+                onClick = { showProfileSheet = true },
+            )
         }
+    }
+
+    if (showProfileSheet && onRefresh != null) {
+        StreamProfileSheet(
+            onDismiss = { changed ->
+                showProfileSheet = false
+                if (changed) onRefresh()
+            },
+        )
     }
 
     if (showFavoritesSheet && onRefresh != null) {
@@ -287,6 +309,7 @@ private fun LanguageMenuChip(
                             StreamDubMode.Any -> Res.string.settings_stream_dub_any
                             StreamDubMode.PreferDubbed -> Res.string.settings_stream_dub_prefer
                             StreamDubMode.DubbedOnly -> Res.string.settings_stream_dub_only
+                            StreamDubMode.SubtitledFirst -> Res.string.settings_stream_dub_subtitled_first
                         },
                     ),
                     checked = preferences.dubMode == mode,

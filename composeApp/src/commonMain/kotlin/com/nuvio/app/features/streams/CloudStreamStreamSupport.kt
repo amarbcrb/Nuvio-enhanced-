@@ -535,7 +535,9 @@ internal fun CloudStreamLoadItem.linkTargetsForCloudStreamRequest(
         }
         .distinctBy { it.audioVariant }
     if (twins.size <= 1) return listOf(CloudStreamLinkTarget(primary, chosen.audioVariant))
-    val ordered = twins.sortedBy { item -> if (item.audioVariant == DUBBED_VARIANT) 0 else 1 }
+    // Dubbed first, unless subtitled links are wanted first (Arabic subtitled profile).
+    val subtitledFirst = dubMode == StreamDubMode.SubtitledFirst
+    val ordered = twins.sortedBy { item -> if ((item.audioVariant == DUBBED_VARIANT) != subtitledFirst) 0 else 1 }
     val kept = if (dubMode == StreamDubMode.DubbedOnly && ordered.any { it.audioVariant == DUBBED_VARIANT }) {
         ordered.filter { it.audioVariant == DUBBED_VARIANT }
     } else {

@@ -47,6 +47,10 @@ data class StreamLanguageInfo(
         isSubtitledOnly -> 2
         else -> 1
     }
+
+    /** [dubRank] turned around when subtitled links are wanted first. */
+    internal fun preferenceRank(mode: StreamDubMode): Int =
+        if (mode == StreamDubMode.SubtitledFirst) 2 - dubRank() else dubRank()
 }
 
 /** How dubbed versions are favoured over subtitled ones in link lists. */
@@ -57,6 +61,8 @@ enum class StreamDubMode(internal val wireValue: String) {
     PreferDubbed("1"),
     /** Subtitled-only links are hidden. */
     DubbedOnly("2"),
+    /** Subtitled links come first, dubbed ones last (the Arabic subtitled profile). */
+    SubtitledFirst("4"),
     ;
 
     companion object {
@@ -257,6 +263,8 @@ data class StreamLanguagePreferences(
     }
 }
 
+private const val PROFILE_LANGUAGES_KEY = "stream_language_preferences"
+
 object StreamLanguagePreferencesRepository {
     private val _preferences = MutableStateFlow(StreamLanguagePreferences())
     val preferences: StateFlow<StreamLanguagePreferences> = _preferences.asStateFlow()
@@ -286,7 +294,12 @@ object StreamLanguagePreferencesRepository {
         val updated = transform(_preferences.value)
         if (updated == _preferences.value) return
         _preferences.value = updated
-        StreamBadgeSettingsStorage.saveStreamLanguagePreferences(updated.encode())
+        val profileKey = StreamProfileRepository.storageKey(PROFILE_LANGUAGES_KEY)
+        if (profileKey == null) {
+            StreamBadgeSettingsStorage.saveStreamLanguagePreferences(updated.encode())
+        } else {
+            BingeGroupCacheStorage.save(profileKey, updated.encode())
+        }
     }
 
     fun toggleLinkLanguage(code: String) = update { current ->
@@ -309,7 +322,14 @@ object StreamLanguagePreferencesRepository {
 
     private fun loadFromDisk() {
         hasLoaded = true
-        _preferences.value = StreamLanguagePreferences.decode(StreamBadgeSettingsStorage.loadStreamLanguagePreferences())
+        // Each watching profile has its own link languages; the French one keeps the older storage.
+        val profileKey = StreamProfileRepository.storageKey(PROFILE_LANGUAGES_KEY)
+        _preferences.value = if (profileKey == null) {
+            StreamLanguagePreferences.decode(StreamBadgeSettingsStorage.loadStreamLanguagePreferences())
+        } else {
+            BingeGroupCacheStorage.load(profileKey)?.let(StreamLanguagePreferences::decode)
+                ?: ArabicProfileDefaultLanguages
+        }
     }
 
     private fun Set<String>.toggled(code: String): Set<String> {
@@ -381,6 +401,7 @@ internal fun AddonStreamGroup.filteredByLinkLanguage(
     kept = when (preferences.dubMode) {
         StreamDubMode.Any -> kept
         StreamDubMode.PreferDubbed -> kept.sortedBy { (_, info) -> info.dubRank() }
+        StreamDubMode.SubtitledFirst -> kept.sortedBy { (_, info) -> info.preferenceRank(StreamDubMode.SubtitledFirst) }
         StreamDubMode.DubbedOnly -> kept
             .filterNot { (_, info) -> info.isSubtitledOnly }
             .sortedBy { (_, info) -> info.dubRank() }
@@ -391,7 +412,11 @@ internal fun AddonStreamGroup.filteredByLinkLanguage(
 
 /** Best [StreamLanguageInfo.dubRank] among these links, 1 when there are none. */
 internal fun List<StreamItem>.bestDubRank(providerLanguages: Map<String, String>): Int =
-    minOfOrNull { stream -> StreamLanguageDetector.detect(stream, providerLanguages[stream.addonId]).dubRank() } ?: 1
+    StreamLanguagePreferencesRepository.snapshot().dubMode.let { mode ->
+        minOfOrNull { stream ->
+            StreamLanguageDetector.detect(stream, providerLanguages[stream.addonId]).preferenceRank(mode)
+        } ?: 1
+    }
 
 /**
  * Puts sources with a dubbed or multi-language link before the others, and sources with only

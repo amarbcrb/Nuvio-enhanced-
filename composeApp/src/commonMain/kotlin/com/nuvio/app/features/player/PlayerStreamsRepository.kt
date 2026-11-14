@@ -88,6 +88,8 @@ object PlayerStreamsRepository {
         parentMetaId: String? = null,
         parentMetaType: String? = null,
     ) {
+        // Favorites and link languages follow the watching profile of this title.
+        com.nuvio.app.features.streams.StreamProfileRepository.activateForTitle(parentMetaId ?: videoId)
         fetchStreams(
             type = type,
             videoId = videoId,

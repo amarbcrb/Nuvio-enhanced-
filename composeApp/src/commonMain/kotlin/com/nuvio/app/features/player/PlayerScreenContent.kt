@@ -47,6 +47,10 @@ import com.nuvio.app.core.ui.glass.isLiquidGlassSupported
 
 @Composable
 internal fun PlayerScreenContent(args: PlayerScreenArgs) {
+    val streamTitleProfiles by remember {
+        com.nuvio.app.features.streams.StreamProfileRepository.ensureLoaded()
+        com.nuvio.app.features.streams.StreamProfileRepository.titleProfiles
+    }.collectAsStateWithLifecycle()
     val playerSettingsUiState by remember {
         PlayerSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.uiState
@@ -102,7 +106,13 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
                 restoreBrightness = playerSettingsUiState.touchGesturesEnabled,
             )
         }
-        runtime.playerSettingsUiState = playerSettingsUiState
+        // The Arabic subtitled profile of this title picks Arabic subtitles.
+        val profileSubtitleLanguage = streamTitleProfiles[args.parentMetaId]?.subtitleLanguage
+        runtime.playerSettingsUiState = if (profileSubtitleLanguage != null) {
+            playerSettingsUiState.copy(preferredSubtitleLanguage = profileSubtitleLanguage)
+        } else {
+            playerSettingsUiState
+        }
         runtime.p2pSettingsUiState = p2pSettingsUiState
         runtime.p2pStreamingState = p2pStreamingState
         runtime.metaScreenSettingsUiState = metaScreenSettingsUiState

@@ -970,7 +970,10 @@ private fun PlayerScreenRuntime.RenderPlayerModals() {
             controlsVisible = true
         },
         onSourceFilterSelected = PlayerStreamsRepository::selectSourceFilter,
-        onSourceStreamSelected = { stream -> switchToSource(stream) },
+        onSourceStreamSelected = { stream ->
+            com.nuvio.app.features.streams.StreamProfileRepository.learnFromManualChoice(stream)
+            switchToSource(stream)
+        },
         onReloadSources = {
             val vid = activeVideoId
             if (vid != null) {

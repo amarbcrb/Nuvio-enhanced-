@@ -809,6 +809,8 @@ internal fun StreamDestination(
                 startFromBeginning = launch.startFromBeginning,
                 downloadMode = launch.downloadMode,
                 onStreamSelected = { stream, resolvedResumePositionMs, resolvedResumeProgressFraction ->
+                    // A link picked by hand sets the watching profile of the title (French or Arabic).
+                    com.nuvio.app.features.streams.StreamProfileRepository.learnFromManualChoice(stream)
                     openSelectedStream(
                         stream = stream,
                         resolvedResumePositionMs = resolvedResumePositionMs,

@@ -1,0 +1,12 @@
+<resources>
+    <string name="stream_profile_title">Profil pour ce titre</string>
+    <string name="stream_profile_note">Mémorisé pour ce titre (tous les épisodes). Français doublé par défaut.</string>
+    <string name="stream_profile_french">Français doublé</string>
+    <string name="stream_profile_french_short">VF</string>
+    <string name="stream_profile_french_hint">Tes favoris français, liens doublés d’abord</string>
+    <string name="stream_profile_arabic">Arabe sous-titré</string>
+    <string name="stream_profile_arabic_short">Arabe</string>
+    <string name="stream_profile_arabic_hint">Tes favoris arabes, liens et sous-titres en arabe</string>
+    <string name="stream_profile_saved">%1$s mémorisé pour ce titre</string>
+    <string name="settings_stream_dub_subtitled_first">Sous-titrés d’abord</string>
+</resources>

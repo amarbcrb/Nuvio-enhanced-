@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+private const val PROFILE_PINNED_KEY = "pinned_stream_sources"
+
 object PinnedStreamSourcesRepository {
     private const val SEPARATOR = "\n"
 
@@ -59,7 +61,14 @@ object PinnedStreamSourcesRepository {
 
     private fun loadFromDisk() {
         hasLoaded = true
-        _pinnedSourceIds.value = StreamBadgeSettingsStorage.loadPinnedStreamSources()
+        // Each watching profile has its own favorites; the French one keeps the older storage.
+        val profileKey = StreamProfileRepository.storageKey(PROFILE_PINNED_KEY)
+        val stored = if (profileKey == null) {
+            StreamBadgeSettingsStorage.loadPinnedStreamSources()
+        } else {
+            BingeGroupCacheStorage.load(profileKey)
+        }
+        _pinnedSourceIds.value = stored
             ?.split(SEPARATOR)
             ?.map(String::trim)
             ?.filter { it.isNotEmpty() }
@@ -68,7 +77,12 @@ object PinnedStreamSourcesRepository {
     }
 
     private fun persist(ids: List<String>) {
-        StreamBadgeSettingsStorage.savePinnedStreamSources(ids.joinToString(SEPARATOR))
+        val profileKey = StreamProfileRepository.storageKey(PROFILE_PINNED_KEY)
+        if (profileKey == null) {
+            StreamBadgeSettingsStorage.savePinnedStreamSources(ids.joinToString(SEPARATOR))
+        } else {
+            BingeGroupCacheStorage.save(profileKey, ids.joinToString(SEPARATOR))
+        }
     }
 }
 

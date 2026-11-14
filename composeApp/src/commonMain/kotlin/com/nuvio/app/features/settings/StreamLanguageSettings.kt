@@ -29,6 +29,7 @@ import nuvio.composeapp.generated.resources.settings_language_any
 import nuvio.composeapp.generated.resources.settings_stream_dub_any
 import nuvio.composeapp.generated.resources.settings_stream_dub_description
 import nuvio.composeapp.generated.resources.settings_stream_dub_only
+import nuvio.composeapp.generated.resources.settings_stream_dub_subtitled_first
 import nuvio.composeapp.generated.resources.settings_stream_dub_prefer
 import nuvio.composeapp.generated.resources.settings_stream_dub_title
 import nuvio.composeapp.generated.resources.settings_stream_language_description
@@ -43,6 +44,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun StreamLinkLanguageSettings(isTablet: Boolean) {
     val preferences by remember {
+        // Settings edit the default (French) profile; the Arabic one is edited from the links screen.
+        com.nuvio.app.features.streams.StreamProfileRepository.activateForTitle(null)
         StreamLanguagePreferencesRepository.ensureLoaded()
         StreamLanguagePreferencesRepository.preferences
     }.collectAsStateWithLifecycle()
@@ -76,6 +79,7 @@ internal fun StreamLinkLanguageSettings(isTablet: Boolean) {
                                 StreamDubMode.Any -> Res.string.settings_stream_dub_any
                                 StreamDubMode.PreferDubbed -> Res.string.settings_stream_dub_prefer
                                 StreamDubMode.DubbedOnly -> Res.string.settings_stream_dub_only
+                                StreamDubMode.SubtitledFirst -> Res.string.settings_stream_dub_subtitled_first
                             },
                         ),
                         selected = preferences.dubMode == mode,
@@ -116,6 +120,8 @@ internal fun CloudStreamExtensionLanguageSettings(
     availableLanguages: List<String>,
 ) {
     val preferences by remember {
+        // Settings edit the default (French) profile; the Arabic one is edited from the links screen.
+        com.nuvio.app.features.streams.StreamProfileRepository.activateForTitle(null)
         StreamLanguagePreferencesRepository.ensureLoaded()
         StreamLanguagePreferencesRepository.preferences
     }.collectAsStateWithLifecycle()

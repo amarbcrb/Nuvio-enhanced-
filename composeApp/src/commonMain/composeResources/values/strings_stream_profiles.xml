@@ -1,0 +1,12 @@
+<resources>
+    <string name="stream_profile_title">Profile for this title</string>
+    <string name="stream_profile_note">Remembered for this title (every episode). French dubbed is the default.</string>
+    <string name="stream_profile_french">French dubbed</string>
+    <string name="stream_profile_french_short">VF</string>
+    <string name="stream_profile_french_hint">Your French favorites, dubbed links first</string>
+    <string name="stream_profile_arabic">Arabic subtitled</string>
+    <string name="stream_profile_arabic_short">Arabic</string>
+    <string name="stream_profile_arabic_hint">Your Arabic favorites, Arabic subtitled links and subtitles</string>
+    <string name="stream_profile_saved">%1$s remembered for this title</string>
+    <string name="settings_stream_dub_subtitled_first">Subtitled first</string>
+</resources>
