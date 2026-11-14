@@ -112,7 +112,6 @@ open class MainActivity : AppCompatActivity() {
             ),
         )
         ThemeSettingsStorage.initialize(applicationContext)
-        initializeDeviceUiMode()
         applicationContext.getSharedPreferences("nuvio_player_orientation", MODE_PRIVATE).let { prefs ->
             com.nuvio.app.features.player.PlayerOrientationPreference.initialize(
                 stored = prefs.getString("mode", null),
@@ -217,25 +216,6 @@ open class MainActivity : AppCompatActivity() {
                 if (!isFinishing && !isDestroyed) showContent()
             }
         }
-    }
-
-    /** Phone or TV interface (Settings > Appearance), kept for the whole device. */
-    private fun initializeDeviceUiMode() {
-        val preferences = applicationContext.getSharedPreferences("nuvio_device_ui_mode", MODE_PRIVATE)
-        val appContext = applicationContext
-        com.nuvio.app.core.ui.DeviceUiModeRepository.initialize(
-            storage = object : com.nuvio.app.core.ui.DeviceUiModeStorage {
-                override fun load(): String? = preferences.getString("mode", null)
-                override fun save(value: String) {
-                    preferences.edit().putString("mode", value).apply()
-                }
-            },
-            isTelevision = {
-                val uiModeManager = appContext.getSystemService(android.app.UiModeManager::class.java)
-                uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
-                    appContext.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
-            },
-        )
     }
 
     private fun showContent() {
