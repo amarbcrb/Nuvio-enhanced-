@@ -458,9 +458,8 @@ fun MetaDetailsScreen(
         ) {
             when {
             displayedMeta == null && uiState.isLoading -> {
-                NuvioLoadingIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                )
+                // The poster's artwork and title while the details load, instead of a black screen.
+                DetailLoadingPlaceholder(type = type, id = id)
             }
 
             displayedMeta == null && uiState.errorMessage != null -> {

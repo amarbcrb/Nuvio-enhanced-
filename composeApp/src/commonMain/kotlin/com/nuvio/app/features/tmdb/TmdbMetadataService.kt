@@ -290,7 +290,8 @@ object TmdbMetadataService {
                     description = credit.overview?.takeIf { it.isNotBlank() },
                     releaseInfo = credit.releaseDate?.take(4),
                     rawReleaseDate = credit.releaseDate,
-                    popularity = credit.popularity,
+                    // Ranked for the person: a lead role counts more than a small part.
+                    popularity = credit.popularity?.times(credit.billingWeight()),
                 )
             }
     }
@@ -362,7 +363,8 @@ object TmdbMetadataService {
                     description = credit.overview?.takeIf { it.isNotBlank() },
                     releaseInfo = credit.firstAirDate?.take(4),
                     rawReleaseDate = credit.firstAirDate,
-                    popularity = credit.popularity,
+                    // Ranked for the person: a show they appear in once counts far less than a regular role.
+                    popularity = credit.popularity?.times(credit.episodeWeight()),
                 )
             }
     }
@@ -2247,7 +2249,24 @@ private data class TmdbPersonCreditCast(
     @SerialName("vote_average") val voteAverage: Double? = null,
     val popularity: Double? = null,
     @SerialName("genre_ids") val genreIds: List<Int> = emptyList(),
+    @SerialName("episode_count") val episodeCount: Int? = null,
+    val order: Int? = null,
 )
+
+/** Movie role weight from the billing order: leads first, small parts far behind. */
+private fun TmdbPersonCreditCast.billingWeight(): Double = when (order) {
+    null -> 0.5
+    in 0..2 -> 1.0
+    in 3..6 -> 0.7
+    in 7..15 -> 0.35
+    else -> 0.1
+}
+
+/** Series role weight from the number of episodes: a guest spot barely counts. */
+private fun TmdbPersonCreditCast.episodeWeight(): Double {
+    val episodes = episodeCount ?: return 0.3
+    return (episodes / 20.0).coerceIn(0.02, 1.0)
+}
 
 /** TMDB TV genres for talk, news and reality shows. */
 private val GuestShowGenreIds = setOf(10767, 10763, 10764)

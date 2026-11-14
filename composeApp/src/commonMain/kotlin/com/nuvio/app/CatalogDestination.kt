@@ -40,6 +40,7 @@ internal object CatalogLaunchStore {
 internal fun NuvioNavigator.openPreview(meta: MetaPreview) {
     val collection = ServerCatalog.collectionTarget(meta)
     if (collection == null) {
+        com.nuvio.app.features.details.DetailPreviewStore.put(meta)
         navigate(DetailRoute(type = meta.type, id = meta.id, title = meta.name))
         return
     }
