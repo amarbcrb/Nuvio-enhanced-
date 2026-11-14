@@ -4,6 +4,13 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.ui.text.style.TextAlign
+import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.app_icon_original
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -34,7 +41,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -64,7 +70,6 @@ import kotlinx.coroutines.delay
 // Couleurs iOS (mode sombre) et verre.
 private val Ink = Color(0xFF000000)
 private val Blue = Color(0xFF0A84FF)
-private val Teal = Color(0xFF40C8E0)
 private val Red = Color(0xFFFF453A)
 private val Green = Color(0xFF30D158)
 private val Muted = Color(0xFF98989F)
@@ -73,9 +78,12 @@ private val GlassBottom = Color.White.copy(alpha = 0.04f)
 private val EdgeTop = Color.White.copy(alpha = 0.24f)
 private val EdgeBottom = Color.White.copy(alpha = 0.05f)
 
+private enum class LicenceStep { Welcome, RequestKey, EnterKey }
+
 /**
- * Écran de Nuvio Pro tant qu'il n'y a pas de clé valable : code du téléphone avec un bouton
- * pour le copier, champ pour coller la clé, bouton Activer. Toujours en sombre, style iOS.
+ * Écran de Nuvio Pro tant qu'il n'y a pas de clé valable. Accueil sobre (logo, nom, deux boutons),
+ * puis l'étape choisie : « Demander ma clé » montre le code du téléphone à envoyer au vendeur,
+ * « J'ai une clé d'activation » ouvre le champ de la clé et le bouton Activer. Toujours en sombre.
  */
 @Composable
 internal fun LicenceScreen(
@@ -86,20 +94,26 @@ internal fun LicenceScreen(
     val context = LocalContext.current
     var input by remember { mutableStateOf("") }
     var copied by remember { mutableStateOf(false) }
+    var step by remember { mutableStateOf(LicenceStep.Welcome) }
+    // Une clé refusée ramène sur le champ de la clé, avec le message.
+    LaunchedEffect(message) {
+        if (message != null) step = LicenceStep.EnterKey
+    }
     LaunchedEffect(copied) {
         if (copied) {
             delay(2_000)
             copied = false
         }
     }
+    BackHandler(enabled = step != LicenceStep.Welcome) { step = LicenceStep.Welcome }
 
-    // Deux lueurs qui dérivent doucement derrière le verre.
+    // Une lueur bleue qui respire doucement derrière le logo.
     val drift = rememberInfiniteTransition(label = "glow")
-    val shift by drift.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(7_000), RepeatMode.Reverse),
-        label = "shift",
+    val glow by drift.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.55f,
+        animationSpec = infiniteRepeatable(tween(4_000), RepeatMode.Reverse),
+        label = "glow",
     )
 
     Box(
@@ -109,22 +123,10 @@ internal fun LicenceScreen(
     ) {
         Box(
             modifier = Modifier
-                .size(460.dp)
-                .graphicsLayer {
-                    translationX = -160f + shift * 90f
-                    translationY = -220f + shift * 60f
-                }
-                .background(Brush.radialGradient(listOf(Blue.copy(alpha = 0.45f), Color.Transparent))),
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .align(Alignment.TopCenter)
+                .padding(top = 60.dp)
                 .size(420.dp)
-                .graphicsLayer {
-                    translationX = 180f - shift * 80f
-                    translationY = 160f - shift * 70f
-                }
-                .background(Brush.radialGradient(listOf(Teal.copy(alpha = 0.28f), Color.Transparent))),
+                .background(Brush.radialGradient(listOf(Blue.copy(alpha = glow * 0.6f), Color.Transparent))),
         )
 
         Column(
@@ -132,83 +134,174 @@ internal fun LicenceScreen(
                 .fillMaxSize()
                 .safeDrawingPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+                .padding(horizontal = 28.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
+            Spacer(modifier = Modifier.height(if (step == LicenceStep.Welcome) 120.dp else 48.dp))
+            Image(
+                painter = painterResource(Res.drawable.app_icon_original),
+                contentDescription = "Nuvio",
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Brush.linearGradient(listOf(Blue, Teal))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Rounded.Lock, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Nuvio Pro", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Entre ta clé d'accès pour continuer.", color = Muted, fontSize = 17.sp)
-            }
+                    .size(if (step == LicenceStep.Welcome) 104.dp else 76.dp)
+                    .clip(RoundedCornerShape(26.dp)),
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Text("Nuvio Pro", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                when (step) {
+                    LicenceStep.Welcome -> "Active ton accès pour commencer."
+                    LicenceStep.RequestKey -> "Envoie ce code au vendeur pour recevoir ta clé."
+                    LicenceStep.EnterKey -> "Colle la clé reçue du vendeur."
+                },
+                color = Muted,
+                fontSize = 15.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(if (step == LicenceStep.Welcome) 96.dp else 32.dp))
 
-            GlassCard {
-                Label("Code du téléphone")
-                Text(
-                    deviceCode,
-                    color = Color.White,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 3.sp,
-                )
-                Text("Envoie ce code au vendeur pour recevoir ta clé.", color = Muted, fontSize = 15.sp)
-                PillButton(
-                    text = if (copied) "Code copié" else "Copier le code",
-                    icon = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
-                    primary = false,
-                    tint = if (copied) Green else Color.White,
-                    onClick = {
-                        copyToClipboard(context, deviceCode)
-                        copied = true
-                    },
-                )
-            }
-
-            GlassCard {
-                Label("Clé d'accès")
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    placeholder = { Text("Colle ta clé ici", color = Muted) },
-                    minLines = 3,
-                    isError = message != null,
-                    textStyle = TextStyle(color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 15.sp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Blue,
-                        unfocusedBorderColor = EdgeTop,
-                        errorBorderColor = Red,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        errorTextColor = Color.White,
-                        cursorColor = Blue,
-                        focusedContainerColor = Color.White.copy(alpha = 0.05f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                        errorContainerColor = Color.White.copy(alpha = 0.05f),
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                AnimatedVisibility(visible = message != null, enter = fadeIn(), exit = fadeOut()) {
-                    Text(message.orEmpty(), color = Red, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            when (step) {
+                LicenceStep.Welcome -> {
+                    PillButton(
+                        text = "J'ai une clé d'activation",
+                        icon = Icons.Rounded.Key,
+                        primary = true,
+                        onClick = { step = LicenceStep.EnterKey },
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlineButton(
+                        text = "Demander ma clé",
+                        onClick = { step = LicenceStep.RequestKey },
+                    )
+                    Spacer(modifier = Modifier.height(28.dp))
+                    Text(
+                        "La clé est liée à ce téléphone. Demande-la au vendeur avec le code de ton téléphone.",
+                        color = Muted.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                    )
                 }
-                PillButton(
-                    text = "Activer",
-                    icon = null,
-                    primary = true,
-                    enabled = input.isNotBlank(),
-                    onClick = { onActivate(input) },
-                )
+
+                LicenceStep.RequestKey -> {
+                    GlassCard {
+                        Label("Code du téléphone")
+                        Text(
+                            deviceCode,
+                            color = Color.White,
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 3.sp,
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                        )
+                        PillButton(
+                            text = if (copied) "Code copié" else "Copier le code",
+                            icon = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
+                            primary = false,
+                            tint = if (copied) Green else Color.White,
+                            onClick = {
+                                copyToClipboard(context, deviceCode)
+                                copied = true
+                            },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PillButton(
+                        text = "J'ai reçu ma clé",
+                        icon = Icons.Rounded.Key,
+                        primary = true,
+                        onClick = { step = LicenceStep.EnterKey },
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    BackLink { step = LicenceStep.Welcome }
+                }
+
+                LicenceStep.EnterKey -> {
+                    GlassCard {
+                        Label("Clé d'activation")
+                        OutlinedTextField(
+                            value = input,
+                            onValueChange = { input = it },
+                            placeholder = { Text("Colle ta clé ici", color = Muted) },
+                            minLines = 3,
+                            isError = message != null,
+                            textStyle = TextStyle(color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 15.sp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Blue,
+                                unfocusedBorderColor = EdgeTop,
+                                errorBorderColor = Red,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                errorTextColor = Color.White,
+                                cursorColor = Blue,
+                                focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                errorContainerColor = Color.White.copy(alpha = 0.05f),
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        AnimatedVisibility(visible = message != null, enter = fadeIn(), exit = fadeOut()) {
+                            Text(message.orEmpty(), color = Red, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        }
+                        PillButton(
+                            text = "Activer",
+                            icon = null,
+                            primary = true,
+                            enabled = input.isNotBlank(),
+                            onClick = { onActivate(input) },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextLink("Pas encore de clé ? Demander ma clé") { step = LicenceStep.RequestKey }
+                    BackLink { step = LicenceStep.Welcome }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun OutlineButton(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(shape)
+            .border(1.dp, Color.White.copy(alpha = 0.55f), shape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun TextLink(text: String, onClick: () -> Unit) {
+    Text(
+        text,
+        color = Blue,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    )
+}
+
+@Composable
+private fun BackLink(onClick: () -> Unit) {
+    Text(
+        "Retour",
+        color = Muted,
+        fontSize = 15.sp,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    )
 }
 
 @Composable

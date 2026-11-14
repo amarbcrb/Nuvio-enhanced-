@@ -6,4 +6,6 @@
     <string name="player_action_rotate_landscape">Regarder en paysage</string>
     <string name="settings_playback_background">Continuer la lecture écran verrouillé</string>
     <string name="settings_playback_background_description">Le film continue quand l’écran est éteint ou que l’appli passe en arrière-plan.</string>
+    <string name="settings_playback_during_call">Lire pendant un appel</string>
+    <string name="settings_playback_during_call_description">Un appel n’arrête plus le film. Son volume pendant l’appel dépend du téléphone (coupé, bas ou mélangé). Les autres applis qui jouent du son ne le mettent plus en pause non plus.</string>
 </resources>

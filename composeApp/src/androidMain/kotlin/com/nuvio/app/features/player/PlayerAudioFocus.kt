@@ -20,6 +20,7 @@ internal class PlayerAudioFocus(context: Context, onLoss: () -> Unit) {
     private val request = AudioFocusRequestCompat.Builder(AudioManagerCompat.AUDIOFOCUS_GAIN)
         .setAudioAttributes(playbackAudioAttributes)
         .setOnAudioFocusChangeListener { focusChange ->
+            if (CallPlaybackPreference.enabled.value) return@setOnAudioFocusChangeListener
             if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
                 onLoss()
             }
@@ -27,6 +28,8 @@ internal class PlayerAudioFocus(context: Context, onLoss: () -> Unit) {
         .build()
 
     fun request() {
+        // "Play during a call": the audio focus is not taken, so a call neither blocks nor pauses playback.
+        if (CallPlaybackPreference.enabled.value) return
         AudioManagerCompat.requestAudioFocus(audioManager, request)
     }
 

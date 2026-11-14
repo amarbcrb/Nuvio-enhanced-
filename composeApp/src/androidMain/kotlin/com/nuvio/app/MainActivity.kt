@@ -122,6 +122,10 @@ open class MainActivity : AppCompatActivity() {
                 stored = prefs.getBoolean("background_playback", false),
                 persist = { value -> prefs.edit().putBoolean("background_playback", value).apply() },
             )
+            com.nuvio.app.features.player.CallPlaybackPreference.initialize(
+                stored = prefs.getBoolean("call_playback", false),
+                persist = { value -> prefs.edit().putBoolean("call_playback", value).apply() },
+            )
         }
         AppIconPlatform.initialize(applicationContext)
         SentrySettingsStorage.initialize(applicationContext)

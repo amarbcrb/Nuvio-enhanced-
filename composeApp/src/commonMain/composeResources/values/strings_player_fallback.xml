@@ -4,4 +4,6 @@
     <string name="player_action_rotate_auto">Rotate with the phone</string>
     <string name="settings_playback_background">Keep playing when locked</string>
     <string name="settings_playback_background_description">The movie keeps playing when the screen is off or the app is in the background.</string>
+    <string name="settings_playback_during_call">Play during a call</string>
+    <string name="settings_playback_during_call_description">A call no longer stops the film. Its sound during the call depends on your phone (muted, low or mixed). Other apps playing sound no longer pause it either.</string>
 </resources>

@@ -517,7 +517,7 @@ private fun ExoPlayerSurface(
         )
 
         val playerBuilder = ExoPlayer.Builder(context)
-            .setAudioAttributes(playbackAudioAttributes, true)
+            .setAudioAttributes(playbackAudioAttributes, !CallPlaybackPreference.enabled.value)
             // Keeps the CPU and Wi-Fi awake while playing, so playback goes on with the screen off.
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
