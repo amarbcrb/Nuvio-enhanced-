@@ -9,7 +9,7 @@
     <string name="profile_background_normal">Normal</string>
     <string name="profile_background_custom">Custom</string>
     <string name="profile_custom_background_url">Custom background URL</string>
-    <string name="profile_custom_background_url_description">Paste an image link to use as this profile\'s background, or leave this empty to use the default background.</string>
+    <string name="profile_custom_background_url_description">Paste an image link to use as this profile’s background, or leave this empty to use the default background.</string>
     <string name="profile_custom_background_url_placeholder">https://example.com/background.jpg</string>
     <string name="profile_background_url_invalid">Enter a valid http:// or https:// image URL.</string>
     <string name="about_licenses_attributions_subtitle">Data sources, acknowledgements, and platform licenses</string>
@@ -1331,11 +1331,11 @@
     <string name="settings_playback_reuse_binge_group">Reuse Binge Group</string>
     <string name="settings_playback_reuse_binge_group_description">Remember and reuse the last binge group across sessions (Continue Watching, Details, etc.).</string>
     <string name="settings_playback_preload_next_episode">Preload Next Episode Sources</string>
-    <string name="settings_playback_preload_next_episode_description">Load the next episode\'s links in the background about two minutes before the end, from the source the current episode plays from.</string>
+    <string name="settings_playback_preload_next_episode_description">Load the next episode’s links in the background about two minutes before the end, from the source the current episode plays from.</string>
     <string name="settings_playback_mini_player">Mini Player</string>
     <string name="settings_playback_mini_player_description">Shows the mini player button in the player so you can keep watching in a floating window while you browse. Picture in Picture when leaving the app works either way.</string>
     <string name="settings_playback_private_viewing">Private Viewing</string>
-    <string name="settings_playback_private_viewing_description">Don\'t save watch progress, Continue Watching or watched status, and don\'t sync playback to connected trackers.</string>
+    <string name="settings_playback_private_viewing_description">Don’t save watch progress, Continue Watching or watched status, and don’t sync playback to connected trackers.</string>
     <string name="mini_player_play">Play</string>
     <string name="mini_player_pause">Pause</string>
     <string name="mini_player_close">Close mini player</string>
@@ -1402,9 +1402,9 @@
     <string name="settings_playback_subtitle_font_import">Import Font</string>
     <string name="settings_playback_subtitle_font_note">Import a .ttf or .otf file. Fonts stay on this device. Subtitles in non-Latin scripts keep a font that supports them.</string>
     <string name="settings_playback_subtitle_font_delete">Delete %1$s</string>
-    <string name="settings_playback_subtitle_font_invalid">This file isn\'t a supported font. Use a .ttf or .otf file.</string>
+    <string name="settings_playback_subtitle_font_invalid">This file isn’t a supported font. Use a .ttf or .otf file.</string>
     <string name="settings_playback_subtitle_font_too_large">This font is too large. The limit is 30 MB.</string>
-    <string name="settings_playback_subtitle_font_failed">Couldn\'t import the font.</string>
+    <string name="settings_playback_subtitle_font_failed">Couldn’t import the font.</string>
     <string name="settings_playback_subtitle_outline">Outline</string>
     <string name="settings_playback_subtitle_outline_color">Outline Color</string>
     <string name="settings_playback_subtitle_outline_description">Draw a border around subtitle text.</string>
@@ -1947,7 +1947,7 @@
     <string name="streams_refresh">Refresh streams</string>
     <string name="streams_search_scope_all">All sources</string>
     <string name="streams_search_scope_title">Search in</string>
-    <string name="streams_search_scope_unavailable">%1$s can\'t play this title, so all sources are searched.</string>
+    <string name="streams_search_scope_unavailable">%1$s can’t play this title, so all sources are searched.</string>
     <string name="streams_language_filter_all">All languages</string>
     <string name="streams_language_filter_title">Link language filter</string>
     <string name="settings_stream_language_section">LINK LANGUAGE</string>
@@ -2781,8 +2781,8 @@
     <string name="user_rating_syncs_with">Syncs with %1$s</string>
     <string name="user_rating_saved">Rated %1$d/10 on %2$s</string>
     <string name="user_rating_removed">Rating removed from %1$s</string>
-    <string name="user_rating_sync_failed">Couldn\'t sync rating to %1$s</string>
-    <string name="user_rating_last_failed">Last change didn\'t reach %1$s. Try again.</string>
+    <string name="user_rating_sync_failed">Couldn’t sync rating to %1$s</string>
+    <string name="user_rating_last_failed">Last change didn’t reach %1$s. Try again.</string>
     <string name="user_rating_no_provider">Turn on at least one service to save ratings</string>
     <string name="series_status_ended">Ended</string>
     <string name="series_status_continuing">Ongoing</string>
@@ -2942,7 +2942,7 @@
     <string name="settings_advanced_dns">DNS</string>
     <string name="settings_advanced_dns_system">System default</string>
     <string name="settings_advanced_dns_doh_format">%1$s (DNS over HTTPS)</string>
-    <string name="settings_advanced_dns_note">Used for all of Nuvio\'s connections on this device: addons, metadata, images, sync, trackers and the ExoPlayer engine. Your phone\'s DNS stays the same for other apps. The libmpv engine and web sign-in pages still use the system DNS.</string>
+    <string name="settings_advanced_dns_note">Used for all of Nuvio’s connections on this device: addons, metadata, images, sync, trackers and the ExoPlayer engine. Your phone’s DNS stays the same for other apps. The libmpv engine and web sign-in pages still use the system DNS.</string>
     <string name="compose_player_ends_at">Ends at %1$s</string>
     <string name="settings_playback_toolbar_layout">Player buttons</string>
     <string name="settings_playback_toolbar_layout_description">Choose which buttons stay on the bar, which sit behind the arrow, and their order.</string>

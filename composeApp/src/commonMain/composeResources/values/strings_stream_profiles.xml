@@ -20,4 +20,5 @@
     <string name="stream_search_chip_favorites_only">Favorites only</string>
     <string name="stream_display_all">Show: All</string>
     <string name="stream_display_one">Show: %1$s</string>
+    <string name="stream_search_no_favorites">No favorite yet. Open “Show” and tap the star next to a source to add it.</string>
 </resources>

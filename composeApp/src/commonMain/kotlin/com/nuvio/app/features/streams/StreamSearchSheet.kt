@@ -42,7 +42,7 @@ import nuvio.composeapp.generated.resources.stream_search_languages_of
 import nuvio.composeapp.generated.resources.stream_search_once_all_languages
 import nuvio.composeapp.generated.resources.stream_search_profile_label
 import nuvio.composeapp.generated.resources.stream_search_title
-import nuvio.composeapp.generated.resources.streams_favorites_none_available
+import nuvio.composeapp.generated.resources.stream_search_no_favorites
 import nuvio.composeapp.generated.resources.streams_favorites_only_search
 import nuvio.composeapp.generated.resources.streams_search_scope_title
 import nuvio.composeapp.generated.resources.streams_search_scope_unavailable
@@ -145,7 +145,8 @@ internal fun StreamSearchSheet(
                 selected = preferences.linkLanguages.isEmpty(),
                 onClick = { StreamLanguagePreferencesRepository.update { it.copy(linkLanguages = emptySet()) } },
             )
-            StreamLanguageChoices.forEach { (code, _) ->
+            // Only the languages of the two profiles and English.
+            SearchSheetLanguages.forEach { code ->
                 GlassChip(
                     label = code.uppercase(),
                     selected = code in preferences.linkLanguages,
@@ -219,12 +220,13 @@ internal fun StreamSearchSheet(
             }
         }
 
-        // 4. Favorite sources of that profile.
+        // 4. Favorite sources of that profile; new favorites are added with the star in "Afficher".
         GlassSheetSectionLabel(stringResource(Res.string.stream_search_favorites_of, profileName))
         val sources = favoriteSheetSources(sourceOptions, groups, pinnedSourceIds)
+            .filter { it.key in pinnedSourceIds }
         if (sources.isEmpty()) {
             Text(
-                text = stringResource(Res.string.streams_favorites_none_available),
+                text = stringResource(Res.string.stream_search_no_favorites),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.nuvio.colors.textMuted,
             )
@@ -247,3 +249,6 @@ internal fun StreamSearchSheet(
         )
     }
 }
+
+/** Link languages offered in the search sheet: French, Arabic and English. */
+private val SearchSheetLanguages = listOf("fr", "ar", "en")

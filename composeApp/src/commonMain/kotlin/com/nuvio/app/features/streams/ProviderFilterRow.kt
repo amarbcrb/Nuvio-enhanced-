@@ -253,13 +253,19 @@ private fun StreamSourcesSheet(
             },
         )
         groups.forEach { group ->
-            val isFavorite = group.favoriteTarget()?.key in pinnedSourceIds
+            val target = group.favoriteTarget()
             GlassCheckRow(
-                title = sourceMenuLabel(group = group, isFavorite = isFavorite),
+                title = sourceMenuLabel(group = group, isFavorite = false),
                 checked = selectedFilter == group.addonId,
                 onCheckedChange = {
                     close()
                     onFilterSelected(group.addonId)
+                },
+                // The star adds the source to (or removes it from) the favorites of the current profile.
+                trailing = if (target != null) {
+                    { FavoriteSourceStar(target = target, isFavorite = target.key in pinnedSourceIds, size = 22.dp) }
+                } else {
+                    null
                 },
             )
         }
