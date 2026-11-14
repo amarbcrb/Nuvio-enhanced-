@@ -88,6 +88,10 @@ import nuvio.composeapp.generated.resources.streams_search_scope_all
 import nuvio.composeapp.generated.resources.streams_search_scope_title
 import nuvio.composeapp.generated.resources.streams_search_scope_unavailable
 import nuvio.composeapp.generated.resources.streams_sources_menu
+import nuvio.composeapp.generated.resources.stream_display_all
+import nuvio.composeapp.generated.resources.stream_display_one
+import nuvio.composeapp.generated.resources.stream_search_chip_favorites
+import nuvio.composeapp.generated.resources.stream_search_chip_favorites_only
 import nuvio.composeapp.generated.resources.streams_languages_menu
 import nuvio.composeapp.generated.resources.streams_language_menu
 import nuvio.composeapp.generated.resources.settings_stream_dub_any
@@ -124,14 +128,8 @@ internal fun ProviderFilterRow(
     }.collectAsStateWithLifecycle()
     val favoritesOnly by StreamSearchScopeRepository.favoritesOnly.collectAsStateWithLifecycle()
     val canSearchOneSource = onSearchScopeSelected != null && (sourceOptions.size > 1 || storedScope != null)
-    val languagePreferences by remember {
-        StreamLanguagePreferencesRepository.ensureLoaded()
-        StreamLanguagePreferencesRepository.preferences
-    }.collectAsStateWithLifecycle()
-    val languageFilterPaused by StreamLanguagePreferencesRepository.linkFilterPaused.collectAsStateWithLifecycle()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
-    var showFavoritesSheet by remember { mutableStateOf(false) }
-    var showProfileSheet by remember { mutableStateOf(false) }
+    var showSearchSheet by remember { mutableStateOf(false) }
     LaunchedEffect(addonGroups, selectedFilter) {
         if (selectedFilter != null && addonGroups.none { it.addonId == selectedFilter }) {
             onFilterSelected(null)
@@ -157,7 +155,9 @@ internal fun ProviderFilterRow(
                 filterChip(selectedGroup, selectedGroup != null) { sourceMenuExpanded = true }
             } else {
                 FilterChip(
-                    label = selectedGroup?.addonName ?: stringResource(Res.string.streams_sources_menu),
+                    // Only filters the links on screen; never changes the search.
+                    label = selectedGroup?.addonName?.let { stringResource(Res.string.stream_display_one, it) }
+                        ?: stringResource(Res.string.stream_display_all),
                     isSelected = selectedGroup != null,
                     isPinned = selectedGroup != null && selectedGroup.favoriteTarget()?.key in pinnedSourceIds,
                     trailingIcon = Icons.Rounded.KeyboardArrowDown,
@@ -175,52 +175,34 @@ internal fun ProviderFilterRow(
             )
         }
         if (onRefresh != null) {
-            LanguageMenuChip(
-                preferences = languagePreferences,
-                filterPaused = languageFilterPaused,
-                onChanged = onRefresh,
-            )
-            // Where to search (every source, the favorites, or one source) and which sources are favorites.
-            val scopedSource = storedScope?.takeIf { searchScopeId != null }
-            FilterChip(
-                label = scopedSource?.name ?: stringResource(Res.string.streams_favorites_only),
-                icon = if (favoritesOnly || scopedSource != null) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                isSelected = favoritesOnly || scopedSource != null,
-                onClick = { showFavoritesSheet = true },
-            )
-            // Watching profile of this title (French dubbed or Arabic subtitled), remembered per title.
+            // One chip for everything that decides the search: profile, languages, where to search, favorites.
             val titleProfiles by StreamProfileRepository.titleProfiles.collectAsStateWithLifecycle()
             val titleProfile = remember(titleProfiles) {
                 StreamProfileRepository.profileFor(StreamProfileRepository.currentTitleKey)
             }
+            val scopedSource = storedScope?.takeIf { searchScopeId != null }
+            val scopeLabel = when {
+                scopedSource != null -> scopedSource.name
+                favoritesOnly -> stringResource(Res.string.stream_search_chip_favorites_only)
+                else -> stringResource(Res.string.stream_search_chip_favorites)
+            }
             FilterChip(
-                label = stringResource(titleProfile.shortLabel),
-                icon = Icons.Rounded.Translate,
-                isSelected = titleProfile != StreamProfile.DEFAULT,
-                onClick = { showProfileSheet = true },
+                label = stringResource(titleProfile.shortLabel) + " · " + scopeLabel,
+                isSelected = true,
+                trailingIcon = Icons.Rounded.KeyboardArrowDown,
+                onClick = { showSearchSheet = true },
             )
         }
     }
 
-    if (showProfileSheet && onRefresh != null) {
-        StreamProfileSheet(
-            onDismiss = { changed ->
-                showProfileSheet = false
-                if (changed) onRefresh()
-            },
-        )
-    }
-
-    if (showFavoritesSheet && onRefresh != null) {
-        FavoriteSourcesSheet(
-            sources = favoriteSheetSources(sourceOptions, addonGroups, pinnedSourceIds),
-            pinnedSourceIds = pinnedSourceIds,
-            favoritesOnly = favoritesOnly,
+    if (showSearchSheet && onRefresh != null) {
+        StreamSearchSheet(
+            sourceOptions = sourceOptions,
+            groups = addonGroups,
             searchOptions = if (canSearchOneSource) sourceOptions else emptyList(),
-            storedScope = storedScope,
             appliedScopeId = searchScopeId,
             onDismiss = { changed ->
-                showFavoritesSheet = false
+                showSearchSheet = false
                 if (changed) onRefresh()
             },
         )
@@ -248,83 +230,6 @@ internal fun AddonStreamGroup.soleSourcePin(): PinTarget? {
 }
 
 internal data class PinTarget(val key: String, val label: String)
-
-/**
- * Language drop-down of the stream screens: the saved link languages or every language, and how
- * dubbed versions are favoured. Any change reloads the links through [onChanged].
- */
-@Composable
-private fun LanguageMenuChip(
-    preferences: StreamLanguagePreferences,
-    filterPaused: Boolean,
-    onChanged: () -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val hasLanguages = preferences.linkLanguages.isNotEmpty()
-    val savedLanguages = preferences.linkLanguages.sorted().joinToString(", ") { it.uppercase() }
-    Box {
-        FilterChip(
-            label = if (hasLanguages && !filterPaused) savedLanguages else stringResource(Res.string.streams_language_menu),
-            isSelected = hasLanguages && !filterPaused,
-            trailingIcon = Icons.Rounded.KeyboardArrowDown,
-            onClick = { expanded = true },
-        )
-    }
-    if (expanded) {
-        GlassStreamSheet(
-            title = stringResource(Res.string.streams_language_filter_title),
-            onDismiss = { expanded = false },
-        ) { close ->
-            if (hasLanguages) {
-                GlassCheckRow(
-                    title = stringResource(Res.string.streams_languages_menu, savedLanguages),
-                    checked = !filterPaused,
-                    icon = Icons.Rounded.Translate,
-                    onCheckedChange = {
-                        close()
-                        if (filterPaused) {
-                            StreamLanguagePreferencesRepository.setLinkFilterPaused(false)
-                            onChanged()
-                        }
-                    },
-                )
-                GlassCheckRow(
-                    title = stringResource(Res.string.streams_language_filter_all),
-                    checked = filterPaused,
-                    icon = Icons.Rounded.Language,
-                    onCheckedChange = {
-                        close()
-                        if (!filterPaused) {
-                            StreamLanguagePreferencesRepository.setLinkFilterPaused(true)
-                            onChanged()
-                        }
-                    },
-                )
-            }
-            GlassSheetSectionLabel(stringResource(Res.string.settings_stream_dub_title))
-            StreamDubMode.entries.forEach { mode ->
-                GlassCheckRow(
-                    title = stringResource(
-                        when (mode) {
-                            StreamDubMode.Any -> Res.string.settings_stream_dub_any
-                            StreamDubMode.PreferDubbed -> Res.string.settings_stream_dub_prefer
-                            StreamDubMode.DubbedOnly -> Res.string.settings_stream_dub_only
-                            StreamDubMode.SubtitledFirst -> Res.string.settings_stream_dub_subtitled_first
-                        },
-                    ),
-                    checked = preferences.dubMode == mode,
-                    onCheckedChange = {
-                        close()
-                        if (preferences.dubMode != mode) {
-                            StreamLanguagePreferencesRepository.update { it.copy(dubMode = mode) }
-                            onChanged()
-                        }
-                    },
-                )
-            }
-        }
-    }
-}
 
 /** Liquid glass sheet listing the stream sources: pick one to filter, star it as a favorite. */
 @Composable

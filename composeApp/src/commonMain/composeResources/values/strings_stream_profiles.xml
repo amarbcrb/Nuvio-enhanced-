@@ -9,4 +9,15 @@
     <string name="stream_profile_arabic_hint">Your Arabic favorites, Arabic subtitled links and subtitles</string>
     <string name="stream_profile_saved">%1$s remembered for this title</string>
     <string name="settings_stream_dub_subtitled_first">Subtitled first</string>
+    <string name="stream_search_title">Search for this title</string>
+    <string name="stream_search_profile_label">Profile of this title (remembered)</string>
+    <string name="stream_search_languages_of">Languages of the “%1$s” profile</string>
+    <string name="stream_search_languages_all">All</string>
+    <string name="stream_search_favorites_first">Favorites first, then the rest</string>
+    <string name="stream_search_favorites_of">Favorites of the “%1$s” profile</string>
+    <string name="stream_search_once_all_languages">Just this time: every language</string>
+    <string name="stream_search_chip_favorites">Favorites</string>
+    <string name="stream_search_chip_favorites_only">Favorites only</string>
+    <string name="stream_display_all">Show: All</string>
+    <string name="stream_display_one">Show: %1$s</string>
 </resources>
