@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.streams.BingeGroupCacheStorage
@@ -45,6 +46,10 @@ import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.action_cancel
+import nuvio.composeapp.generated.resources.library_history_clear
+import nuvio.composeapp.generated.resources.library_history_clear_confirm
+import nuvio.composeapp.generated.resources.library_history_clear_message
 import nuvio.composeapp.generated.resources.library_history_empty_message
 import nuvio.composeapp.generated.resources.library_history_empty_title
 import nuvio.composeapp.generated.resources.library_history_episode
@@ -99,7 +104,16 @@ internal object LibraryHistoryHiddenStore {
 
     fun hide(contentId: String, atEpochMs: Long) {
         ensureLoaded()
-        val updated = _hidden.value + (contentId to atEpochMs)
+        save(_hidden.value + (contentId to atEpochMs))
+    }
+
+    /** Empties the history: every title listed now is hidden until it is watched again. */
+    fun hideAll(entries: List<LibraryHistoryEntry>) {
+        ensureLoaded()
+        save(_hidden.value + entries.associate { it.contentId to it.watchedAtEpochMs })
+    }
+
+    private fun save(updated: Map<String, Long>) {
         _hidden.value = updated
         BingeGroupCacheStorage.save(KEY, updated.entries.joinToString("\n") { "${it.key}\t${it.value}" })
     }
@@ -275,6 +289,20 @@ private fun LibraryHistoryRow(
             )
         }
     }
+}
+
+@Composable
+internal fun LibraryClearHistoryDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    NuvioStatusModal(
+        title = stringResource(Res.string.library_history_clear),
+        message = stringResource(Res.string.library_history_clear_message),
+        isVisible = true,
+        destructive = true,
+        confirmText = stringResource(Res.string.library_history_clear_confirm),
+        dismissText = stringResource(Res.string.action_cancel),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
 }
 
 /** "Today 21:05", "Yesterday 18:40" or "Watched on 12/11/2026". */

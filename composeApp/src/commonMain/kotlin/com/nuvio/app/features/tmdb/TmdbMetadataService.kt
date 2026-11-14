@@ -266,6 +266,8 @@ object TmdbMetadataService {
         val seen = mutableSetOf<Int>()
         return cast
             .filter { it.mediaType == "movie" && (it.posterPath != null || it.backdropPath != null) }
+            // Documentaries and award shows where the person plays themself.
+            .filterNot { it.isSelfCharacter() }
             .sortedByDescending { it.voteAverage ?: 0.0 }
             .mapNotNull { credit ->
                 if (!seen.add(credit.id)) return@mapNotNull null
@@ -336,6 +338,8 @@ object TmdbMetadataService {
         val seen = mutableSetOf<Int>()
         return cast
             .filter { it.mediaType == "tv" && (it.posterPath != null || it.backdropPath != null) }
+            // Talk shows, news and reality shows where the person only appears as a guest are not their work.
+            .filterNot { it.isGuestAppearance() }
             .sortedByDescending { it.voteAverage ?: 0.0 }
             .mapNotNull { credit ->
                 if (!seen.add(credit.id)) return@mapNotNull null
@@ -2242,7 +2246,26 @@ private data class TmdbPersonCreditCast(
     @SerialName("first_air_date") val firstAirDate: String? = null,
     @SerialName("vote_average") val voteAverage: Double? = null,
     val popularity: Double? = null,
+    @SerialName("genre_ids") val genreIds: List<Int> = emptyList(),
 )
+
+/** TMDB TV genres for talk, news and reality shows. */
+private val GuestShowGenreIds = setOf(10767, 10763, 10764)
+
+private val SelfCharacterNames = setOf(
+    "self", "himself", "herself", "themselves", "themself", "host", "guest",
+    "lui-même", "elle-même", "lui-meme", "elle-meme", "soi-même",
+)
+
+private fun TmdbPersonCreditCast.isSelfCharacter(): Boolean {
+    val role = character?.trim()?.lowercase().orEmpty()
+    if (role.isEmpty()) return false
+    if (role in SelfCharacterNames || role.contains("(guest)")) return true
+    return listOf("self ", "self-", "self(", "himself ", "herself ", "themselves ").any { role.startsWith(it) }
+}
+
+private fun TmdbPersonCreditCast.isGuestAppearance(): Boolean =
+    genreIds.any { it in GuestShowGenreIds } || isSelfCharacter()
 
 @Serializable
 private data class TmdbPersonCreditCrew(

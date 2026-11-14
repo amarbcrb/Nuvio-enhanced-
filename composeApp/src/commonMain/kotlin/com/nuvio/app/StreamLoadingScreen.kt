@@ -1,6 +1,9 @@
 package com.nuvio.app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -56,14 +59,21 @@ internal fun StreamLoadingScreen(
             message = message,
         )
         if (onChooseSource != null) {
+            // Kept low and compact so it never covers the status line under the logo.
             OutlinedButton(
                 onClick = onChooseSource,
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 4.dp),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 6.dp)
+                    .heightIn(min = 34.dp),
             ) {
-                Text(stringResource(Res.string.streams_choose_other_source), color = Color.White)
+                Text(
+                    stringResource(Res.string.streams_choose_other_source),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
         }
     }

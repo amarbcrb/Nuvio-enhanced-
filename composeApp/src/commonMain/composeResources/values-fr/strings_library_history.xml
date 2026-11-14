@@ -7,4 +7,7 @@
     <string name="library_history_today">Aujourd’hui %1$s</string>
     <string name="library_history_yesterday">Hier %1$s</string>
     <string name="library_history_watched">Regardé le %1$s</string>
+    <string name="library_history_clear">Effacer l’historique</string>
+    <string name="library_history_clear_message">Tous les titres sont retirés de l’historique. La progression et les titres vus sont conservés.</string>
+    <string name="library_history_clear_confirm">Effacer</string>
 </resources>

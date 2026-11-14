@@ -1,9 +1,11 @@
 <resources>
     <string name="streams_favorites_only">Favoris</string>
     <string name="streams_favorites_only_none">Aucune source favorite : appuie sur l’étoile à côté d’une source pour l’ajouter.</string>
-    <string name="streams_favorites_sheet_title">Sources favorites</string>
-    <string name="streams_favorites_sheet_sources">Sources</string>
-    <string name="streams_favorites_only_search">Chercher seulement dans les favoris</string>
+    <string name="streams_favorites_sheet_title">Recherche et favoris</string>
+    <string name="streams_favorites_sheet_sources">Sources favorites</string>
+    <string name="streams_favorites_only_search">Seulement les favoris</string>
     <string name="streams_favorites_only_search_hint">Toutes les sources sont cherchées si aucun favori ne propose ce titre</string>
     <string name="streams_favorites_none_available">Aucune source installée.</string>
+    <string name="streams_search_single_source">Une seule source</string>
+    <string name="streams_search_single_source_hint">Choisis la source à chercher</string>
 </resources>

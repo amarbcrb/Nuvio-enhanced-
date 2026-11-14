@@ -121,16 +121,14 @@ internal fun ProviderFilterRow(
         StreamSearchScopeRepository.ensureLoaded()
         StreamSearchScopeRepository.scope
     }.collectAsStateWithLifecycle()
-    var showSearchScopeSheet by remember { mutableStateOf(false) }
     val favoritesOnly by StreamSearchScopeRepository.favoritesOnly.collectAsStateWithLifecycle()
-    val showSearchScopeChip = onSearchScopeSelected != null && (sourceOptions.size > 1 || storedScope != null)
+    val canSearchOneSource = onSearchScopeSelected != null && (sourceOptions.size > 1 || storedScope != null)
     val languagePreferences by remember {
         StreamLanguagePreferencesRepository.ensureLoaded()
         StreamLanguagePreferencesRepository.preferences
     }.collectAsStateWithLifecycle()
     val languageFilterPaused by StreamLanguagePreferencesRepository.linkFilterPaused.collectAsStateWithLifecycle()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
-    var pinSheetTarget by remember { mutableStateOf<PinTarget?>(null) }
     var showFavoritesSheet by remember { mutableStateOf(false) }
     LaunchedEffect(addonGroups, selectedFilter) {
         if (selectedFilter != null && addonGroups.none { it.addonId == selectedFilter }) {
@@ -149,7 +147,7 @@ internal fun ProviderFilterRow(
         if (onRefresh != null) {
             refreshChip(isRefreshing, onRefresh)
         }
-        // One drop-down for the sources (and where to search), one for the language.
+        // "Sources" only filters the links shown; "Favoris" holds where to search and the favorites.
         val selectedGroup = addonGroups.firstOrNull { it.addonId == selectedFilter }
         var sourceMenuExpanded by remember { mutableStateOf(false) }
         Box {
@@ -162,7 +160,6 @@ internal fun ProviderFilterRow(
                     isPinned = selectedGroup != null && selectedGroup.favoriteTarget()?.key in pinnedSourceIds,
                     trailingIcon = Icons.Rounded.KeyboardArrowDown,
                     onClick = { sourceMenuExpanded = true },
-                    onLongClick = selectedGroup?.let { group -> { pinSheetTarget = group.favoriteTarget() } },
                 )
             }
         }
@@ -171,14 +168,7 @@ internal fun ProviderFilterRow(
                 groups = addonGroups,
                 selectedFilter = selectedFilter,
                 pinnedSourceIds = pinnedSourceIds,
-                scopeLabel = if (showSearchScopeChip) {
-                    sourceOptions.firstOrNull { it.id == searchScopeId }?.name
-                        ?: stringResource(Res.string.streams_search_scope_all)
-                } else {
-                    null
-                },
                 onFilterSelected = onFilterSelected,
-                onOpenSearchScope = { showSearchScopeSheet = true },
                 onDismiss = { sourceMenuExpanded = false },
             )
         }
@@ -188,11 +178,12 @@ internal fun ProviderFilterRow(
                 filterPaused = languageFilterPaused,
                 onChanged = onRefresh,
             )
-            // Opens the favorite sources: tick or untick each one, and choose whether only they are searched.
+            // Where to search (every source, the favorites, or one source) and which sources are favorites.
+            val scopedSource = storedScope?.takeIf { searchScopeId != null }
             FilterChip(
-                label = stringResource(Res.string.streams_favorites_only),
-                icon = if (favoritesOnly) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                isSelected = favoritesOnly,
+                label = scopedSource?.name ?: stringResource(Res.string.streams_favorites_only),
+                icon = if (favoritesOnly || scopedSource != null) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                isSelected = favoritesOnly || scopedSource != null,
                 onClick = { showFavoritesSheet = true },
             )
         }
@@ -203,72 +194,14 @@ internal fun ProviderFilterRow(
             sources = favoriteSheetSources(sourceOptions, addonGroups, pinnedSourceIds),
             pinnedSourceIds = pinnedSourceIds,
             favoritesOnly = favoritesOnly,
+            searchOptions = if (canSearchOneSource) sourceOptions else emptyList(),
+            storedScope = storedScope,
+            appliedScopeId = searchScopeId,
             onDismiss = { changed ->
                 showFavoritesSheet = false
                 if (changed) onRefresh()
             },
         )
-    }
-
-    StreamSourcePinSheet(
-        target = pinSheetTarget,
-        onDismiss = { pinSheetTarget = null },
-    )
-
-    if (showSearchScopeSheet && onSearchScopeSelected != null) {
-        StreamSearchScopeSheet(
-            options = sourceOptions,
-            storedScope = storedScope,
-            appliedScopeId = searchScopeId,
-            onSelected = { option ->
-                showSearchScopeSheet = false
-                onSearchScopeSelected(option)
-            },
-            onDismiss = { showSearchScopeSheet = false },
-        )
-    }
-}
-
-@Composable
-private fun StreamSearchScopeSheet(
-    options: List<StreamSourceOption>,
-    storedScope: StreamSourceOption?,
-    appliedScopeId: String?,
-    onSelected: (StreamSourceOption?) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var chosen by remember { mutableStateOf<StreamSourceOption?>(null) }
-    var picked by remember { mutableStateOf(false) }
-    GlassStreamSheet(
-        title = stringResource(Res.string.streams_search_scope_title),
-        subtitle = if (storedScope != null && appliedScopeId == null) {
-            stringResource(Res.string.streams_search_scope_unavailable, storedScope.name)
-        } else {
-            null
-        },
-        // The choice is applied once the sheet has closed, as before.
-        onDismiss = { if (picked) onSelected(chosen) else onDismiss() },
-    ) { close ->
-        GlassCheckRow(
-            title = stringResource(Res.string.streams_search_scope_all),
-            checked = storedScope == null,
-            onCheckedChange = {
-                chosen = null
-                picked = true
-                close()
-            },
-        )
-        options.forEach { option ->
-            GlassCheckRow(
-                title = option.name,
-                checked = storedScope?.id == option.id,
-                onCheckedChange = {
-                    chosen = option
-                    picked = true
-                    close()
-                },
-            )
-        }
     }
 }
 
@@ -376,9 +309,7 @@ private fun StreamSourcesSheet(
     groups: List<AddonStreamGroup>,
     selectedFilter: String?,
     pinnedSourceIds: List<String>,
-    scopeLabel: String?,
     onFilterSelected: (String?) -> Unit,
-    onOpenSearchScope: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     GlassStreamSheet(
@@ -394,42 +325,15 @@ private fun StreamSourcesSheet(
             },
         )
         groups.forEach { group ->
-            val target = group.favoriteTarget()
+            val isFavorite = group.favoriteTarget()?.key in pinnedSourceIds
             GlassCheckRow(
-                title = sourceMenuLabel(group = group, isFavorite = false),
+                title = sourceMenuLabel(group = group, isFavorite = isFavorite),
                 checked = selectedFilter == group.addonId,
                 onCheckedChange = {
                     close()
                     onFilterSelected(group.addonId)
                 },
-                trailing = if (target != null) {
-                    { FavoriteSourceStar(target = target, isFavorite = target.key in pinnedSourceIds, size = 20.dp) }
-                } else {
-                    null
-                },
             )
-        }
-        if (scopeLabel != null) {
-            GlassSheetSectionLabel(stringResource(Res.string.streams_search_scope_title))
-            GlassPill(onClick = {
-                close()
-                onOpenSearchScope()
-            }) {
-                Text(
-                    text = scopeLabel,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.nuvio.colors.textPrimary,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.nuvio.colors.textMuted,
-                )
-            }
         }
     }
 }

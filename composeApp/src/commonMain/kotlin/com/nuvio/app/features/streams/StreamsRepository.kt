@@ -383,9 +383,12 @@ object StreamsRepository {
             var autoSelectTriggered = false
             var timeoutElapsed = false
             var rememberedSourceGaveUp = false
-            fun evaluateAutoPlay(bingeGroupOnly: Boolean = false): StreamAutoPlayEvaluation =
+            fun evaluateAutoPlay(
+                bingeGroupOnly: Boolean = false,
+                streams: List<StreamItem> = _uiState.value.groups.favoriteSourcesFirst { it.addonId }.flatMap { it.streams },
+            ): StreamAutoPlayEvaluation =
                 StreamAutoPlaySelector.evaluateAutoPlayStream(
-                    streams = _uiState.value.groups.favoriteSourcesFirst { it.addonId }.flatMap { it.streams },
+                    streams = streams,
                     mode = autoPlayMode,
                     regexPattern = playerSettings.streamAutoPlayRegex,
                     source = playerSettings.streamAutoPlaySource,
@@ -491,15 +494,20 @@ object StreamsRepository {
                     return
                 }
 
-                // Once every favorite source has answered, start the first favorite link without
-                // waiting for the other sources.
-                val favoriteGroups = _uiState.value.groups.filter { group ->
-                    PinnedStreamSourcesRepository.isFavoriteGroup(group.addonId)
-                }
-                if (favoriteGroups.isNotEmpty() && favoriteGroups.none { it.isLoading }) {
-                    val favoriteEvaluation = evaluateAutoPlay()
-                    val favoriteStream = favoriteEvaluation.stream
-                    if (favoriteStream != null && PinnedStreamSourcesRepository.isFavoriteGroup(favoriteStream.addonId)) {
+                // Favorites in the order they were starred: start the first one that has a playable
+                // link as soon as it answers, without waiting for the other sources. A favorite still
+                // searching is waited for only when no favorite above it had a link.
+                val pinnedOrder = PinnedStreamSourcesRepository.pinnedSourceIds.value
+                val favoriteGroups = _uiState.value.groups
+                    .filter { group -> PinnedStreamSourcesRepository.isFavoriteGroup(group.addonId) }
+                    .sortedBy { group ->
+                        pinnedOrder.indexOfFirst { key -> key == group.addonId || key.startsWith(group.addonId + "|") }
+                            .let { if (it < 0) Int.MAX_VALUE else it }
+                    }
+                for (group in favoriteGroups) {
+                    if (group.isLoading) break
+                    val favoriteEvaluation = evaluateAutoPlay(streams = group.streams)
+                    if (favoriteEvaluation.stream != null) {
                         settleAutoPlay(favoriteEvaluation)
                         return
                     }

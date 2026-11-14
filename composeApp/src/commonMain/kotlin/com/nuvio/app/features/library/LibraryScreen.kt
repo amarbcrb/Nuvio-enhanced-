@@ -53,6 +53,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
@@ -234,6 +235,7 @@ fun LibraryScreen(
             ?: LibraryViewMode.Saved
     }
     var showReleaseCalendar by rememberSaveable { mutableStateOf(false) }
+    var showClearHistoryConfirm by remember { mutableStateOf(false) }
     val watchProgressUiState by remember {
         WatchProgressRepository.ensureLoaded()
         WatchProgressRepository.uiState
@@ -555,6 +557,15 @@ fun LibraryScreen(
                             )
                         }
                     }
+                    if (sourceMode == LibraryViewMode.History && historyEntries.isNotEmpty()) {
+                        IconButton(onClick = { showClearHistoryConfirm = true }) {
+                            Icon(
+                                imageVector = Icons.Rounded.DeleteSweep,
+                                contentDescription = stringResource(Res.string.library_history_clear),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     if (onDownloadsClick != null) {
                         LibraryDownloadsButton(onClick = onDownloadsClick)
                     }
@@ -758,6 +769,16 @@ fun LibraryScreen(
             }
         }
     }
+    }
+
+    if (showClearHistoryConfirm) {
+        LibraryClearHistoryDialog(
+            onConfirm = {
+                showClearHistoryConfirm = false
+                LibraryHistoryHiddenStore.hideAll(historyEntries)
+            },
+            onDismiss = { showClearHistoryConfirm = false },
+        )
     }
 
     if (showReleaseCalendar) {
@@ -1014,6 +1035,7 @@ private fun LazyListScope.cloudLibrarySkeletonItems() {
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun LibrarySourceSwitch(
     selectedMode: LibraryViewMode,
@@ -1022,23 +1044,22 @@ private fun LibrarySourceSwitch(
     modifier: Modifier = Modifier,
     trailingActions: @Composable RowScope.() -> Unit = {},
 ) {
-    Row(
+    // Chips keep their full label; the actions move to a second line when the screen is too narrow.
+    androidx.compose.foundation.layout.FlowRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        // The chips scroll sideways so the actions on the right always keep their room.
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
         LibraryChip(
             label = stringResource(Res.string.library_source_saved),
             selected = selectedMode == LibraryViewMode.Saved,
             onClick = { onModeSelected(LibraryViewMode.Saved) },
+        )
+        LibraryChip(
+            label = stringResource(Res.string.library_source_history),
+            selected = selectedMode == LibraryViewMode.History,
+            onClick = { onModeSelected(LibraryViewMode.History) },
         )
         LibraryChip(
             label = stringResource(Res.string.library_source_cloud),
@@ -1052,14 +1073,9 @@ private fun LibrarySourceSwitch(
                 onClick = { onModeSelected(LibraryViewMode.Servers) },
             )
         }
-        LibraryChip(
-            label = stringResource(Res.string.library_source_history),
-            selected = selectedMode == LibraryViewMode.History,
-            onClick = { onModeSelected(LibraryViewMode.History) },
-        )
-        }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
             content = trailingActions,
         )

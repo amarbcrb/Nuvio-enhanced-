@@ -7,4 +7,7 @@
     <string name="library_history_today">Today %1$s</string>
     <string name="library_history_yesterday">Yesterday %1$s</string>
     <string name="library_history_watched">Watched on %1$s</string>
+    <string name="library_history_clear">Clear history</string>
+    <string name="library_history_clear_message">Every title is removed from the history. Your progress and watched marks are kept.</string>
+    <string name="library_history_clear_confirm">Clear</string>
 </resources>
