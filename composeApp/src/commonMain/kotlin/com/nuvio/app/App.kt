@@ -44,13 +44,15 @@ fun App(
     nativeProfileSwitcherController: NativeProfileSwitcherController? = null,
     appGateController: AppGateController? = null,
 ) {
+    // TV mode (Settings > Appearance) uses the large-screen navigation, easier to reach with a remote.
+    val tvMode = com.nuvio.app.core.ui.rememberIsTvMode()
     AppEnvironment {
         AppGate(
             initialTab = initialTab,
             initialRoute = initialRoute,
             useNativeNavigation = useNativeNavigation,
             useNativeTabBar = useNativeTabBar,
-            useTabletFloatingTabBar = useTabletFloatingTabBar,
+            useTabletFloatingTabBar = useTabletFloatingTabBar || tvMode,
             ownsAppRuntime = ownsAppRuntime,
             bypassAppGate = bypassAppGate,
             renderMainContent = true,

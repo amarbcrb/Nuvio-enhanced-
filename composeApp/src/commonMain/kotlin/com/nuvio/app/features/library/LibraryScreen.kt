@@ -139,6 +139,7 @@ import com.nuvio.app.features.tracking.TrackingRefreshIntent
 import com.nuvio.app.features.watched.WatchedClock
 import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
+import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watching.application.WatchingState
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.AddonsUiState
@@ -233,6 +234,21 @@ fun LibraryScreen(
             ?: LibraryViewMode.Saved
     }
     var showReleaseCalendar by rememberSaveable { mutableStateOf(false) }
+    val watchProgressUiState by remember {
+        WatchProgressRepository.ensureLoaded()
+        WatchProgressRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val historyHidden by remember {
+        LibraryHistoryHiddenStore.ensureLoaded()
+        LibraryHistoryHiddenStore.hidden
+    }.collectAsStateWithLifecycle()
+    val historyEntries = remember(sourceMode, watchProgressUiState.entries, watchedUiState.items, historyHidden) {
+        if (sourceMode == LibraryViewMode.History) {
+            buildLibraryHistory(watchProgressUiState.entries, watchedUiState.items, historyHidden)
+        } else {
+            emptyList()
+        }
+    }
     val releaseCalendarCacheState by LibraryReleaseCalendarCache.state.collectAsStateWithLifecycle()
     val releaseCalendarCacheKey = remember(uiState.items) {
         LibraryReleaseCalendarCache.cacheKeyFor(uiState.items)
@@ -567,7 +583,14 @@ fun LibraryScreen(
                 autoHidesNativeTabBar = true,
             ) {
 
-            if (sourceMode == LibraryViewMode.Cloud) {
+            if (sourceMode == LibraryViewMode.History) {
+                libraryHistoryContent(
+                    entries = historyEntries,
+                    nowEpochMs = LibraryClock.nowEpochMs(),
+                    onOpen = { entry -> onPreviewClick?.invoke(entry.toMetaPreview()) },
+                    onRemove = { entry -> LibraryHistoryHiddenStore.hide(entry.contentId, entry.watchedAtEpochMs) },
+                )
+            } else if (sourceMode == LibraryViewMode.Cloud) {
                 cloudLibraryContent(
                     uiState = cloudUiState,
                     selectedProviderId = selectedProviderId,
@@ -1004,6 +1027,14 @@ private fun LibrarySourceSwitch(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The chips scroll sideways so the actions on the right always keep their room.
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
         LibraryChip(
             label = stringResource(Res.string.library_source_saved),
             selected = selectedMode == LibraryViewMode.Saved,
@@ -1021,7 +1052,12 @@ private fun LibrarySourceSwitch(
                 onClick = { onModeSelected(LibraryViewMode.Servers) },
             )
         }
-        Spacer(modifier = Modifier.weight(1f))
+        LibraryChip(
+            label = stringResource(Res.string.library_source_history),
+            selected = selectedMode == LibraryViewMode.History,
+            onClick = { onModeSelected(LibraryViewMode.History) },
+        )
+        }
         Row(
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -3165,6 +3201,7 @@ private enum class LibraryViewMode {
     Saved,
     Cloud,
     Servers,
+    History,
 }
 
 private const val LIBRARY_SECTION_PREVIEW_LIMIT = 18

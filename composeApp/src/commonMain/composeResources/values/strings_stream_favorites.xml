@@ -1,4 +1,9 @@
 <resources>
     <string name="streams_favorites_only">Favorites</string>
     <string name="streams_favorites_only_none">No favorite source yet: tap the star next to a source to add it.</string>
+    <string name="streams_favorites_sheet_title">Favorite sources</string>
+    <string name="streams_favorites_sheet_sources">Sources</string>
+    <string name="streams_favorites_only_search">Search favorites only</string>
+    <string name="streams_favorites_only_search_hint">Every source is searched when no favorite can serve the title</string>
+    <string name="streams_favorites_none_available">No source installed yet.</string>
 </resources>

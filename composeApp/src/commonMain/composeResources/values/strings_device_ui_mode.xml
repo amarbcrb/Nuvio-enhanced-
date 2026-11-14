@@ -1,0 +1,10 @@
+<resources>
+    <string name="settings_device_ui_mode_section">INTERFACE</string>
+    <string name="settings_device_ui_mode">Display mode</string>
+    <string name="settings_device_ui_mode_phone">Phone</string>
+    <string name="settings_device_ui_mode_phone_hint">Touch screen</string>
+    <string name="settings_device_ui_mode_tv">TV</string>
+    <string name="settings_device_ui_mode_tv_hint">Remote control: highlighted focus, large-screen navigation</string>
+    <string name="settings_device_ui_mode_auto">Automatic</string>
+    <string name="settings_device_ui_mode_auto_hint">TV on an Android TV, phone otherwise</string>
+</resources>

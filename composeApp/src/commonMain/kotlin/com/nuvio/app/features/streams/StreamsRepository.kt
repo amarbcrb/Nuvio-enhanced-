@@ -491,6 +491,20 @@ object StreamsRepository {
                     return
                 }
 
+                // Once every favorite source has answered, start the first favorite link without
+                // waiting for the other sources.
+                val favoriteGroups = _uiState.value.groups.filter { group ->
+                    PinnedStreamSourcesRepository.isFavoriteGroup(group.addonId)
+                }
+                if (favoriteGroups.isNotEmpty() && favoriteGroups.none { it.isLoading }) {
+                    val favoriteEvaluation = evaluateAutoPlay()
+                    val favoriteStream = favoriteEvaluation.stream
+                    if (favoriteStream != null && PinnedStreamSourcesRepository.isFavoriteGroup(favoriteStream.addonId)) {
+                        settleAutoPlay(favoriteEvaluation)
+                        return
+                    }
+                }
+
                 if (
                     _uiState.value.groups.areAutoPlaySourcesLoaded(
                         source = playerSettings.streamAutoPlaySource,

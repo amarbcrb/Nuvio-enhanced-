@@ -13,7 +13,9 @@ import com.nuvio.app.features.details.PersonDetailScreen
 import com.nuvio.app.features.details.TmdbEntityBrowseScreen
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.tmdb.TmdbEntityKind
+import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbService
+import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.navigation.CatalogRoute
 import com.nuvio.app.navigation.DetailRoute
 import com.nuvio.app.navigation.EntityBrowseRoute
@@ -22,6 +24,7 @@ import com.nuvio.app.navigation.PersonDetailRoute
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.details_more_like_this
+import nuvio.composeapp.generated.resources.person_not_found
 import nuvio.composeapp.generated.resources.person_role_creator
 import nuvio.composeapp.generated.resources.person_role_director
 import nuvio.composeapp.generated.resources.person_role_writer
@@ -85,6 +88,8 @@ internal fun DetailsDestination(
     val directorRole = stringResource(Res.string.person_role_director)
     val writerRole = stringResource(Res.string.person_role_writer)
     val creatorRole = stringResource(Res.string.person_role_creator)
+    val personNotFoundText = stringResource(Res.string.person_not_found)
+    val castLookupScope = rememberCoroutineScope()
     MetaDetailsScreen(
         type = route.type,
         id = route.id,
@@ -121,24 +126,38 @@ internal fun DetailsDestination(
             }
         },
         onCastClick = { person, avatarTransitionKey ->
-            val tmdbId = person.tmdbId
-            if (tmdbId != null && tmdbId > 0) {
+            val preferCrew = person.role?.let {
+                it.equals("Director", ignoreCase = true) ||
+                    it.equals(directorRole, ignoreCase = true) ||
+                    it.equals("Writer", ignoreCase = true) ||
+                    it.equals(writerRole, ignoreCase = true) ||
+                    it.equals("Creator", ignoreCase = true) ||
+                    it.equals(creatorRole, ignoreCase = true)
+            } ?: false
+            fun openPerson(tmdbId: Int, transitionKey: String?) {
                 navController.navigate(
                     PersonDetailRoute(
                         personId = tmdbId,
                         personName = person.name,
                         personPhoto = person.photo,
-                        castAvatarTransitionKey = avatarTransitionKey,
-                        preferCrew = person.role?.let {
-                            it.equals("Director", ignoreCase = true) ||
-                                it.equals(directorRole, ignoreCase = true) ||
-                                it.equals("Writer", ignoreCase = true) ||
-                                it.equals(writerRole, ignoreCase = true) ||
-                                it.equals("Creator", ignoreCase = true) ||
-                                it.equals(creatorRole, ignoreCase = true)
-                        } ?: false,
+                        castAvatarTransitionKey = transitionKey,
+                        preferCrew = preferCrew,
                     ),
                 )
+            }
+            val tmdbId = person.tmdbId
+            if (tmdbId != null && tmdbId > 0) {
+                openPerson(tmdbId, avatarTransitionKey)
+            } else {
+                // Cast from an addon without TMDB ids: find the person by name, then show their titles.
+                castLookupScope.launch {
+                    val foundId = TmdbMetadataService.searchPersonId(person.name, preferActing = !preferCrew)
+                    if (foundId != null) {
+                        openPerson(foundId, null)
+                    } else {
+                        NuvioToastController.show(personNotFoundText)
+                    }
+                }
             }
         },
         onCompanyClick = { company, entityKind ->

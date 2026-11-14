@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -82,8 +83,8 @@ object TmdbMetadataService {
         personId: Int,
         preferCrewCredits: Boolean? = null,
     ): PersonDetail? = withContext(Dispatchers.Default) {
+        // Opened from a tap on a cast member: shown even when TMDB enrichment is turned off.
         val settings = TmdbSettingsRepository.snapshot()
-        if (!settings.enabled) return@withContext null
         val language = normalizeTmdbLanguage(settings.language)
         val cacheKey = "$personId:${preferCrewCredits?.toString() ?: "auto"}:$language"
         personCache[cacheKey]?.let { return@withContext it }
@@ -1231,6 +1232,32 @@ object TmdbMetadataService {
         merged
     }
 
+    /**
+     * TMDB id of the person named [name], for cast members that came without one (TMDB enrichment
+     * off). The most popular match wins, an actor first when [preferActing].
+     */
+    suspend fun searchPersonId(name: String, preferActing: Boolean = true): Int? = withContext(Dispatchers.Default) {
+        val query = name.trim().takeIf { it.isNotEmpty() } ?: return@withContext null
+        personSearchCache[query]?.let { return@withContext it }
+        val results = fetch<TmdbPersonSearchResponse>(
+            endpoint = "search/person",
+            query = mapOf("query" to query.encodeURLParameter(), "include_adult" to "false"),
+        )?.results.orEmpty()
+        val sameName = results.filter { it.name.equals(query, ignoreCase = true) }.ifEmpty { results }
+        val best = sameName
+            .sortedWith(
+                compareByDescending<TmdbPersonSearchResult> {
+                    preferActing && it.knownForDepartment.equals("Acting", ignoreCase = true)
+                }.thenByDescending { it.popularity ?: 0.0 },
+            )
+            .firstOrNull()
+            ?.id
+        if (best != null) personSearchCache[query] = best
+        best
+    }
+
+    private val personSearchCache = HashMap<String, Int>()
+
     private suspend inline fun <reified T> fetch(
         endpoint: String,
         query: Map<String, String> = emptyMap(),
@@ -1928,6 +1955,19 @@ private data class TmdbDetailsResponse(
     // Movies only. TMDB sends 0 rather than omitting the field when the figure is unknown.
     val budget: Long? = null,
     val revenue: Long? = null,
+)
+
+@Serializable
+private data class TmdbPersonSearchResponse(
+    val results: List<TmdbPersonSearchResult> = emptyList(),
+)
+
+@Serializable
+private data class TmdbPersonSearchResult(
+    val id: Int,
+    val name: String? = null,
+    @SerialName("known_for_department") val knownForDepartment: String? = null,
+    val popularity: Double? = null,
 )
 
 @Serializable

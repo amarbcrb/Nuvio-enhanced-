@@ -124,6 +124,9 @@ internal fun LazyListScope.appearanceSettingsContent(
         }
     }
     item {
+        DeviceUiModeSetting(isTablet = isTablet)
+    }
+    item {
         var showLanguageSheet by remember { mutableStateOf(false) }
         var showLanguageRestartDialog by remember { mutableStateOf(false) }
         val layoutDirection = LocalLayoutDirection.current

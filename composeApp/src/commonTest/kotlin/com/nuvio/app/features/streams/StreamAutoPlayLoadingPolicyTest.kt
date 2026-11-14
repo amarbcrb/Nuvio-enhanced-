@@ -28,7 +28,7 @@ class StreamAutoPlayLoadingPolicyTest {
     fun `manual selection and invalid regex do not start autoplay loading`() {
         val initial = StreamsUiState()
         assertFalse(initial.shouldShowAutoPlayLoading("new", autoPlaySettings, true))
-        assertFalse(initial.shouldShowAutoPlayLoading("new", PlayerSettingsUiState(), false))
+        assertFalse(initial.shouldShowAutoPlayLoading("new", PlayerSettingsUiState(streamAutoPlayMode = StreamAutoPlayMode.MANUAL), false))
         assertFalse(initial.shouldShowAutoPlayLoading(
             "new",
             PlayerSettingsUiState(streamAutoPlayMode = StreamAutoPlayMode.REGEX_MATCH, streamAutoPlayRegex = "["),

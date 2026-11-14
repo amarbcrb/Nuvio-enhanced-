@@ -83,7 +83,8 @@ fun DetailCastSection(
                         sizing = sizing,
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = animatedVisibilityScope,
-                        onClick = if (onCastClick != null && person.tmdbId != null && person.tmdbId > 0) {
+                        // Without a TMDB id the person is looked up by name when tapped.
+                        onClick = if (onCastClick != null && person.name.isNotBlank()) {
                             { onCastClick(person, sharedTransitionKey) }
                         } else {
                             null

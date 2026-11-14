@@ -222,7 +222,14 @@ fun NuvioTheme(
             colorScheme = colorScheme,
             typography = NuvioTypography,
         ) {
-            SkeletonAnimationProvider(content = content)
+            // TV mode (Settings > Appearance): a visible outline on the focused element for the remote.
+            val tvMode = rememberIsTvMode()
+            CompositionLocalProvider(
+                LocalTvMode provides tvMode,
+                *(if (tvMode) arrayOf(androidx.compose.foundation.LocalIndication provides TvFocusIndication) else emptyArray()),
+            ) {
+                SkeletonAnimationProvider(content = content)
+            }
         }
     }
 }

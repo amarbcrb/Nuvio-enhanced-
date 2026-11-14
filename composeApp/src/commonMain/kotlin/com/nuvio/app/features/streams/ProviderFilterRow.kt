@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.Menu
 import com.nuvio.app.core.ui.MenuItem
-import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.GlassCheckRow
 import com.nuvio.app.core.ui.GlassPill
 import com.nuvio.app.core.ui.GlassSheetSectionLabel
@@ -83,7 +82,6 @@ import nuvio.composeapp.generated.resources.streams_pin_source
 import nuvio.composeapp.generated.resources.streams_pinned_source
 import nuvio.composeapp.generated.resources.streams_refresh
 import nuvio.composeapp.generated.resources.streams_favorites_only
-import nuvio.composeapp.generated.resources.streams_favorites_only_none
 import nuvio.composeapp.generated.resources.streams_language_filter_all
 import nuvio.composeapp.generated.resources.streams_language_filter_title
 import nuvio.composeapp.generated.resources.streams_search_scope_all
@@ -133,6 +131,7 @@ internal fun ProviderFilterRow(
     val languageFilterPaused by StreamLanguagePreferencesRepository.linkFilterPaused.collectAsStateWithLifecycle()
     val pinnedSourceIds by rememberPinnedStreamSourceIds()
     var pinSheetTarget by remember { mutableStateOf<PinTarget?>(null) }
+    var showFavoritesSheet by remember { mutableStateOf(false) }
     LaunchedEffect(addonGroups, selectedFilter) {
         if (selectedFilter != null && addonGroups.none { it.addonId == selectedFilter }) {
             onFilterSelected(null)
@@ -189,22 +188,26 @@ internal fun ProviderFilterRow(
                 filterPaused = languageFilterPaused,
                 onChanged = onRefresh,
             )
-            // Search only the favorite (starred) sources; with no favorite yet, say how to add one.
-            val noFavoriteText = stringResource(Res.string.streams_favorites_only_none)
+            // Opens the favorite sources: tick or untick each one, and choose whether only they are searched.
             FilterChip(
                 label = stringResource(Res.string.streams_favorites_only),
                 icon = if (favoritesOnly) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                 isSelected = favoritesOnly,
-                onClick = {
-                    if (!favoritesOnly && pinnedSourceIds.isEmpty()) {
-                        NuvioToastController.show(noFavoriteText)
-                    } else {
-                        StreamSearchScopeRepository.setFavoritesOnly(!favoritesOnly)
-                        onRefresh()
-                    }
-                },
+                onClick = { showFavoritesSheet = true },
             )
         }
+    }
+
+    if (showFavoritesSheet && onRefresh != null) {
+        FavoriteSourcesSheet(
+            sources = favoriteSheetSources(sourceOptions, addonGroups, pinnedSourceIds),
+            pinnedSourceIds = pinnedSourceIds,
+            favoritesOnly = favoritesOnly,
+            onDismiss = { changed ->
+                showFavoritesSheet = false
+                if (changed) onRefresh()
+            },
+        )
     }
 
     StreamSourcePinSheet(
