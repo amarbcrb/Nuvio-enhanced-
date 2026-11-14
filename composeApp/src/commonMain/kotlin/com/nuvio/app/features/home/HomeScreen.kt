@@ -1237,11 +1237,8 @@ fun HomeScreen(
                                             entries = section.items.take(HOME_CATALOG_PREVIEW_LIMIT),
                                             modifier = Modifier.padding(bottom = 12.dp),
                                             sectionPadding = homeSectionPadding,
-                                            onViewAllClick = if (section.canOpenCatalog(HOME_CATALOG_PREVIEW_LIMIT)) {
-                                                onCatalogClick?.let { { it(section) } }
-                                            } else {
-                                                null
-                                            },
+                                            // The "view all" arrow on every row, even a short one.
+                                            onViewAllClick = onCatalogClick?.let { { it(section) } },
                                             watchedKeys = watchedUiState.watchedKeys,
                                             fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                                             onPosterClick = onPosterClick,
@@ -1259,11 +1256,7 @@ fun HomeScreen(
                                     entries = section.items.take(HOME_CATALOG_PREVIEW_LIMIT),
                                     modifier = Modifier.padding(bottom = 12.dp),
                                     sectionPadding = homeSectionPadding,
-                                    onViewAllClick = if (section.canOpenCatalog(HOME_CATALOG_PREVIEW_LIMIT)) {
-                                        onCatalogClick?.let { { it(section) } }
-                                    } else {
-                                        null
-                                    },
+                                    onViewAllClick = onCatalogClick?.let { { it(section) } },
                                     watchedKeys = watchedUiState.watchedKeys,
                                     fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                                     onPosterClick = onPosterClick,
