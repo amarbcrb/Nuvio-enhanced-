@@ -208,10 +208,9 @@ private fun PersonDetailContent(
 
     val todayDate = remember { CurrentDateProvider.todayIsoDate() }
 
-    val popularCredits = remember(allCredits) {
-        allCredits
-            .sortedByDescending { it.popularity ?: 0.0 }
-    }
+    // No "Popular" row: TMDB popularity ranks the shows, not the person's part in them, so guest
+    // spots came first. "Recent" and "Upcoming" list the person's work by date instead.
+    val popularCredits = emptyList<MetaPreview>()
 
     val latestCredits = remember(allCredits, todayDate) {
         allCredits

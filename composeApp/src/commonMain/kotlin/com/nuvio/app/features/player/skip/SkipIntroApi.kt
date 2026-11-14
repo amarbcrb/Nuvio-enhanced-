@@ -16,7 +16,7 @@ internal object SkipIntroApi {
     // --- IntroDb ---
 
     suspend fun getIntroDbMovieSegments(imdbId: String): IntroDbSegmentsResponse? {
-        val baseUrl = IntroDbConfig.URL.trimEnd('/')
+        val baseUrl = IntroDbEndpoint.baseUrl.trimEnd('/')
         if (baseUrl.isBlank()) return null
         return try {
             val text = httpGetText(introDbMovieSegmentsUrl(baseUrl, imdbId))
@@ -33,7 +33,7 @@ internal object SkipIntroApi {
         season: Int,
         episode: Int,
     ): IntroDbSegmentsResponse? {
-        val baseUrl = IntroDbConfig.URL.trimEnd('/')
+        val baseUrl = IntroDbEndpoint.baseUrl.trimEnd('/')
         if (baseUrl.isBlank()) return null
         val url = "$baseUrl/segments?imdb_id=$imdbId&season=$season&episode=$episode"
         return try {
@@ -50,7 +50,7 @@ internal object SkipIntroApi {
         apiKey: String,
         request: SubmitIntroRequest,
     ): Boolean {
-        val baseUrl = IntroDbConfig.URL.trimEnd('/')
+        val baseUrl = IntroDbEndpoint.baseUrl.trimEnd('/')
         if (baseUrl.isBlank() || apiKey.isBlank()) return false
         val url = "$baseUrl/submit"
         val body = json.encodeToString(SubmitIntroRequest.serializer(), request)
@@ -74,7 +74,7 @@ internal object SkipIntroApi {
     }
 
     suspend fun verifyIntroDbApiKey(apiKey: String): Boolean {
-        val baseUrl = IntroDbConfig.URL.trimEnd('/')
+        val baseUrl = IntroDbEndpoint.baseUrl.trimEnd('/')
         if (baseUrl.isBlank() || apiKey.isBlank()) return false
         val url = "$baseUrl/submit"
         val headers = mapOf(
@@ -224,3 +224,13 @@ internal object SkipIntroApi {
 
 internal fun introDbMovieSegmentsUrl(baseUrl: String, imdbId: String): String =
     "${baseUrl.trimEnd('/')}/segments?imdb_id=$imdbId&is_movie=true"
+
+/**
+ * IntroDB address: the one set at build time (INTRODB_API_URL), else the public API of introdb.app,
+ * so intro skipping works even when the build secrets do not set it.
+ */
+internal object IntroDbEndpoint {
+    private const val PUBLIC_URL = "https://api.introdb.app"
+    val baseUrl: String
+        get() = IntroDbConfig.URL.trim().ifBlank { PUBLIC_URL }
+}

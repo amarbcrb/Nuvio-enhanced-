@@ -33,6 +33,7 @@ import com.nuvio.app.features.streams.BingeGroupCacheRepository
 import com.nuvio.app.features.streams.SeriesSourceMemoryRepository
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.streams.StreamItem
+import com.nuvio.app.core.logging.InAppLogger
 import com.nuvio.app.features.streams.hasLikelyExpiringPlaybackCredentials
 import com.nuvio.app.features.streams.serverKey
 import com.nuvio.app.features.tracking.TrackingScrobbleAction
@@ -607,7 +608,17 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
                     SkipIntroRepository.getSkipIntervalsForKitsu(kitsuId = kitsuId, episode = episode, imdbId = imdbFromContent, imdbSeason = season, imdbEpisode = episode)
                 }
                 else -> SkipIntroRepository.getSkipIntervals(
-                    imdbId = vid.substringBefore(':').takeIf { it.startsWith("tt") },
+                    // The episode id when it carries the IMDb id, else the show's IMDb id, else the
+                    // show's TMDB id converted, so sources with their own ids still get skip times.
+                    imdbId = vid.substringBefore(':').takeIf { it.startsWith("tt") }
+                        ?: imdbFromContent
+                        ?: parentMetaId.takeIf { it.startsWith("tmdb:") }
+                            ?.removePrefix("tmdb:")?.substringBefore(':')?.toIntOrNull()
+                            ?.let { tmdbId ->
+                                runCatching {
+                                    com.nuvio.app.features.tmdb.TmdbService.tmdbToImdb(tmdbId, "tv")
+                                }.getOrNull()
+                            },
                     season = season,
                     episode = episode,
                 )
@@ -1018,6 +1029,85 @@ private fun SkipInterval.isIntroLikeSkipInterval(): Boolean =
     }
 
 private const val SKIP_INTRO_PRE_ROLL_SECONDS = 10.0
+/**
+ * Moves on to another link when the current one fails: favorite sources first (in the order they were
+ * starred), then every other source. Each failed link is remembered for this title so it is not tried
+ * again, and at most [AUTO_FALLBACK_MAX_ATTEMPTS] links are tried before the error is shown.
+ */
+internal fun PlayerScreenRuntime.tryNextSourceAfterError(): Boolean {
+    if (isLiveTvPlayback) return false
+    val currentVideoId = activeVideoId ?: return false
+    if (autoFallbackJob?.isActive == true) return true
+    if (autoFallbackVideoId != currentVideoId) {
+        autoFallbackVideoId = currentVideoId
+        autoFallbackFailedUrls.clear()
+    }
+    activeSourceUrl?.let { autoFallbackFailedUrls += it }
+    if (autoFallbackFailedUrls.size > AUTO_FALLBACK_MAX_ATTEMPTS) return false
+    val failedHash = activeStream?.infoHash?.lowercase()
+    val type = contentType ?: parentMetaType
+    val season = activeSeasonNumber
+    val episode = activeEpisodeNumber
+    errorMessage = null
+    autoFallbackJob = scope.launch {
+        NuvioToastController.show(getString(Res.string.player_trying_next_source))
+        PlayerStreamsRepository.loadSources(
+            type = type,
+            videoId = currentVideoId,
+            parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
+            season = season,
+            episode = episode,
+        )
+        fun nextCandidate(): StreamItem? {
+            val pinnedOrder = com.nuvio.app.features.streams.PinnedStreamSourcesRepository.pinnedSourceIds.value
+            return PlayerStreamsRepository.sourceState.value.groups
+                .sortedBy { group ->
+                    pinnedOrder.indexOfFirst { key -> key == group.addonId || key.startsWith(group.addonId + "|") }
+                        .let { if (it < 0) Int.MAX_VALUE else it }
+                }
+                .flatMap { it.streams }
+                .firstOrNull { stream ->
+                    val url = stream.playableDirectUrl
+                    val hash = stream.infoHash?.lowercase()
+                    (url == null || url !in autoFallbackFailedUrls) &&
+                        (hash == null || hash != failedHash) &&
+                        (url != null || hash != null || stream.clientResolve != null)
+                }
+        }
+        var candidate: StreamItem? = null
+        var polls = 0
+        while (polls < CREDENTIAL_REFRESH_POLL_COUNT) {
+            val state = PlayerStreamsRepository.sourceState.value
+            candidate = nextCandidate()
+            // Wait for the favorites to answer before falling back to the rest.
+            val favoritesLoading = state.groups.any { group ->
+                group.isLoading && com.nuvio.app.features.streams.PinnedStreamSourcesRepository.isFavoriteGroup(group.addonId)
+            }
+            if (candidate != null && !favoritesLoading) break
+            if (!state.isAnyLoading && state.groups.isNotEmpty()) break
+            if (state.emptyStateReason != null) break
+            delay(CREDENTIAL_REFRESH_POLL_INTERVAL_MS)
+            polls++
+        }
+        val next = candidate ?: nextCandidate()
+        if (next == null) {
+            errorMessage = getString(Res.string.player_no_other_source)
+            controlsVisible = !playerControlsLocked
+            return@launch
+        }
+        next.playableDirectUrl?.let { autoFallbackFailedUrls += it }
+        InAppLogger.info(
+            "Player/Source",
+            "auto fallback to addon=${next.addonName} stream=${next.streamLabel} tried=${autoFallbackFailedUrls.size}",
+        )
+        switchToSource(next, saveForReuse = false)
+    }
+    return true
+}
+
+private const val AUTO_FALLBACK_MAX_ATTEMPTS = 6
+
 private const val CREDENTIAL_REFRESH_POLL_COUNT = 30
 private const val CREDENTIAL_REFRESH_POLL_INTERVAL_MS = 500L
 private const val SERIES_SOURCE_MIN_PLAYED_MS = 20_000L

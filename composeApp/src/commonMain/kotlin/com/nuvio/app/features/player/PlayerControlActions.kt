@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
@@ -68,11 +69,26 @@ import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-internal fun playerOrientationToggleIcon(isPortraitPlayback: Boolean): ImageVector =
-    if (isPortraitPlayback) Icons.Rounded.StayCurrentLandscape else Icons.Rounded.StayCurrentPortrait
+/** Icon of the mode the rotate button switches to next (landscape -> portrait -> auto -> landscape). */
+@Composable
+internal fun playerOrientationToggleIcon(@Suppress("UNUSED_PARAMETER") isPortraitPlayback: Boolean): ImageVector {
+    val mode by PlayerOrientationPreference.mode.collectAsState()
+    return when (mode) {
+        PlayerOrientationMode.LANDSCAPE -> Icons.Rounded.StayCurrentPortrait
+        PlayerOrientationMode.PORTRAIT -> Icons.Rounded.ScreenRotation
+        PlayerOrientationMode.AUTO -> Icons.Rounded.StayCurrentLandscape
+    }
+}
 
-internal fun playerOrientationToggleLabel(isPortraitPlayback: Boolean): StringResource =
-    if (isPortraitPlayback) Res.string.player_action_rotate_landscape else Res.string.player_action_rotate_portrait
+@Composable
+internal fun playerOrientationToggleLabel(@Suppress("UNUSED_PARAMETER") isPortraitPlayback: Boolean): StringResource {
+    val mode by PlayerOrientationPreference.mode.collectAsState()
+    return when (mode) {
+        PlayerOrientationMode.LANDSCAPE -> Res.string.player_action_rotate_portrait
+        PlayerOrientationMode.PORTRAIT -> Res.string.player_action_rotate_auto
+        PlayerOrientationMode.AUTO -> Res.string.player_action_rotate_landscape
+    }
+}
 
 @Composable
 internal fun PlayerToolbar(

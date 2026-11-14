@@ -113,6 +113,16 @@ open class MainActivity : AppCompatActivity() {
         )
         ThemeSettingsStorage.initialize(applicationContext)
         initializeDeviceUiMode()
+        applicationContext.getSharedPreferences("nuvio_player_orientation", MODE_PRIVATE).let { prefs ->
+            com.nuvio.app.features.player.PlayerOrientationPreference.initialize(
+                stored = prefs.getString("mode", null),
+                persist = { value -> prefs.edit().putString("mode", value).apply() },
+            )
+            com.nuvio.app.features.player.BackgroundPlaybackPreference.initialize(
+                stored = prefs.getBoolean("background_playback", false),
+                persist = { value -> prefs.edit().putBoolean("background_playback", value).apply() },
+            )
+        }
         AppIconPlatform.initialize(applicationContext)
         SentrySettingsStorage.initialize(applicationContext)
         SentryInitializer.start(application)

@@ -518,6 +518,8 @@ private fun ExoPlayerSurface(
 
         val playerBuilder = ExoPlayer.Builder(context)
             .setAudioAttributes(playbackAudioAttributes, true)
+            // Keeps the CPU and Wi-Fi awake while playing, so playback goes on with the screen off.
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
 
@@ -975,7 +977,9 @@ private fun ExoPlayerSurface(
                         "ExoPlayer/Android",
                         "lifecycle ON_STOP pip=$isInPictureInPicture finishing=$isFinishing positionMs=${exoPlayer.currentPosition.coerceAtLeast(0L)}",
                     )
-                    if (!isInPictureInPicture || isFinishing) {
+                    // Screen locked or app in the background: keep playing when the user asked for it.
+                    val keepPlaying = BackgroundPlaybackPreference.enabled.value && !isFinishing
+                    if ((!isInPictureInPicture || isFinishing) && !keepPlaying) {
                         exoPlayer.pause()
                     }
                 }
@@ -1481,7 +1485,8 @@ private fun LibmpvPlayerSurface(
                     val isInPictureInPicture =
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity?.isInPictureInPictureMode == true
                     val isFinishing = activity?.isFinishing == true
-                    if (!isInPictureInPicture || isFinishing) {
+                    val keepPlaying = BackgroundPlaybackPreference.enabled.value && !isFinishing
+                    if ((!isInPictureInPicture || isFinishing) && !keepPlaying) {
                         view.setPaused(true)
                     }
                 }

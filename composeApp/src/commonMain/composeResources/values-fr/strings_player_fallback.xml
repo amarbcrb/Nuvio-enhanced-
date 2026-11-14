@@ -1,0 +1,9 @@
+<resources>
+    <string name="player_trying_next_source">Ce lien ne marche pas, essai de la source suivante…</string>
+    <string name="player_no_other_source">Aucune autre source n’a pu lire ce titre.</string>
+    <string name="player_action_rotate_auto">Rotation automatique</string>
+    <string name="player_action_rotate_portrait">Regarder en portrait</string>
+    <string name="player_action_rotate_landscape">Regarder en paysage</string>
+    <string name="settings_playback_background">Continuer la lecture écran verrouillé</string>
+    <string name="settings_playback_background_description">Le film continue quand l’écran est éteint ou que l’appli passe en arrière-plan.</string>
+</resources>

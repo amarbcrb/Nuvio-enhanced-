@@ -22,6 +22,15 @@ object StreamParser {
     ): List<StreamItem> {
         val root = json.parseToJsonElement(payload).jsonObject
         val streamsArray = root["streams"] as? JsonArray ?: return emptyList()
+        return parseStreams(streamsArray, addonName, addonId, addonLogo).withoutDuplicateLinks()
+    }
+
+    private fun parseStreams(
+        streamsArray: JsonArray,
+        addonName: String,
+        addonId: String,
+        addonLogo: String?,
+    ): List<StreamItem> {
         return streamsArray.mapNotNull { element ->
             val obj = element as? JsonObject ?: return@mapNotNull null
             val url = obj.string("url")

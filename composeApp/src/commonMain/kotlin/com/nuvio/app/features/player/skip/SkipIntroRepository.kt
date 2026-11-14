@@ -21,7 +21,7 @@ object SkipIntroRepository {
     private const val ANIME_SKIP_SHOW_LOOKUP_TIMEOUT_MS = 3_000L
 
     private val introDbConfigured: Boolean
-        get() = IntroDbConfig.URL.isNotBlank()
+        get() = IntroDbEndpoint.baseUrl.isNotBlank()
 
     suspend fun getMovieSkipIntervals(
         contentId: String?,

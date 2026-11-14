@@ -320,11 +320,15 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                         if (message != null && tryRefreshCredentialedSourceAfterError(message)) {
                             return@PlatformPlayerSurface
                         }
+                        if (message != null) removeFailedStreamFromCache()
+                        // A link that does not play: try the next favorite source, then any source.
+                        if (message != null && tryNextSourceAfterError()) {
+                            return@PlatformPlayerSurface
+                        }
                         errorMessage = message
                         if (message != null) {
                             scrubbingPositionMs = null
                             controlsVisible = !playerControlsLocked
-                            removeFailedStreamFromCache()
                         }
                     },
                 )

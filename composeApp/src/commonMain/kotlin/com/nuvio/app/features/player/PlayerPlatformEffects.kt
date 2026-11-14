@@ -20,17 +20,49 @@ data class PlayerAudioLevel(
     val isMuted: Boolean,
 )
 
+/** How the player is held: landscape, portrait, or following the phone's rotation. */
+enum class PlayerOrientationMode(val storageId: String) {
+    LANDSCAPE("landscape"),
+    PORTRAIT("portrait"),
+    AUTO("auto"),
+}
+
+/**
+ * The player orientation picked with the rotate button. It is kept for the next videos (and across
+ * launches once the platform installs [persist]/[load]).
+ */
 object PlayerOrientationPreference {
+    private val _mode = MutableStateFlow(PlayerOrientationMode.LANDSCAPE)
+    val mode: StateFlow<PlayerOrientationMode> = _mode.asStateFlow()
+
     private val _portrait = MutableStateFlow(false)
     val portrait: StateFlow<Boolean> = _portrait.asStateFlow()
 
-    fun toggle() {
-        _portrait.value = !_portrait.value
+    private var persist: ((String) -> Unit)? = null
+
+    fun initialize(stored: String?, persist: (String) -> Unit) {
+        this.persist = persist
+        set(PlayerOrientationMode.entries.firstOrNull { it.storageId == stored } ?: PlayerOrientationMode.LANDSCAPE, save = false)
     }
 
-    internal fun reset() {
-        _portrait.value = false
+    /** Landscape -> portrait -> automatic rotation -> landscape. */
+    fun toggle() {
+        val next = when (_mode.value) {
+            PlayerOrientationMode.LANDSCAPE -> PlayerOrientationMode.PORTRAIT
+            PlayerOrientationMode.PORTRAIT -> PlayerOrientationMode.AUTO
+            PlayerOrientationMode.AUTO -> PlayerOrientationMode.LANDSCAPE
+        }
+        set(next, save = true)
     }
+
+    private fun set(mode: PlayerOrientationMode, save: Boolean) {
+        _mode.value = mode
+        _portrait.value = mode == PlayerOrientationMode.PORTRAIT
+        if (save) runCatching { persist?.invoke(mode.storageId) }
+    }
+
+    /** Called when the player closes: the choice is kept for the next video. */
+    internal fun reset() = Unit
 }
 
 @Composable

@@ -409,6 +409,16 @@ private fun PlaybackSettingsSection(
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
+                val backgroundPlayback by com.nuvio.app.features.player.BackgroundPlaybackPreference.enabled
+                    .collectAsStateWithLifecycle()
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_background),
+                    description = stringResource(Res.string.settings_playback_background_description),
+                    checked = backgroundPlayback,
+                    isTablet = isTablet,
+                    onCheckedChange = com.nuvio.app.features.player.BackgroundPlaybackPreference::setEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_playback_legacy_layout),
                     description = stringResource(Res.string.settings_playback_legacy_layout_description),

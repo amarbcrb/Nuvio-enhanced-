@@ -1,0 +1,7 @@
+<resources>
+    <string name="player_trying_next_source">This link does not play, trying the next source…</string>
+    <string name="player_no_other_source">No other source could play this title.</string>
+    <string name="player_action_rotate_auto">Rotate with the phone</string>
+    <string name="settings_playback_background">Keep playing when locked</string>
+    <string name="settings_playback_background_description">The movie keeps playing when the screen is off or the app is in the background.</string>
+</resources>

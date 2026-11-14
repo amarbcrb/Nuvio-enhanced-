@@ -225,6 +225,10 @@ internal class PlayerScreenRuntime(
     var pendingP2pSwitch by mutableStateOf<PendingPlayerP2pSwitch?>(null)
     var credentialRefreshJob by mutableStateOf<Job?>(null)
     var credentialRefreshAttemptedSourceUrl by mutableStateOf<String?>(null)
+    /** Links that already failed for [autoFallbackVideoId], skipped when moving on to the next source. */
+    val autoFallbackFailedUrls = mutableSetOf<String>()
+    var autoFallbackVideoId: String? = null
+    var autoFallbackJob by mutableStateOf<Job?>(null)
 
     var showAudioModal by mutableStateOf(false)
     var showSubtitleModal by mutableStateOf(false)
